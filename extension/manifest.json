@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "AI SecondBrain Collector",
+  "version": "1.0.0",
+  "description": "一键采集 AI 对话到个人知识库",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://chat.deepseek.com/*",
+    "https://www.kimi.com/*",
+    "https://kimi.moonshot.cn/*",
+    "https://kimi.ai/*",
+    "https://www.doubao.com/*",
+    "https://www.zhipuai.cn/*",
+    "https://www.qianwen.com/*",
+    "http://localhost:8080/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon.svg",
+      "48": "icons/icon.svg",
+      "128": "icons/icon.svg"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://chat.deepseek.com/*",
+        "https://www.kimi.com/*",
+        "https://kimi.moonshot.cn/*",
+        "https://kimi.ai/*",
+        "https://www.doubao.com/*",
+        "https://www.zhipuai.cn/*",
+        "https://www.qianwen.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["diagnosis.html", "diagnostic-tool.html", "test.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

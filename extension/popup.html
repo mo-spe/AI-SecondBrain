@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI SecondBrain</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-width: 400px;
+      min-height: 500px;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #065f46;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .divider {
+      text-align: center;
+      margin: 20px 0;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      display: inline-block;
+      width: 45%;
+      border-bottom: 1px solid #ddd;
+      vertical-align: middle;
+    }
+
+    .info-text {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🧠 AI SecondBrain</div>
+      <div class="subtitle">个人知识管理助手</div>
+    </div>
+
+    <div id="loginSection" class="card">
+      <div class="input-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" placeholder="请输入用户名" />
+      </div>
+      <div class="input-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" placeholder="请输入密码" />
+      </div>
+      <button class="btn btn-primary" id="loginBtn">登录</button>
+      <div class="info-text">
+        首次使用？请先访问 <a href="http://localhost:3000" target="_blank">知识库</a> 注册账号
+      </div>
+    </div>
+
+    <div id="loggedInSection" class="card hidden">
+      <div class="status success">
+        ✅ 已登录
+      </div>
+      <div class="info-text">
+        当前用户: <span id="currentUser"></span>
+      </div>
+      <button class="btn btn-secondary" id="logoutBtn">退出登录</button>
+      <button class="btn btn-primary" id="goToDashboardBtn" style="margin-top: 12px;">
+        📊 前往知识库
+      </button>
+    </div>
+
+    <div class="divider">
+      <span>或</span>
+    </div>
+
+    <div class="card">
+      <div class="info-text">
+        💡 使用说明：<br>
+        1. 在 ChatGPT/DeepSeek/Kimi 上进行对话<br>
+        2. 点击页面右上角的"采集到知识库"按钮<br>
+        3. AI 会自动提取知识点并保存到您的知识库
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

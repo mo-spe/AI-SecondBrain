@@ -1,0 +1,96 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Logs ###
+logs/
+*.log
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Config ###
+application-local.yml
+application-dev.yml
+
+### Environment Variables ###
+.env
+.env.local
+.env.production
+.env.*.local
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+### DeerFlow ###
+deerflow/deer-flow/
+deerflow/__pycache__/
+deerflow/*.pyc
+deerflow/deerflow_research_service.py
+deerflow/deerflow_report.py
+deerflow/deerflow_multiagent_service.py
+deerflow/api_server.py
+deerflow/start_server.bat
+deerflow/test_api.py
+
+### Competition Docs ###
+cansaiziliao/
+
+### Check Scripts ###
+check_*.sql
+add_avatar_column.sql
+create_learning_report_table.sql

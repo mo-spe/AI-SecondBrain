@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SecondBrain 插件测试页面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .test-item {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .test-item.pass {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .test-item.fail {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .test-item.info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #333;
+        }
+        .log-entry.error {
+            color: #f48771;
+        }
+        .log-entry.success {
+            color: #89d185;
+        }
+        .log-entry.info {
+            color: #4fc1ff;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 AI SecondBrain 插件测试工具</h1>
+        
+        <div class="test-section">
+            <h2>📋 测试检查清单</h2>
+            <div class="test-item info">
+                <strong>测试前准备:</strong>
+                <ul>
+                    <li>确保后端服务正在运行 (http://localhost:8080)</li>
+                    <li>确保已重新加载插件 (chrome://extensions/)</li>
+                    <li>确保已在插件中登录</li>
+                </ul>
+            </div>
+            
+            <div class="test-item" id="test-1">
+                <strong>1. 插件是否已安装?</strong>
+                <span class="status-badge pending" id="status-1">待测试</span>
+                <button onclick="testPluginInstalled()">测试</button>
+            </div>
+            
+            <div class="test-item" id="test-2">
+                <strong>2. Chrome Storage API 是否可用?</strong>
+                <span class="status-badge pending" id="status-2">待测试</span>
+                <button onclick="testStorageAPI()">测试</button>
+            </div>
+            
+            <div class="test-item" id="test-3">
+                <strong>3. Token 是否存在?</strong>
+                <span class="status-badge pending" id="status-3">待测试</span>
+                <button onclick="testToken()">测试</button>
+            </div>
+            
+            <div class="test-item" id="test-4">
+                <strong>4. 后端 API 是否可访问?</strong>
+                <span class="status-badge pending" id="status-4">待测试</span>
+                <button onclick="testBackendAPI()">测试</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 手动测试链接</h2>
+            <div class="test-item">
+                <strong>测试目标网站:</strong>
+                <div style="margin-top: 10px;">
+                    <a href="https://chatgpt.com/" target="_blank">
+                        <button>🤖 ChatGPT</button>
+                    </a>
+                    <a href="https://deepseek.com/" target="_blank">
+                        <button>🧠 DeepSeek</button>
+                    </a>
+                    <a href="https://kimi.moonshot.cn/" target="_blank">
+                        <button>🌙 Kimi</button>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📝 测试日志</h2>
+            <button onclick="clearLogs()">清除日志</button>
+            <button onclick="runAllTests()">运行所有测试</button>
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+    <script>
+        const consoleOutput = document.getElementById('console-output');
+        
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        function updateStatus(testId, status) {
+            const badge = document.getElementById(`status-${testId}`);
+            const testItem = document.getElementById(`test-${testId}`);
+            
+            badge.className = `status-badge ${status}`;
+            testItem.className = `test-item ${status}`;
+            
+            if (status === 'success') {
+                badge.textContent = '✓ 通过';
+            } else if (status === 'error') {
+                badge.textContent = '✗ 失败';
+            } else {
+                badge.textContent = '待测试';
+            }
+        }
+        
+        function clearLogs() {
+            consoleOutput.innerHTML = '';
+        }
+        
+        async function testPluginInstalled() {
+            log('测试插件是否已安装...', 'info');
+            try {
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    log('✓ Chrome API 可用', 'success');
+                    log(`✓ 插件 ID: ${chrome.runtime.id}`, 'success');
+                    updateStatus('1', 'success');
+                } else {
+                    log('✗ Chrome API 不可用', 'error');
+                    updateStatus('1', 'error');
+                }
+            } catch (error) {
+                log(`✗ 错误: ${error.message}`, 'error');
+                updateStatus('1', 'error');
+            }
+        }
+        
+        async function testStorageAPI() {
+            log('测试 Chrome Storage API...', 'info');
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    log('✓ Chrome Storage API 可用', 'success');
+                    
+                    const testData = { test: 'value', timestamp: Date.now() };
+                    chrome.storage.local.set({ testKey: testData }, () => {
+                        if (chrome.runtime.lastError) {
+                            log(`✗ 存储失败: ${chrome.runtime.lastError.message}`, 'error');
+                            updateStatus('2', 'error');
+                        } else {
+                            log('✓ 写入测试成功', 'success');
+                            
+                            chrome.storage.local.get(['testKey'], (result) => {
+                                if (chrome.runtime.lastError) {
+                                    log(`✗ 读取失败: ${chrome.runtime.lastError.message}`, 'error');
+                                    updateStatus('2', 'error');
+                                } else {
+                                    log(`✓ 读取测试成功: ${JSON.stringify(result)}`, 'success');
+                                    updateStatus('2', 'success');
+                                    
+                                    chrome.storage.local.remove(['testKey']);
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    log('✗ Chrome Storage API 不可用', 'error');
+                    updateStatus('2', 'error');
+                }
+            } catch (error) {
+                log(`✗ 错误: ${error.message}`, 'error');
+                updateStatus('2', 'error');
+            }
+        }
+        
+        async function testToken() {
+            log('测试 Token 是否存在...', 'info');
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.get(['authToken'], (result) => {
+                        if (chrome.runtime.lastError) {
+                            log(`✗ 读取 Token 失败: ${chrome.runtime.lastError.message}`, 'error');
+                            updateStatus('3', 'error');
+                        } else {
+                            const token = result.authToken;
+                            if (token) {
+                                log(`✓ Token 存在 (长度: ${token.length})`, 'success');
+                                log(`Token 预览: ${token.substring(0, 20)}...`, 'info');
+                                updateStatus('3', 'success');
+                            } else {
+                                log('✗ Token 不存在，请先登录', 'error');
+                                updateStatus('3', 'error');
+                            }
+                        }
+                    });
+                } else {
+                    log('✗ Chrome Storage API 不可用', 'error');
+                    updateStatus('3', 'error');
+                }
+            } catch (error) {
+                log(`✗ 错误: ${error.message}`, 'error');
+                updateStatus('3', 'error');
+            }
+        }
+        
+        async function testBackendAPI() {
+            log('测试后端 API 连接...', 'info');
+            try {
+                const response = await fetch('http://localhost:8080/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'test',
+                        password: 'test'
+                    }),
+                });
+                
+                if (response.ok) {
+                    log(`✓ 后端 API 可访问 (状态码: ${response.status})`, 'success');
+                    const result = await response.json();
+                    log(`✓ 响应: ${JSON.stringify(result)}`, 'success');
+                    updateStatus('4', 'success');
+                } else {
+                    log(`⚠ 后端 API 可访问但返回错误 (状态码: ${response.status})`, 'info');
+                    updateStatus('4', 'success');
+                }
+            } catch (error) {
+                log(`✗ 后端 API 连接失败: ${error.message}`, 'error');
+                log('请确保后端服务正在运行 (http://localhost:8080)', 'info');
+                updateStatus('4', 'error');
+            }
+        }
+        
+        async function runAllTests() {
+            clearLogs();
+            log('开始运行所有测试...', 'info');
+            
+            await testPluginInstalled();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testStorageAPI();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testToken();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testBackendAPI();
+            
+            log('所有测试完成!', 'success');
+        }
+        
+        log('测试工具已加载，点击按钮开始测试', 'info');
+    </script>
+</body>
+</html>

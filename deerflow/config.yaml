@@ -1,0 +1,43 @@
+# DeerFlow Configuration for AI Second Brain
+
+models:
+  - name: qwen-plus
+    display_name: 通义千问Plus
+    use: langchain_openai:ChatOpenAI
+    model: qwen-plus
+    api_key: $QWEN_API_KEY
+    base_url: $QWEN_BASE_URL
+    max_tokens: 12000
+    temperature: 0.4
+
+sandbox:
+  use: src.sandbox.local:LocalSandboxProvider
+
+skills:
+  path: ../skills
+  container_path: /mnt/skills
+
+memory:
+  enabled: true
+  type: file
+  path: ./memory
+
+checkpointer:
+  type: memory
+
+title:
+  enabled: true
+
+summarization:
+  enabled: true
+
+# 禁用澄清中间件
+middleware:
+  clarification:
+    enabled: false
+  dangling_tool_call:
+    enabled: false
+  memory:
+    enabled: false
+  subagent_limit:
+    enabled: false

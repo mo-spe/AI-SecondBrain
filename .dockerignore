@@ -1,0 +1,16 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+.DS_Store
+.git/
+.gitignore
+README.md
+.idea/
+*.iml
+.vscode/
+node_modules/
+frontend/
+docker-compose.yml
+Dockerfile

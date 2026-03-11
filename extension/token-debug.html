@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token 调试工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #667eea;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-ok {
+            background: #4caf50;
+        }
+        .status-error {
+            background: #f44336;
+        }
+        .status-warning {
+            background: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Token 调试工具</h1>
+        
+        <div class="section">
+            <h2>1. 检查 Chrome Storage</h2>
+            <div class="info" id="storage-info">检查中...</div>
+        </div>
+
+        <div class="section">
+            <h2>2. 检查 Background Script</h2>
+            <div class="info" id="background-info">检查中...</div>
+        </div>
+
+        <div class="section">
+            <h2>3. 测试 Token 读取</h2>
+            <div class="info" id="token-read-info">检查中...</div>
+        </div>
+
+        <div class="section">
+            <h2>4. 测试 Token 写入</h2>
+            <div class="button-group">
+                <button onclick="testWriteToken('test-token-123')">写入测试Token</button>
+                <button onclick="testWriteToken('eyJhbGciOiJIUzUxMiJ9.eyJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3NzI5NjczNTksImV4cCI6MTc3MzA1Mzc1OX0.lUP0kTPvvt9vK7eFyTdcS68TpgIxLf_R_4K0KrDO3tBay3hSC_8MTDv9vnomVu0UwENjDa4eKvo98JVIPEZuvw')">写入真实Token</button>
+                <button onclick="clearToken()">清除Token</button>
+            </div>
+            <div class="info" id="token-write-info">等待操作...</div>
+        </div>
+
+        <div class="section">
+            <h2>5. 测试 Background Script 通信</h2>
+            <div class="info" id="communication-info">检查中...</div>
+        </div>
+
+        <div class="section">
+            <h2>6. 完整诊断</h2>
+            <div class="button-group">
+                <button onclick="runFullDiagnostics()">运行完整诊断</button>
+                <button onclick="refreshDiagnostics()">刷新诊断</button>
+            </div>
+            <div class="info" id="diagnostics-info">等待操作...</div>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(elementId, message, status) {
+            const element = document.getElementById(elementId);
+            if (status === 'success') {
+                element.innerHTML = `<span class="status-indicator status-ok"></span><span class="success">${message}</span>`;
+            } else if (status === 'error') {
+                element.innerHTML = `<span class="status-indicator status-error"></span><span class="error">${message}</span>`;
+            } else if (status === 'warning') {
+                element.innerHTML = `<span class="status-indicator status-warning"></span><span class="warning">${message}</span>`;
+            } else {
+                element.innerHTML = message;
+            }
+        }
+
+        function checkStorage() {
+            console.log("开始检查 Chrome Storage...");
+            
+            if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+                updateStatus('storage-info', '❌ Chrome Storage API 不可用', 'error');
+                return;
+            }
+
+            chrome.storage.local.get(null, (result) => {
+                console.log("Storage 内容:", result);
+                
+                if (chrome.runtime.lastError) {
+                    updateStatus('storage-info', `❌ 读取 Storage 失败: ${chrome.runtime.lastError.message}`, 'error');
+                } else {
+                    const keys = Object.keys(result);
+                    const authToken = result.authToken;
+                    
+                    let info = `✅ Storage API 可用\n`;
+                    info += `存储的键: ${JSON.stringify(keys)}\n`;
+                    
+                    if (authToken) {
+                        info += `✅ authToken 存在\n`;
+                        info += `Token 长度: ${authToken.length}\n`;
+                        info += `Token 类型: ${typeof authToken}\n`;
+                        info += `Token 预览: ${authToken.substring(0, 50)}...\n`;
+                    } else {
+                        info += `❌ authToken 不存在\n`;
+                    }
+                    
+                    updateStatus('storage-info', info, 'success');
+                }
+            });
+        }
+
+        function checkBackgroundScript() {
+            console.log("开始检查 Background Script...");
+            
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                updateStatus('background-info', '❌ Chrome Runtime API 不可用', 'error');
+                return;
+            }
+
+            updateStatus('background-info', '✅ Chrome Runtime API 可用', 'success');
+        }
+
+        function testReadToken() {
+            console.log("开始测试 Token 读取...");
+            
+            chrome.storage.local.get(['authToken'], (result) => {
+                if (chrome.runtime.lastError) {
+                    updateStatus('token-read-info', `❌ 读取 Token 失败: ${chrome.runtime.lastError.message}`, 'error');
+                } else {
+                    const token = result.authToken;
+                    if (token) {
+                        updateStatus('token-read-info', `✅ Token 读取成功\n长度: ${token.length}\n类型: ${typeof token}\n预览: ${token.substring(0, 50)}...`, 'success');
+                    } else {
+                        updateStatus('token-read-info', '❌ Token 不存在', 'error');
+                    }
+                }
+            });
+        }
+
+        function testWriteToken(token) {
+            console.log("开始测试 Token 写入:", token);
+            updateStatus('token-write-info', '⏳ 写入中...', 'warning');
+            
+            chrome.storage.local.set({ authToken: token }, () => {
+                if (chrome.runtime.lastError) {
+                    updateStatus('token-write-info', `❌ 写入 Token 失败: ${chrome.runtime.lastError.message}`, 'error');
+                } else {
+                    updateStatus('token-write-info', `✅ Token 写入成功\n长度: ${token.length}`, 'success');
+                    testReadToken();
+                }
+            });
+        }
+
+        function clearToken() {
+            console.log("开始清除 Token...");
+            updateStatus('token-write-info', '⏳ 清除中...', 'warning');
+            
+            chrome.storage.local.remove(['authToken'], () => {
+                if (chrome.runtime.lastError) {
+                    updateStatus('token-write-info', `❌ 清除 Token 失败: ${chrome.runtime.lastError.message}`, 'error');
+                } else {
+                    updateStatus('token-write-info', '✅ Token 已清除', 'success');
+                    testReadToken();
+                }
+            });
+        }
+
+        function testCommunication() {
+            console.log("开始测试 Background Script 通信...");
+            updateStatus('communication-info', '⏳ 测试中...', 'warning');
+            
+            chrome.runtime.sendMessage({ action: 'getToken' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    updateStatus('communication-info', `❌ 通信失败: ${chrome.runtime.lastError.message}`, 'error');
+                } else {
+                    console.log("Background Script 响应:", response);
+                    
+                    if (response && response.success) {
+                        if (response.token) {
+                            updateStatus('communication-info', `✅ 通信成功\nToken 长度: ${response.token.length}\nToken 预览: ${response.token.substring(0, 50)}...`, 'success');
+                        } else {
+                            updateStatus('communication-info', '❌ 通信成功但 Token 为空', 'error');
+                        }
+                    } else {
+                        updateStatus('communication-info', `❌ 通信失败: ${response?.error || '未知错误'}`, 'error');
+                    }
+                }
+            });
+        }
+
+        function runFullDiagnostics() {
+            console.log("开始运行完整诊断...");
+            updateStatus('diagnostics-info', '⏳ 诊断中...', 'warning');
+            
+            let results = [];
+            
+            checkStorage();
+            checkBackgroundScript();
+            testReadToken();
+            testCommunication();
+            
+            setTimeout(() => {
+                const storageInfo = document.getElementById('storage-info').textContent;
+                const backgroundInfo = document.getElementById('background-info').textContent;
+                const tokenReadInfo = document.getElementById('token-read-info').textContent;
+                const communicationInfo = document.getElementById('communication-info').textContent;
+                
+                let diagnostics = '=== 完整诊断结果 ===\n\n';
+                diagnostics += storageInfo + '\n\n';
+                diagnostics += backgroundInfo + '\n\n';
+                diagnostics += tokenReadInfo + '\n\n';
+                diagnostics += communicationInfo;
+                
+                updateStatus('diagnostics-info', diagnostics, 'success');
+            }, 500);
+        }
+
+        function refreshDiagnostics() {
+            console.log("刷新诊断...");
+            updateStatus('storage-info', '检查中...');
+            updateStatus('background-info', '检查中...');
+            updateStatus('token-read-info', '检查中...');
+            updateStatus('token-write-info', '等待操作...');
+            updateStatus('communication-info', '检查中...');
+            updateStatus('diagnostics-info', '等待操作...');
+            
+            checkStorage();
+            checkBackgroundScript();
+            testReadToken();
+            testCommunication();
+        }
+
+        function init() {
+            console.log("Token 调试工具初始化...");
+            checkStorage();
+            checkBackgroundScript();
+            testReadToken();
+            testCommunication();
+        }
+
+        init();
+    </script>
+</body>
+</html>

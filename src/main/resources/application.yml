@@ -1,0 +1,144 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: ai-second-brain
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/second_brain?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  kafka:
+    enabled: ${KAFKA_ENABLED:true}
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    consumer:
+      group-id: ai-second-brain-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries: 3
+
+  elasticsearch:
+    enabled: ${ES_ENABLED:true}
+    uris: ${ES_URL:http://localhost:9200}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD:elastic123}
+    connection-timeout: 5s
+    socket-timeout: 30s
+
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:mapper/**/*.xml
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  production: false
+
+ai:
+  provider: ${AI_PROVIDER:qwen}
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: https://api.deepseek.com/v1
+    model: deepseek-chat
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    base-url: https://api.openai.com/v1
+    model: gpt-3.5-turbo
+    embedding:
+      api-key: ${OPENAI_API_KEY:}
+      url: ${OPENAI_API_URL:https://api.openai.com/v1/embeddings}
+      model: ${OPENAI_EMBEDDING_MODEL:text-embedding-ada-002}
+  qwen:
+    api-key: ${QWEN_API_KEY:}
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: ${QWEN_MODEL:qwen-plus}
+    embedding:
+      api-key: ${QWEN_API_KEY:}
+      url: ${QWEN_EMBEDDING_URL:https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding}
+      model: ${QWEN_EMBEDDING_MODEL:text-embedding-v2}
+
+jwt:
+  secret: ai-second-brain-secret-key-2024-very-long-and-secure-key-for-jwt-token-generation-and-validation-256-bits-minimum
+  expiration: 86400000
+
+aliyun:
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:thesecondbrain}
+
+deerflow:
+  api:
+    url: ${DEERFLOW_API_URL:http://localhost:8000}
+    timeout: ${DEERFLOW_API_TIMEOUT:300}
+  qwen:
+    api-key: ${QWEN_API_KEY:}
+    base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    model: ${QWEN_MODEL:qwen-plus}
+
+logging:
+  level:
+    com.secondbrain: debug
+    org.springframework.web: info
+    org.mybatis: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/ai-second-brain.log
+    max-size: 10MB
+    max-history: 30
