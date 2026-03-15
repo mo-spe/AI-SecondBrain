@@ -16,14 +16,16 @@ QWEN_API_KEY = os.getenv('QWEN_API_KEY', '')
 QWEN_BASE_URL = os.getenv('QWEN_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
 QWEN_MODEL = os.getenv('QWEN_MODEL', 'qwen-plus')
 
-def call_qwen_api(prompt):
+def call_qwen_api(prompt, user_api_key=None):
     """
     调用Qwen API生成内容
     """
     url = f"{QWEN_BASE_URL}/chat/completions"
     
+    api_key = user_api_key if user_api_key else QWEN_API_KEY
+    
     headers = {
-        'Authorization': f'Bearer {QWEN_API_KEY}',
+        'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json'
     }
     
@@ -36,20 +38,35 @@ def call_qwen_api(prompt):
             }
         ],
         'temperature': 0.7,
-        'max_tokens': 8000
+        'max_tokens': 4000
     }
     
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=120)
+        api_key_source = "用户API Key" if user_api_key else "平台API Key"
+        print(f"正在调用Qwen API，URL: {url}")
+        print(f"请求参数: model={QWEN_MODEL}, max_tokens={data['max_tokens']}, API Key来源: {api_key_source}")
+        
+        response = requests.post(url, headers=headers, json=data, timeout=300)
         response.raise_for_status()
         
         result = response.json()
+        print(f"API响应成功，状态码: {response.status_code}, API Key来源: {api_key_source}")
+        
         if 'choices' in result and len(result['choices']) > 0:
-            return result['choices'][0]['message']['content']
+            content = result['choices'][0]['message']['content']
+            print(f"生成内容长度: {len(content)}")
+            return content
         else:
+            print(f"API响应格式错误: {result}")
             return None
-    except Exception as e:
+    except requests.exceptions.Timeout:
+        print(f"调用Qwen API超时（300秒）")
+        return None
+    except requests.exceptions.RequestException as e:
         print(f"调用Qwen API失败: {e}")
+        return None
+    except Exception as e:
+        print(f"调用Qwen API异常: {e}")
         return None
 
 @app.route('/health', methods=['GET'])
@@ -69,6 +86,7 @@ def generate_learning_report():
         learning_data = data.get('learning_data', '')
         topic = data.get('topic', '')
         depth = data.get('depth', 'deep')
+        user_api_key = data.get('api_key', None)
         
         prompt = f"""你是一位资深的个性化学习顾问和AI教育专家，擅长深度分析学习数据并提供精准的学习建议。
 
@@ -135,7 +153,7 @@ def generate_learning_report():
 
 请基于以上结构和要求，生成一份详细的、个性化的学习报告。"""
 
-        report = call_qwen_api(prompt)
+        report = call_qwen_api(prompt, user_api_key)
         
         if report:
             return jsonify({
@@ -165,6 +183,7 @@ def generate_learning_path():
         topic = data.get('topic', '')
         current_level = data.get('current_level', 'beginner')
         target_level = data.get('target_level', 'advanced')
+        user_api_key = data.get('api_key', None)
         
         prompt = f"""你是一位资深的学习规划专家，擅长制定个性化的学习路径。
 
@@ -184,7 +203,7 @@ def generate_learning_path():
 
 请以Markdown格式输出详细的学习路径。"""
 
-        path = call_qwen_api(prompt)
+        path = call_qwen_api(prompt, user_api_key)
         
         if path:
             return jsonify({
@@ -213,6 +232,7 @@ def analyze_knowledge_gap():
         data = request.get_json()
         user_knowledge = data.get('user_knowledge', [])
         target_topic = data.get('target_topic', '')
+        user_api_key = data.get('api_key', None)
         
         prompt = f"""你是一位知识分析专家，擅长识别学习中的知识盲区。
 
@@ -230,7 +250,7 @@ def analyze_knowledge_gap():
 
 请以Markdown格式输出详细的知识盲区分析。"""
 
-        analysis = call_qwen_api(prompt)
+        analysis = call_qwen_api(prompt, user_api_key)
         
         if analysis:
             return jsonify({

@@ -1,0 +1,43 @@
+﻿/* AI-SecondBrain 内容样式 */
+.aisecondbrain-save-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: #409EFF;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 12px rgba(64,158,255,0.3);
+    z-index: 999999;
+    transition: all 0.3s ease;
+}
+.aisecondbrain-save-btn:hover {
+    background: #66b1ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(64,158,255,0.4);
+}
+.aisecondbrain-save-btn.saving {
+    background: #67C23A;
+    pointer-events: none;
+}
+.aisecondbrain-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: #67C23A;
+    color: white;
+    border-radius: 6px;
+    font-size: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    z-index: 999999;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}

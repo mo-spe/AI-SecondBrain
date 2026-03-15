@@ -3,7 +3,7 @@ import request from "@/utils/request";
 export const reportAPI = {
   generateReport(data) {
     return request({
-      url: "/report/generate",
+      url: "/report/generate-async",
       method: "post",
       data,
     });

@@ -46,10 +46,23 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
     @Override
     public List<Float> generateEmbedding(String text, String model) {
-        if (apiKey == null || apiKey.isEmpty()) {
+        return generateEmbedding(text, model, null);
+    }
+
+    @Override
+    public List<Float> generateEmbedding(String text, String model, String userApiKey) {
+        String effectiveApiKey = userApiKey;
+        
+        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
+            effectiveApiKey = apiKey;
+        }
+        
+        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
             log.warn("阿里云API Key未配置，无法生成Embedding");
             return new ArrayList<>();
         }
+
+        log.info("生成Embedding，使用API Key来源：{}", userApiKey != null && !userApiKey.isEmpty() ? "用户API Key" : "平台API Key");
 
         try {
             String processedText = preprocessText(text);
@@ -66,7 +79,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
             Request request = new Request.Builder()
                     .url(apiUrl)
-                    .addHeader("Authorization", "Bearer " + apiKey)
+                    .addHeader("Authorization", "Bearer " + effectiveApiKey)
                     .addHeader("Content-Type", "application/json")
                     .post(RequestBody.create(requestBody.toJSONString(), MediaType.parse("application/json")))
                     .build();

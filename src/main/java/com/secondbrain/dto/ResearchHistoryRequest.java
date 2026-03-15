@@ -8,6 +8,7 @@ public class ResearchHistoryRequest {
     private String content;
     private String currentLevel;
     private String targetLevel;
+    private String depth;
     private List<String> userKnowledge;
     private Integer knowledgeCount;
 
@@ -49,6 +50,14 @@ public class ResearchHistoryRequest {
 
     public void setTargetLevel(String targetLevel) {
         this.targetLevel = targetLevel;
+    }
+
+    public String getDepth() {
+        return depth;
+    }
+
+    public void setDepth(String depth) {
+        this.depth = depth;
     }
 
     public List<String> getUserKnowledge() {

@@ -9,11 +9,14 @@ import com.secondbrain.service.CacheService;
 import com.secondbrain.service.EbbinghausService;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.KnowledgeService;
+import com.secondbrain.service.RelationRecommendationService;
+import com.secondbrain.service.VectorSearchService;
 import com.secondbrain.vo.KnowledgeNodeVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,14 +34,19 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final CacheService cacheService;
     private final EbbinghausService ebbinghausService;
+    private final VectorSearchService vectorSearchService;
 
     @Autowired(required = false)
     private ElasticsearchService elasticsearchService;
 
-    public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, CacheService cacheService, EbbinghausService ebbinghausService) {
+    @Autowired(required = false)
+    private RelationRecommendationService relationRecommendationService;
+
+    public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, CacheService cacheService, EbbinghausService ebbinghausService, VectorSearchService vectorSearchService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.cacheService = cacheService;
         this.ebbinghausService = ebbinghausService;
+        this.vectorSearchService = vectorSearchService;
     }
 
     @Override
@@ -200,13 +208,44 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             elasticsearchService.syncKnowledgeNode(node);
         }
         
+        if (relationRecommendationService != null) {
+            triggerRelationRecommendationAsync(node.getId(), userId);
+        }
+        
         log.info("创建知识点成功，id：{}，userId：{}", node.getId(), userId);
         
         return convertToVO(node);
     }
 
+    @Async
+    public void triggerRelationRecommendationAsync(Long knowledgeId, Long userId) {
+        try {
+            log.info("异步触发关系推荐，knowledgeId：{}，userId：{}", knowledgeId, userId);
+            relationRecommendationService.recommendRelations(knowledgeId, userId);
+        } catch (Exception e) {
+            log.error("关系推荐失败，knowledgeId：{}，userId：{}", knowledgeId, userId, e);
+        }
+    }
+
     @Override
     public List<KnowledgeNodeVO> search(String keyword, Long userId) {
+        log.info("关键词搜索，keyword：{}，userId：{}", keyword, userId);
+        
+        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KnowledgeNode::getUserId, userId);
+        wrapper.like(KnowledgeNode::getTitle, keyword);
+        wrapper.orderByDesc(KnowledgeNode::getCreateTime);
+        
+        List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
+        return nodes.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<KnowledgeNodeVO> multiFieldSearch(String keyword, Long userId) {
+        log.info("多字段搜索，keyword：{}，userId：{}", keyword, userId);
+        
         LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeNode::getUserId, userId);
         wrapper.and(w -> w.like(KnowledgeNode::getTitle, keyword)
@@ -221,68 +260,39 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     @Override
-    public List<KnowledgeNodeVO> multiFieldSearch(String keyword, Long userId) {
-        if (elasticsearchService != null) {
-            try {
-                List<KnowledgeDocument> documents = elasticsearchService.multiFieldSearch(keyword, userId);
-                return documents.stream()
-                        .map(doc -> {
-                            KnowledgeNode node = knowledgeNodeMapper.selectById(doc.getId());
-                            return convertToVO(node);
-                        })
-                        .filter(vo -> vo != null)
-                        .collect(Collectors.toList());
-            } catch (Exception e) {
-                log.error("Elasticsearch多字段搜索失败，降级到数据库搜索，keyword：{}，userId：{}", keyword, userId, e);
-            }
-        }
-        
-        log.warn("Elasticsearch未配置，降级到数据库搜索，keyword：{}，userId：{}", keyword, userId);
-        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeNode::getUserId, userId);
-        wrapper.and(w -> w.like(KnowledgeNode::getTitle, keyword)
-                .or()
-                .like(KnowledgeNode::getSummary, keyword)
-                .or()
-                .like(KnowledgeNode::getContentMd, keyword));
-        wrapper.orderByDesc(KnowledgeNode::getCreateTime);
-        
-        List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
-        return nodes.stream()
-                .map(this::convertToVO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK) {
-        if (elasticsearchService != null) {
-            try {
-                List<KnowledgeDocument> documents = elasticsearchService.semanticSearch(queryText, userId, topK);
-                return documents.stream()
-                        .map(doc -> {
-                            KnowledgeNode node = knowledgeNodeMapper.selectById(doc.getId());
-                            return convertToVO(node);
-                        })
-                        .filter(vo -> vo != null)
-                        .collect(Collectors.toList());
-            } catch (Exception e) {
-                log.error("Elasticsearch语义搜索失败，降级到数据库搜索，queryText：{}，userId：{}", queryText, userId, e);
-            }
+        log.info("语义搜索，queryText：{}，userId：{}，topK：{}", queryText, userId, topK);
+        
+        try {
+            List<com.secondbrain.dto.KnowledgeReference> references = vectorSearchService.searchSimilar(queryText, userId, topK);
+            return references.stream()
+                    .map(ref -> {
+                        KnowledgeNode node = knowledgeNodeMapper.selectById(ref.getKnowledgeId());
+                        if (node != null) {
+                            KnowledgeNodeVO vo = convertToVO(node);
+                            vo.setScore(ref.getSimilarity());
+                            return vo;
+                        }
+                        return null;
+                    })
+                    .filter(vo -> vo != null)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("向量搜索失败，降级到数据库搜索，queryText：{}，userId：{}", queryText, userId, e);
+            
+            LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(KnowledgeNode::getUserId, userId);
+            wrapper.and(w -> w.like(KnowledgeNode::getTitle, queryText)
+                    .or()
+                    .like(KnowledgeNode::getSummary, queryText));
+            wrapper.orderByDesc(KnowledgeNode::getCreateTime);
+            wrapper.last("LIMIT " + topK);
+            
+            List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
+            return nodes.stream()
+                    .map(this::convertToVO)
+                    .collect(Collectors.toList());
         }
-        
-        log.warn("Elasticsearch未配置，降级到数据库搜索，queryText：{}，userId：{}", queryText, userId);
-        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeNode::getUserId, userId);
-        wrapper.and(w -> w.like(KnowledgeNode::getTitle, queryText)
-                .or()
-                .like(KnowledgeNode::getSummary, queryText));
-        wrapper.orderByDesc(KnowledgeNode::getCreateTime);
-        wrapper.last("LIMIT " + topK);
-        
-        List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
-        return nodes.stream()
-                .map(this::convertToVO)
-                .collect(Collectors.toList());
     }
 
     private KnowledgeNodeVO convertToVO(KnowledgeNode node) {
@@ -310,5 +320,40 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 .ge(KnowledgeNode::getCreateTime, startTime)
                 .lt(KnowledgeNode::getCreateTime, endTime)
         );
+    }
+
+    @Override
+    public void syncToElasticsearch(Long userId) {
+        if (elasticsearchService == null) {
+            log.warn("Elasticsearch服务未启用，跳过同步");
+            return;
+        }
+
+        try {
+            log.info("开始同步用户{}的知识点到Elasticsearch", userId);
+            
+            List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeNode>()
+                    .eq(KnowledgeNode::getUserId, userId)
+            );
+
+            int successCount = 0;
+            int failCount = 0;
+            
+            for (KnowledgeNode node : nodes) {
+                try {
+                    elasticsearchService.syncKnowledgeNode(node);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("同步知识点{}失败", node.getId(), e);
+                    failCount++;
+                }
+            }
+            
+            log.info("同步完成，成功：{}，失败：{}", successCount, failCount);
+            
+        } catch (Exception e) {
+            log.error("同步知识点到Elasticsearch失败", e);
+        }
     }
 }

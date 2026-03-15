@@ -22,13 +22,19 @@ public class FileServiceImpl implements FileService {
     private final OSS ossClient;
     private final OssConfig ossConfig;
 
-    public FileServiceImpl(OSS ossClient, OssConfig ossConfig) {
-        this.ossClient = ossClient;
+    public FileServiceImpl(OssConfig ossConfig) {
+        this.ossClient = null;
         this.ossConfig = ossConfig;
     }
 
     @Override
     public String uploadAvatar(MultipartFile file, Long userId) {
+        OSS ossClient = getOssClient();
+        if (ossClient == null) {
+            log.warn("OSS客户端未配置，使用本地存储");
+            return null;
+        }
+        
         try {
             String originalFilename = file.getOriginalFilename();
             String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
@@ -55,6 +61,12 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public void deleteFile(String fileUrl) {
+        OSS ossClient = getOssClient();
+        if (ossClient == null) {
+            log.warn("OSS客户端未配置，跳过文件删除");
+            return;
+        }
+        
         try {
             String fileName = fileUrl.substring(fileUrl.indexOf("/", 8) + 1);
             ossClient.deleteObject(ossConfig.getBucketName(), fileName);
@@ -62,5 +74,15 @@ public class FileServiceImpl implements FileService {
         } catch (Exception e) {
             log.error("文件删除失败，fileUrl: {}", fileUrl, e);
         }
+    }
+    
+    private OSS getOssClient() {
+        if (ossConfig.getEndpoint() == null || ossConfig.getEndpoint().isEmpty() || 
+            ossConfig.getAccessKeyId() == null || ossConfig.getAccessKeyId().isEmpty() || 
+            ossConfig.getAccessKeySecret() == null || ossConfig.getAccessKeySecret().isEmpty()) {
+            return null;
+        }
+        return new com.aliyun.oss.OSSClientBuilder()
+            .build(ossConfig.getEndpoint(), ossConfig.getAccessKeyId(), ossConfig.getAccessKeySecret());
     }
 }

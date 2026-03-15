@@ -37,6 +37,16 @@ public class KnowledgeDocument {
     @Field(type = FieldType.Integer)
     private Integer reviewCount;
 
+    private Double similarity;
+
+    public Double getSimilarity() {
+        return similarity;
+    }
+
+    public void setSimilarity(Double similarity) {
+        this.similarity = similarity;
+    }
+
     public Long getId() {
         return id;
     }

@@ -10,6 +10,8 @@ public interface ResearchHistoryService {
 
     IPage<ResearchHistory> getList(int current, int size, Long userId);
 
+    IPage<ResearchHistory> getList(int current, int size, Long userId, String type);
+
     ResearchHistory getById(Long id, Long userId);
 
     void deleteById(Long id, Long userId);

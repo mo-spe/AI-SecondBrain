@@ -1,184 +1,221 @@
 package com.secondbrain.service.impl;
 
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.secondbrain.elasticsearch.KnowledgeDocument;
-import com.secondbrain.elasticsearch.KnowledgeDocumentRepository;
+import com.secondbrain.entity.KnowledgeEmbedding;
 import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.mapper.KnowledgeEmbeddingMapper;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.EmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.IndexQuery;
+import org.springframework.data.elasticsearch.core.query.IndexQueryBuilder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnProperty(name = "spring.elasticsearch.enabled", havingValue = "true", matchIfMissing = false)
 public class ElasticsearchServiceImpl implements ElasticsearchService {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchServiceImpl.class);
 
-    private static final double SEMANTIC_SEARCH_THRESHOLD = 0.3
-    ;
+    @Autowired
+    private ElasticsearchOperations elasticsearchOperations;
 
-    @Autowired(required = false)
-    private KnowledgeDocumentRepository knowledgeDocumentRepository;
+    @Autowired
+    private KnowledgeEmbeddingMapper embeddingMapper;
 
-    @Autowired(required = false)
+    @Autowired
     private EmbeddingService embeddingService;
 
     @Override
     public void syncKnowledgeNode(KnowledgeNode node) {
-        if (knowledgeDocumentRepository == null) {
-            log.warn("Elasticsearch未配置，跳过同步，nodeId：{}", node.getId());
-            return;
-        }
         try {
-            KnowledgeDocument document = new KnowledgeDocument();
-            document.setId(node.getId());
-            document.setUserId(node.getUserId());
-            document.setTitle(node.getTitle());
-            document.setSummary(node.getSummary());
-            document.setContentMd(node.getContentMd());
-            document.setImportance(node.getImportance());
-            document.setMasteryLevel(node.getMasteryLevel());
-            document.setReviewCount(node.getReviewCount());
+            log.debug("同步知识节点到Elasticsearch，nodeId：{}，title：{}", node.getId(), node.getTitle());
 
-            if (embeddingService != null) {
-                String text = node.getTitle() + " " + node.getSummary();
-                List<Float> embedding = embeddingService.generateEmbedding(text);
-                if (!embedding.isEmpty()) {
-                    document.setEmbedding(embedding);
-                    log.info("Embedding生成成功，nodeId：{}，维度：{}", node.getId(), embedding.size());
-                }
-            }
+            KnowledgeDocument document = convertToDocument(node);
 
-            knowledgeDocumentRepository.save(document);
-            log.info("知识点同步到Elasticsearch成功，nodeId：{}", node.getId());
+            elasticsearchOperations.save(document);
+
+            log.info("知识节点同步成功，nodeId：{}", node.getId());
+
         } catch (Exception e) {
-            log.error("知识点同步到Elasticsearch失败，nodeId：{}", node.getId(), e);
+            log.error("同步知识节点到Elasticsearch失败，nodeId：{}", node.getId(), e);
         }
     }
 
     @Override
     public void deleteKnowledgeNode(Long id) {
-        if (knowledgeDocumentRepository == null) {
-            log.warn("Elasticsearch未配置，跳过删除，nodeId：{}", id);
-            return;
-        }
         try {
-            knowledgeDocumentRepository.deleteById(id);
-            log.info("知识点从Elasticsearch删除成功，nodeId：{}", id);
+            log.debug("从Elasticsearch删除知识节点，nodeId：{}", id);
+            
+            elasticsearchOperations.delete(String.valueOf(id), KnowledgeDocument.class);
+            
+            log.info("知识节点删除成功，nodeId：{}", id);
         } catch (Exception e) {
-            log.error("知识点从Elasticsearch删除失败，nodeId：{}", id, e);
+            log.error("从Elasticsearch删除知识节点失败，nodeId：{}", id, e);
         }
     }
 
     @Override
     public List<KnowledgeDocument> search(String keyword, Long userId) {
-        if (knowledgeDocumentRepository == null) {
-            log.warn("Elasticsearch未配置，无法搜索");
-            return List.of();
-        }
         try {
-            List<KnowledgeDocument> results = knowledgeDocumentRepository.findByUserIdAndTitleContaining(userId, keyword);
-            log.info("Elasticsearch搜索成功，keyword：{}，userId：{}，结果数：{}", keyword, userId, results.size());
+            log.debug("关键词搜索，keyword：{}，userId：{}", keyword, userId);
+
+            NativeQuery query = NativeQuery.builder()
+                    .withQuery(q -> q
+                            .bool(b -> b
+                                    .must(m -> m
+                                            .multiMatch(mm -> mm
+                                                    .query(keyword)
+                                                    .fields("title^3", "summary^2", "contentMd")
+                                                    .fuzziness("AUTO")
+                                            )
+                                    )
+                                    .filter(f -> f
+                                            .term(t -> t
+                                                    .field("userId")
+                                                    .value(userId)
+                                            )
+                                    )
+                            )
+                    )
+                    .build();
+
+            SearchHits<KnowledgeDocument> searchHits = elasticsearchOperations.search(query, KnowledgeDocument.class);
+
+            List<KnowledgeDocument> results = searchHits.getSearchHits().stream()
+                    .map(SearchHit::getContent)
+                    .collect(Collectors.toList());
+
+            log.info("关键词搜索完成，keyword：{}，结果数：{}", keyword, results.size());
             return results;
+
         } catch (Exception e) {
-            log.error("Elasticsearch搜索失败，keyword：{}，userId：{}", keyword, userId, e);
-            return List.of();
+            log.error("关键词搜索失败，keyword：{}", keyword, e);
+            return new ArrayList<>();
         }
     }
 
     @Override
     public List<KnowledgeDocument> multiFieldSearch(String keyword, Long userId) {
-        if (knowledgeDocumentRepository == null) {
-            log.warn("Elasticsearch未配置，无法多字段搜索");
-            return List.of();
-        }
         try {
-            List<KnowledgeDocument> allDocs = knowledgeDocumentRepository.findByUserId(userId);
-            
-            List<KnowledgeDocument> results = allDocs.stream()
-                    .filter(doc -> {
-                        boolean titleMatch = doc.getTitle() != null && doc.getTitle().contains(keyword);
-                        boolean summaryMatch = doc.getSummary() != null && doc.getSummary().contains(keyword);
-                        return titleMatch || summaryMatch;
-                    })
-                    .collect(java.util.stream.Collectors.toList());
-            
-            log.info("Elasticsearch多字段搜索成功，keyword：{}，userId：{}，结果数：{}", keyword, userId, results.size());
+            log.debug("多字段搜索，keyword：{}，userId：{}", keyword, userId);
+
+            NativeQuery query = NativeQuery.builder()
+                    .withQuery(q -> q
+                            .bool(b -> b
+                                    .should(s -> s
+                                            .match(m -> m
+                                                    .field("title")
+                                                    .query(keyword)
+                                                    .boost(3.0f)
+                                            )
+                                    )
+                                    .should(s -> s
+                                            .match(m -> m
+                                                    .field("summary")
+                                                    .query(keyword)
+                                                    .boost(2.0f)
+                                            )
+                                    )
+                                    .should(s -> s
+                                            .match(m -> m
+                                                    .field("contentMd")
+                                                    .query(keyword)
+                                            )
+                                    )
+                                    .filter(f -> f
+                                            .term(t -> t
+                                                    .field("userId")
+                                                    .value(userId)
+                                            )
+                                    )
+                            )
+                    )
+                    .build();
+
+            SearchHits<KnowledgeDocument> searchHits = elasticsearchOperations.search(query, KnowledgeDocument.class);
+
+            List<KnowledgeDocument> results = searchHits.getSearchHits().stream()
+                    .map(SearchHit::getContent)
+                    .collect(Collectors.toList());
+
+            log.info("多字段搜索完成，keyword：{}，结果数：{}", keyword, results.size());
             return results;
+
         } catch (Exception e) {
-            log.error("Elasticsearch多字段搜索失败，keyword：{}，userId：{}", keyword, userId, e);
-            return List.of();
+            log.error("多字段搜索失败，keyword：{}", keyword, e);
+            return new ArrayList<>();
         }
     }
 
     @Override
     public List<KnowledgeDocument> semanticSearch(String queryText, Long userId, int topK) {
-        if (embeddingService == null) {
-            log.warn("Embedding服务未配置，无法进行语义搜索");
-            return List.of();
-        }
         try {
+            log.debug("语义搜索，queryText：{}，userId：{}，topK：{}", queryText, userId, topK);
+
             List<Float> queryEmbedding = embeddingService.generateEmbedding(queryText);
-            if (queryEmbedding.isEmpty()) {
-                log.warn("查询向量生成失败，无法进行语义搜索");
-                return List.of();
+            
+            if (queryEmbedding == null || queryEmbedding.isEmpty()) {
+                log.warn("无法生成查询向量，使用关键词搜索");
+                return search(queryText, userId);
             }
 
-            log.info("开始语义搜索，查询文本：'{}'，userId：{}", queryText, userId);
+            NativeQuery query = NativeQuery.builder()
+                    .withQuery(q -> q
+                            .bool(b -> b
+                                    .filter(f -> f
+                                            .term(t -> t
+                                                    .field("userId")
+                                                    .value(userId)
+                                            )
+                                    )
+                            )
+                    )
+                    .withPageable(org.springframework.data.domain.PageRequest.of(0, 100))
+                    .build();
 
-            List<KnowledgeDocument> allDocuments = knowledgeDocumentRepository.findByUserId(userId);
-            log.info("从Elasticsearch获取到{}个文档", allDocuments.size());
-            
-            int docsWithEmbedding = 0;
-            for (KnowledgeDocument doc : allDocuments) {
-                if (doc.getEmbedding() != null && !doc.getEmbedding().isEmpty()) {
-                    docsWithEmbedding++;
-                } else {
-                    log.debug("文档ID={}, 标题='{}' 没有embedding数据", doc.getId(), doc.getTitle());
-                }
-            }
-            log.info("其中有{}个文档包含embedding数据", docsWithEmbedding);
-            
-            List<KnowledgeDocument> results = allDocuments.stream()
+            SearchHits<KnowledgeDocument> searchHits = elasticsearchOperations.search(query, KnowledgeDocument.class);
+
+            List<KnowledgeDocument> allDocuments = searchHits.getSearchHits().stream()
+                    .map(SearchHit::getContent)
                     .filter(doc -> doc.getEmbedding() != null && !doc.getEmbedding().isEmpty())
-                    .sorted((doc1, doc2) -> {
-                        double similarity1 = calculateCosineSimilarity(queryEmbedding, doc1.getEmbedding());
-                        double similarity2 = calculateCosineSimilarity(queryEmbedding, doc2.getEmbedding());
-                        return Double.compare(similarity2, similarity1);
-                    })
-                    .filter(doc -> {
-                        double similarity = calculateCosineSimilarity(queryEmbedding, doc.getEmbedding());
-                        return similarity >= SEMANTIC_SEARCH_THRESHOLD;
-                    })
-                    .limit(topK)
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
 
-            log.info("语义搜索成功，queryText：'{}'，userId：{}，结果数：{}，相似度阈值：{}", 
-                queryText, userId, results.size(), SEMANTIC_SEARCH_THRESHOLD);
-            
-            if (!results.isEmpty()) {
-                for (int i = 0; i < Math.min(3, results.size()); i++) {
-                    KnowledgeDocument doc = results.get(i);
-                    double similarity = calculateCosineSimilarity(queryEmbedding, doc.getEmbedding());
-                    log.info("  结果{}: 标题='{}', 相似度={}", i+1, doc.getTitle(), String.format("%.4f", similarity));
-                }
-            } else {
-                log.warn("没有找到相似度超过{}的结果", SEMANTIC_SEARCH_THRESHOLD);
-            }
-            
+            List<KnowledgeDocument> results = allDocuments.stream()
+                    .map(doc -> {
+                        double similarity = calculateCosineSimilarity(queryEmbedding, doc.getEmbedding());
+                        doc.setSimilarity(similarity);
+                        return doc;
+                    })
+                    .sorted((a, b) -> Double.compare(b.getSimilarity(), a.getSimilarity()))
+                    .limit(topK)
+                    .collect(Collectors.toList());
+
+            log.info("语义搜索完成，queryText：{}，结果数：{}", queryText, results.size());
             return results;
+
         } catch (Exception e) {
-            log.error("语义搜索失败，queryText：'{}'，userId：{}", queryText, userId, e);
-            return List.of();
+            log.error("语义搜索失败，queryText：{}", queryText, e);
+            return new ArrayList<>();
         }
     }
 
     private double calculateCosineSimilarity(List<Float> vector1, List<Float> vector2) {
-        if (vector1.size() != vector2.size()) {
+        if (vector1 == null || vector2 == null || vector1.size() != vector2.size()) {
             return 0.0;
         }
 
@@ -188,14 +225,42 @@ public class ElasticsearchServiceImpl implements ElasticsearchService {
 
         for (int i = 0; i < vector1.size(); i++) {
             dotProduct += vector1.get(i) * vector2.get(i);
-            norm1 += Math.pow(vector1.get(i), 2);
-            norm2 += Math.pow(vector2.get(i), 2);
+            norm1 += vector1.get(i) * vector1.get(i);
+            norm2 += vector2.get(i) * vector2.get(i);
         }
 
-        if (norm1 == 0.0 || norm2 == 0.0) {
+        if (norm1 == 0 || norm2 == 0) {
             return 0.0;
         }
 
         return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+    }
+
+    private KnowledgeDocument convertToDocument(KnowledgeNode node) {
+        KnowledgeDocument document = new KnowledgeDocument();
+        document.setId(node.getId());
+        document.setUserId(node.getUserId());
+        document.setTitle(node.getTitle());
+        document.setSummary(node.getSummary());
+        document.setContentMd(node.getContentMd());
+        document.setImportance(node.getImportance());
+        document.setMasteryLevel(node.getMasteryLevel());
+        document.setReviewCount(node.getReviewCount());
+        
+        try {
+            KnowledgeEmbedding embedding = embeddingMapper.selectOne(
+                    new LambdaQueryWrapper<KnowledgeEmbedding>()
+                            .eq(KnowledgeEmbedding::getKnowledgeId, node.getId())
+            );
+            
+            if (embedding != null && embedding.getEmbedding() != null) {
+                List<Float> vector = JSON.parseArray(embedding.getEmbedding(), Float.class);
+                document.setEmbedding(vector);
+            }
+        } catch (Exception e) {
+            log.warn("获取向量数据失败，nodeId：{}", node.getId(), e);
+        }
+        
+        return document;
     }
 }

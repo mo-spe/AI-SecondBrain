@@ -15,7 +15,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**")
+                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**", "/async-task/**")
                 .excludePathPatterns("/auth/**", "/health/**");
     }
 }

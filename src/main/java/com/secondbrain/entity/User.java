@@ -25,6 +25,8 @@ public class User {
     
     private String avatar;
     
+    private String apiKey;
+    
     private LocalDateTime registerTime;
     
     private LocalDateTime lastLoginTime;
@@ -90,6 +92,14 @@ public class User {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
     }
 
     public LocalDateTime getRegisterTime() {

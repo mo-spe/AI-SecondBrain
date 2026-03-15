@@ -93,6 +93,9 @@ public class KnowledgeController {
             @Parameter(description = "搜索关键词") @RequestParam String keyword,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
         java.util.List<KnowledgeNodeVO> results = knowledgeService.search(keyword, userId);
         return Result.success(results);
     }
@@ -103,6 +106,9 @@ public class KnowledgeController {
             @Parameter(description = "搜索关键词") @RequestParam String keyword,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
         java.util.List<KnowledgeNodeVO> results = knowledgeService.multiFieldSearch(keyword, userId);
         return Result.success(results);
     }
@@ -114,7 +120,18 @@ public class KnowledgeController {
             @Parameter(description = "返回结果数量") @RequestParam(defaultValue = "10") Integer topK,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
         java.util.List<KnowledgeNodeVO> results = knowledgeService.semanticSearch(queryText, userId, topK);
         return Result.success(results);
+    }
+
+    @PostMapping("/sync-to-elasticsearch")
+    @Operation(summary = "同步到Elasticsearch", description = "将所有知识点同步到Elasticsearch")
+    public Result<Void> syncToElasticsearch(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        knowledgeService.syncToElasticsearch(userId);
+        return Result.success("同步成功", null);
     }
 }

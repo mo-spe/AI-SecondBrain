@@ -1,0 +1,4 @@
+-- 添加API Key字段到user表
+-- 执行时间: 2026-03-14
+
+ALTER TABLE user ADD COLUMN api_key VARCHAR(255) DEFAULT NULL COMMENT 'API Key' AFTER avatar;

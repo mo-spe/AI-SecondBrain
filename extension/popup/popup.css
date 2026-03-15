@@ -1,0 +1,24 @@
+﻿body {
+    width: 320px;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+}
+.container { text-align: center; }
+h1 { color: #409EFF; font-size: 20px; margin-bottom: 20px; }
+#status { padding: 12px; background: #f5f7fa; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
+button {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    background: #409EFF;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+button:hover { background: #66b1ff; }
+button:disabled { background: #ccc; cursor: not-allowed; }
+#message { margin-top: 15px; color: #666; font-size: 12px; min-height: 20px; }

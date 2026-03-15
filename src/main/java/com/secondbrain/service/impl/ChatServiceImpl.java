@@ -8,6 +8,7 @@ import com.secondbrain.dto.ChatRecordDTO;
 import com.secondbrain.dto.KnowledgeDTO;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.RawChatRecord;
+import com.secondbrain.entity.User;
 import com.secondbrain.kafka.KafkaProducerService;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.RawChatRecordMapper;
@@ -16,6 +17,7 @@ import com.secondbrain.service.ChatContextService;
 import com.secondbrain.service.ChatService;
 import com.secondbrain.service.EbbinghausService;
 import com.secondbrain.service.ReviewCardService;
+import com.secondbrain.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -39,6 +41,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatContextService chatContextService;
     private final ReviewCardService reviewCardService;
     private final EbbinghausService ebbinghausService;
+    private final UserService userService;
 
     @Autowired(required = false)
     private KafkaProducerService kafkaProducerService;
@@ -48,18 +51,28 @@ public class ChatServiceImpl implements ChatService {
                           AiService aiService,
                           ChatContextService chatContextService,
                           ReviewCardService reviewCardService,
-                          EbbinghausService ebbinghausService) {
+                          EbbinghausService ebbinghausService,
+                          UserService userService) {
         this.rawChatRecordMapper = rawChatRecordMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.aiService = aiService;
         this.chatContextService = chatContextService;
         this.reviewCardService = reviewCardService;
         this.ebbinghausService = ebbinghausService;
+        this.userService = userService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void collectChat(ChatCollectRequest request, Long userId) {
+        User user = userService.getUserById(userId);
+        String userApiKey = user != null ? user.getApiKey() : null;
+        collectChat(request, userId, userApiKey);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void collectChat(ChatCollectRequest request, Long userId, String userApiKey) {
         RawChatRecord record = new RawChatRecord();
         record.setUserId(userId);
         record.setPlatform(request.getPlatform());
@@ -73,7 +86,7 @@ public class ChatServiceImpl implements ChatService {
             kafkaProducerService.sendChatCollect(record);
             log.info("对话采集成功，消息已发送到Kafka，recordId：{}", record.getId());
         } else {
-            List<KnowledgeDTO> knowledgeList = extractKnowledge(request.getContent());
+            List<KnowledgeDTO> knowledgeList = extractKnowledge(request.getContent(), userApiKey);
             chatContextService.cacheExtractedKnowledge(record.getId().toString(), knowledgeList);
 
             for (KnowledgeDTO knowledge : knowledgeList) {
@@ -102,6 +115,14 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int batchImportChats(BatchChatImportRequest request, Long userId) {
+        User user = userService.getUserById(userId);
+        String userApiKey = user != null ? user.getApiKey() : null;
+        return batchImportChats(request, userId, userApiKey);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int batchImportChats(BatchChatImportRequest request, Long userId, String userApiKey) {
         if (request.getChats() == null || request.getChats().isEmpty()) {
             return 0;
         }
@@ -122,7 +143,7 @@ public class ChatServiceImpl implements ChatService {
                 kafkaProducerService.sendChatCollect(record);
                 log.info("批量导入：消息已发送到Kafka，recordId：{}", record.getId());
             } else {
-                List<KnowledgeDTO> knowledgeList = extractKnowledge(chatItem.getContent());
+                List<KnowledgeDTO> knowledgeList = extractKnowledge(chatItem.getContent(), userApiKey);
                 chatContextService.cacheExtractedKnowledge(record.getId().toString(), knowledgeList);
 
                 for (KnowledgeDTO knowledge : knowledgeList) {
@@ -203,6 +224,11 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public List<KnowledgeDTO> extractKnowledge(String content) {
         return aiService.extractKnowledge(content);
+    }
+
+    @Override
+    public List<KnowledgeDTO> extractKnowledge(String content, String userApiKey) {
+        return aiService.extractKnowledge(content, userApiKey);
     }
 
     @Override

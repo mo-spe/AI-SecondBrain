@@ -22,6 +22,11 @@ public class OssConfig {
 
     @Bean
     public OSS ossClient() {
+        if (endpoint == null || endpoint.isEmpty() || 
+            accessKeyId == null || accessKeyId.isEmpty() || 
+            accessKeySecret == null || accessKeySecret.isEmpty()) {
+            return null;
+        }
         return new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
     }
 

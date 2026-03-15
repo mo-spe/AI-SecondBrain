@@ -2,19 +2,32 @@ package com.secondbrain.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.secondbrain.dto.AsyncTaskRequest;
+import com.secondbrain.dto.AsyncTaskResponse;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.LearningReport;
+import com.secondbrain.kafka.KafkaProducerService;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.LearningReportMapper;
+import com.secondbrain.service.AsyncTaskService;
 import com.secondbrain.service.DeerFlowReportService;
 import com.secondbrain.service.DeerFlowResearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +44,21 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
     @Autowired
     private DeerFlowResearchService deerFlowResearchService;
 
+    @Autowired(required = false)
+    private AsyncTaskService asyncTaskService;
+
+    @Autowired(required = false)
+    private KafkaProducerService kafkaProducerService;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${deerflow.local.enabled:false}")
+    private boolean useLocalService;
+
+    @Value("${deerflow.local.report-url:http://localhost:8002}")
+    private String localReportUrl;
+
     @Override
     public String generateLearningReport(Long userId, String topic, Integer days) {
         try {
@@ -41,8 +69,15 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
                 throw new RuntimeException("指定时间范围内没有学习数据");
             }
 
-            String learningData = buildLearningData(topic, days, knowledgeNodes);
-            String report = deerFlowResearchService.generateDeepLearningReport(learningData, topic, "deep");
+            String report;
+            if (useLocalService) {
+                log.info("使用本地服务生成学习报告");
+                report = generateLocalReport(topic, days);
+            } else {
+                String learningData = buildLearningData(topic, days, knowledgeNodes);
+                report = deerFlowResearchService.generateDeepLearningReport(learningData, topic, "deep", null);
+            }
+            
             saveReportRecord(userId, topic, report, days);
 
             log.info("学习报告生成成功，用户ID：{}，报告长度：{}", userId, report.length());
@@ -50,6 +85,40 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         } catch (Exception e) {
             log.error("生成学习报告失败，用户ID：{}，主题：{}", userId, topic, e);
             throw new RuntimeException("生成学习报告失败：" + e.getMessage(), e);
+        }
+    }
+
+    private String generateLocalReport(String topic, Integer days) {
+        try {
+            Map<String, Object> request = new HashMap<>();
+            request.put("topic", topic);
+            request.put("days", days);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+
+            log.info("使用本地服务，发送请求到：{}", localReportUrl + "/api/report/generate");
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                localReportUrl + "/api/report/generate",
+                entity,
+                Map.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> body = response.getBody();
+                if (Boolean.TRUE.equals(body.get("success"))) {
+                    return (String) body.get("data");
+                }
+            }
+
+            throw new RuntimeException("本地报告服务返回错误");
+
+        } catch (Exception e) {
+            log.error("调用本地报告服务失败", e);
+            throw new RuntimeException("调用本地报告服务失败：" + e.getMessage(), e);
         }
     }
 
@@ -101,6 +170,20 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         reportRecord.setContent(report);
         reportRecord.setDays(days);
         learningReportMapper.insert(reportRecord);
+    }
+
+    @Override
+    public AsyncTaskResponse generateLearningReportAsync(Long userId, String topic, Integer days) {
+        log.info("异步生成学习报告，使用同步方式处理");
+        
+        log.warn("异步任务服务未启用，使用同步方式生成学习报告");
+        String report = generateLearningReport(userId, topic, days);
+        AsyncTaskResponse response = new AsyncTaskResponse();
+        response.setStatus("COMPLETED");
+        response.setTaskType("LEARNING_REPORT");
+        response.setResult(report);
+        response.setProgress(100);
+        return response;
     }
 
     @Override

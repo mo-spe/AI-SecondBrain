@@ -41,13 +41,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateUser(Long userId, String username, String email, String phone, String bio) {
+    public void updateUser(Long userId, String username, String email, String phone, String bio, String apiKey) {
         User user = new User();
         user.setId(userId);
         user.setUsername(username);
         user.setEmail(email);
         user.setPhone(phone);
         user.setBio(bio);
+        user.setApiKey(apiKey);
         user.setUpdateTime(LocalDateTime.now());
         
         userMapper.updateById(user);

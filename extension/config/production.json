@@ -1,0 +1,22 @@
+{
+  "environment": "production",
+  "api": {
+    "baseUrl": "https://aisecondbrain.cn/api",
+    "timeout": 30000,
+    "retryCount": 3
+  },
+  "websocket": {
+    "url": "wss://aisecondbrain.cn/ws",
+    "reconnectInterval": 5000,
+    "maxReconnectAttempts": 5
+  },
+  "features": {
+    "autoSave": true,
+    "debugMode": false,
+    "logLevel": "error"
+  },
+  "security": {
+    "tokenRefreshInterval": 3600000,
+    "enableEncryption": true
+  }
+}

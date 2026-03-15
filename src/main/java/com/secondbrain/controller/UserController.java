@@ -83,7 +83,7 @@ public class UserController {
         }
         
         try {
-            userService.updateUser(userId, updateUserDTO.getUsername(), updateUserDTO.getEmail(), updateUserDTO.getPhone(), updateUserDTO.getBio());
+            userService.updateUser(userId, updateUserDTO.getUsername(), updateUserDTO.getEmail(), updateUserDTO.getPhone(), updateUserDTO.getBio(), updateUserDTO.getApiKey());
             log.info("更新用户信息成功，userId: {}", userId);
             return Result.success("更新成功");
         } catch (Exception e) {

@@ -41,9 +41,15 @@
               @change="handleSearch"
             >
               <el-option label="全部平台" value="" />
-              <el-option label="ChatGPT" value="ChatGPT" />
-              <el-option label="DeepSeek" value="DeepSeek" />
-              <el-option label="Kimi" value="Kimi" />
+              <el-option label="ChatGPT" value="chatgpt.com" />
+              <el-option label="ChatGPT (OpenAI)" value="chat.openai.com" />
+              <el-option label="DeepSeek" value="chat.deepseek.com" />
+              <el-option label="Kimi (官网)" value="www.kimi.com" />
+              <el-option label="Kimi (Moonshot)" value="kimi.moonshot.cn" />
+              <el-option label="Kimi (AI)" value="kimi.ai" />
+              <el-option label="豆包" value="www.doubao.com" />
+              <el-option label="智谱" value="www.zhipuai.cn" />
+              <el-option label="通义千问" value="www.qianwen.com" />
               <el-option label="其他" value="Other" />
             </el-select>
           </div>
@@ -86,7 +92,7 @@
                       effect="dark"
                       size="large"
                     >
-                      {{ chat.platform }}
+                      {{ getPlatformName(chat.platform) }}
                     </el-tag>
                   </div>
                   <div class="chat-time">
@@ -246,7 +252,7 @@
               effect="dark"
               size="large"
             >
-              {{ currentChat.platform }}
+              {{ getPlatformName(currentChat.platform) }}
             </el-tag>
           </div>
           <div class="detail-time">
@@ -390,12 +396,34 @@ const handleCurrentChange = (current) => {
 
 const getPlatformType = (platform) => {
   const typeMap = {
-    ChatGPT: "primary",
-    DeepSeek: "success",
-    Kimi: "warning",
+    "chatgpt.com": "primary",
+    "chat.openai.com": "primary",
+    "chat.deepseek.com": "success",
+    "www.kimi.com": "warning",
+    "kimi.moonshot.cn": "warning",
+    "kimi.ai": "warning",
+    "www.doubao.com": "danger",
+    "www.zhipuai.cn": "info",
+    "www.qianwen.com": "info",
     Other: "info",
   };
   return typeMap[platform] || "info";
+};
+
+const getPlatformName = (platform) => {
+  const nameMap = {
+    "chatgpt.com": "ChatGPT",
+    "chat.openai.com": "ChatGPT (OpenAI)",
+    "chat.deepseek.com": "DeepSeek",
+    "www.kimi.com": "Kimi (官网)",
+    "kimi.moonshot.cn": "Kimi (Moonshot)",
+    "kimi.ai": "Kimi (AI)",
+    "www.doubao.com": "豆包",
+    "www.zhipuai.cn": "智谱",
+    "www.qianwen.com": "通义千问",
+    Other: "其他",
+  };
+  return nameMap[platform] || platform;
 };
 
 const formatDate = (dateStr) => {

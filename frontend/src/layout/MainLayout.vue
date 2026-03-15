@@ -60,8 +60,10 @@
 
     <div class="main-content">
       <router-view v-slot="{ Component }">
-        <transition name="page-fade" mode="out-in">
-          <component :is="Component" />
+        <transition name="page-advanced" mode="out-in">
+          <div class="page-wrapper" :key="route.path">
+            <component :is="Component" />
+          </div>
         </transition>
       </router-view>
     </div>
@@ -86,6 +88,7 @@ import {
   SwitchButton,
   DocumentCopy,
   TrendCharts,
+  Share,
 } from "@element-plus/icons-vue";
 
 const route = useRoute();
@@ -122,6 +125,16 @@ const menuItems = [
     path: "/search",
     title: "知识搜索",
     icon: Search,
+  },
+  {
+    path: "/rag-qa",
+    title: "RAG问答",
+    icon: ChatDotRound,
+  },
+  {
+    path: "/knowledge-graph",
+    title: "知识图谱",
+    icon: Share,
   },
   {
     path: "/report",
@@ -305,18 +318,73 @@ const handleCommand = (command) => {
 }
 
 .main-content {
+  position: relative;
   padding-top: 64px;
   min-height: calc(100vh - 64px);
+  overflow: hidden;
 }
 
-.page-fade-enter-active,
-.page-fade-leave-active {
-  transition: opacity 0.3s ease;
+.main-content::before {
+  content: "";
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    ellipse at top,
+    rgba(102, 126, 234, 0.1) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
-.page-fade-enter-from,
-.page-fade-leave-to {
+:deep(.router-view-wrapper) {
+  position: relative;
+  z-index: 1;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.page-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.page-advanced-enter-active {
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.page-advanced-leave-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-advanced-enter-from {
   opacity: 0;
+  transform: perspective(1000px) rotateY(-15deg) translateX(50px) scale(0.9);
+  filter: blur(10px);
+}
+
+.page-advanced-enter-to {
+  opacity: 1;
+  transform: perspective(1000px) rotateY(0deg) translateX(0) scale(1);
+  filter: blur(0px);
+}
+
+.page-advanced-leave-from {
+  opacity: 1;
+  transform: perspective(1000px) rotateY(0deg) translateX(0) scale(1);
+  filter: blur(0px);
+}
+
+.page-advanced-leave-to {
+  opacity: 0;
+  transform: perspective(1000px) rotateY(15deg) translateX(-50px) scale(0.95);
+  filter: blur(8px);
 }
 
 :deep(.el-dropdown-menu) {

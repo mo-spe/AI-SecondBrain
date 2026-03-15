@@ -25,7 +25,7 @@ public class DocumentCaptureServiceImpl implements DocumentCaptureService {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentCaptureServiceImpl.class);
 
-    @Autowired
+    @Autowired(required = false)
     private KafkaProducerService kafkaProducerService;
 
     @Override
@@ -137,6 +137,11 @@ public class DocumentCaptureServiceImpl implements DocumentCaptureService {
             record.setSourceUrl("DOCUMENT:" + source);
             record.setCreateTime(LocalDateTime.now());
 
+            if (kafkaProducerService == null) {
+                log.warn("Kafka未启用，跳过文档内容发送，用户ID：{}，来源：{}", userId, source);
+                return;
+            }
+            
             kafkaProducerService.sendChatCollect(record);
             log.info("文档内容已发送到捕捉层，用户ID：{}，来源：{}", userId, source);
         } catch (Exception e) {

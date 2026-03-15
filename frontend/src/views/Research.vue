@@ -216,8 +216,19 @@
         width="900px"
         class="result-dialog"
       >
+        <div class="view-mode-toggle">
+          <el-radio-group v-model="viewMode" size="small">
+            <el-radio-button label="simple">简洁模式</el-radio-button>
+            <el-radio-button label="full">完整模式</el-radio-button>
+          </el-radio-group>
+        </div>
+
         <div v-if="learningPathResult" class="result-content">
+          <div v-if="viewMode === 'simple'" class="simple-content">
+            <div v-html="renderSimpleContent(learningPathResult)"></div>
+          </div>
           <div
+            v-else
             class="markdown-content"
             v-html="renderMarkdown(learningPathResult)"
           ></div>
@@ -243,8 +254,19 @@
         width="900px"
         class="result-dialog"
       >
+        <div class="view-mode-toggle">
+          <el-radio-group v-model="gapsViewMode" size="small">
+            <el-radio-button label="simple">简洁模式</el-radio-button>
+            <el-radio-button label="full">完整模式</el-radio-button>
+          </el-radio-group>
+        </div>
+
         <div v-if="gapsAnalysisResult" class="result-content">
+          <div v-if="gapsViewMode === 'simple'" class="simple-content">
+            <div v-html="renderSimpleContent(gapsAnalysisResult)"></div>
+          </div>
           <div
+            v-else
             class="markdown-content"
             v-html="renderMarkdown(gapsAnalysisResult)"
           ></div>
@@ -268,7 +290,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   TrendCharts,
@@ -282,12 +304,23 @@ import {
   Delete,
 } from "@element-plus/icons-vue";
 import { deerFlowAPI } from "@/api/deerflow";
+import request from "@/utils/request";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { useUserStore } from "@/stores/user";
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  headerIds: false,
+  mangle: false,
+});
 
 const userStore = useUserStore();
 
 const activeTab = ref("path");
+const viewMode = ref("simple");
+const gapsViewMode = ref("simple");
 const pathForm = ref({
   topic: "",
   currentLevel: "beginner",
@@ -306,6 +339,10 @@ const showGapsDialog = ref(false);
 const learningPathResult = ref("");
 const gapsAnalysisResult = ref("");
 const historyList = ref([]);
+const currentPathTask = ref(null);
+const currentGapsTask = ref(null);
+const pathTaskPolling = ref(null);
+const gapsTaskPolling = ref(null);
 
 const pagination = ref({
   current: 1,
@@ -339,34 +376,90 @@ const generateLearningPath = async () => {
     return;
   }
 
+  console.log("用户登录状态：", userStore.isLoggedIn());
+  console.log(
+    "用户token：",
+    userStore.token ? userStore.token.substring(0, 20) + "..." : "null",
+  );
+  console.log("用户信息：", userStore.userInfo);
+
   generatingPath.value = true;
 
   try {
-    const response = await deerFlowAPI.generateLearningPath(pathForm.value);
-    learningPathResult.value = response.data || response;
-    showPathDialog.value = true;
-    ElMessage.success("学习路径生成成功");
+    const task = await deerFlowAPI.generateLearningPath(pathForm.value);
+    currentPathTask.value = task;
 
-    console.log("用户登录状态：", userStore.isLoggedIn());
-    console.log("用户token：", userStore.token);
+    console.log("任务响应：", task);
 
-    if (userStore.isLoggedIn()) {
-      console.log("准备保存历史记录...");
-      await saveHistory({
-        type: "path",
-        topic: pathForm.value.topic,
-        currentLevel: pathForm.value.currentLevel,
-        targetLevel: pathForm.value.targetLevel,
-        content: learningPathResult.value,
-      });
+    if (task.status === "COMPLETED") {
+      learningPathResult.value = task.result;
+      showPathDialog.value = true;
+      ElMessage.success("学习路径生成完成！");
+
+      if (userStore.isLoggedIn()) {
+        await saveHistory({
+          type: "path",
+          topic: pathForm.value.topic,
+          currentLevel: pathForm.value.currentLevel,
+          targetLevel: pathForm.value.targetLevel,
+          content: learningPathResult.value,
+        });
+      }
     } else {
-      console.log("用户未登录，不保存历史记录");
+      ElMessage.success("学习路径生成任务已创建，正在后台生成...");
+      startPathTaskPolling(task.taskId);
     }
   } catch (error) {
+    console.error("生成学习路径失败：", error);
     ElMessage.error("生成学习路径失败：" + (error.message || "未知错误"));
   } finally {
     generatingPath.value = false;
   }
+};
+
+const startPathTaskPolling = (taskId) => {
+  if (pathTaskPolling.value) {
+    clearInterval(pathTaskPolling.value);
+  }
+
+  pathTaskPolling.value = setInterval(async () => {
+    try {
+      const response = await request({
+        url: `/deerflow/async-task/status/${taskId}`,
+        method: "get",
+      });
+
+      if (response.status === "COMPLETED") {
+        clearInterval(pathTaskPolling.value);
+        pathTaskPolling.value = null;
+
+        learningPathResult.value = response.result;
+        showPathDialog.value = true;
+
+        ElMessage.success("学习路径生成完成！");
+
+        if (userStore.isLoggedIn()) {
+          await saveHistory({
+            type: "path",
+            topic: pathForm.value.topic,
+            currentLevel: pathForm.value.currentLevel,
+            targetLevel: pathForm.value.targetLevel,
+            content: learningPathResult.value,
+          });
+        }
+      } else if (response.status === "FAILED") {
+        clearInterval(pathTaskPolling.value);
+        pathTaskPolling.value = null;
+        currentPathTask.value = null;
+
+        ElMessage.error(
+          "学习路径生成失败：" + (response.errorMessage || "未知错误"),
+        );
+      }
+    } catch (error) {
+      console.error("查询任务状态失败：", error);
+    }
+  }, 3000);
 };
 
 const researchKnowledgeGaps = async () => {
@@ -383,25 +476,77 @@ const researchKnowledgeGaps = async () => {
   analyzingGaps.value = true;
 
   try {
-    const response = await deerFlowAPI.researchKnowledgeGap(gapsForm.value);
-    gapsAnalysisResult.value = response.data || response;
-    showGapsDialog.value = true;
-    ElMessage.success("知识盲区分析成功");
+    const task = await deerFlowAPI.researchKnowledgeGap(gapsForm.value);
+    currentGapsTask.value = task;
 
-    if (userStore.isLoggedIn()) {
-      await saveHistory({
-        type: "gaps",
-        topic: gapsForm.value.topic,
-        userKnowledge: gapsForm.value.userKnowledge,
-        knowledgeCount: gapsForm.value.userKnowledge.length,
-        content: gapsAnalysisResult.value,
-      });
+    if (task.status === "COMPLETED") {
+      gapsAnalysisResult.value = task.result;
+      showGapsDialog.value = true;
+      ElMessage.success("知识盲区分析完成！");
+
+      if (userStore.isLoggedIn()) {
+        await saveHistory({
+          type: "gaps",
+          topic: gapsForm.value.topic,
+          userKnowledge: gapsForm.value.userKnowledge,
+          knowledgeCount: gapsForm.value.userKnowledge.length,
+          content: gapsAnalysisResult.value,
+        });
+      }
+    } else {
+      ElMessage.success("知识盲区分析任务已创建，正在后台分析...");
+      startGapsTaskPolling(task.taskId);
     }
   } catch (error) {
     ElMessage.error("分析知识盲区失败：" + (error.message || "未知错误"));
   } finally {
     analyzingGaps.value = false;
   }
+};
+
+const startGapsTaskPolling = (taskId) => {
+  if (gapsTaskPolling.value) {
+    clearInterval(gapsTaskPolling.value);
+  }
+
+  gapsTaskPolling.value = setInterval(async () => {
+    try {
+      const response = await request({
+        url: `/deerflow/async-task/status/${taskId}`,
+        method: "get",
+      });
+
+      if (response.status === "COMPLETED") {
+        clearInterval(gapsTaskPolling.value);
+        gapsTaskPolling.value = null;
+
+        gapsAnalysisResult.value = response.result;
+        showGapsDialog.value = true;
+
+        ElMessage.success("知识盲区分析完成！");
+
+        if (userStore.isLoggedIn()) {
+          await saveHistory({
+            type: "gaps",
+            topic: gapsForm.value.topic,
+            userKnowledge: gapsForm.value.userKnowledge,
+            knowledgeCount: gapsForm.value.userKnowledge.length,
+            content: gapsAnalysisResult.value,
+          });
+        }
+      } else if (response.status === "FAILED") {
+        clearInterval(gapsTaskPolling.value);
+        gapsTaskPolling.value = null;
+        currentGapsTask.value = null;
+
+        ElMessage.error(
+          "知识盲区分析失败：" + (response.errorMessage || "未知错误"),
+        );
+      }
+    } catch (error) {
+      console.error("查询任务状态失败：", error);
+    }
+  }, 3000);
 };
 
 const saveHistory = async (historyData) => {
@@ -433,8 +578,11 @@ const loadHistoryList = async () => {
       current: pagination.value.current,
       size: pagination.value.size,
     });
-    historyList.value = data.records || [];
-    pagination.value.total = data.total || 0;
+
+    historyList.value = (data.records || []).filter(
+      (item) => item.type === "path" || item.type === "gaps",
+    );
+    pagination.value.total = historyList.value.length;
   } catch (error) {
     ElMessage.error("加载历史记录失败：" + error.message);
   } finally {
@@ -443,11 +591,37 @@ const loadHistoryList = async () => {
 };
 
 const viewHistory = (item) => {
+  console.log("查看历史记录，原始内容类型：", typeof item.content);
+  console.log(
+    "查看历史记录，内容长度：",
+    item.content ? item.content.length : 0,
+  );
+  console.log(
+    "查看历史记录，内容前100字符：",
+    item.content ? item.content.substring(0, 100) : "empty",
+  );
+
+  let content = item.content;
+
+  try {
+    const parsedContent = JSON.parse(content);
+    if (typeof parsedContent === "string") {
+      content = parsedContent;
+    } else if (typeof parsedContent === "object") {
+      content = JSON.stringify(parsedContent, null, 2);
+    }
+  } catch (e) {
+    console.log("内容不是JSON格式，直接使用原始内容");
+  }
+
+  console.log("处理后内容类型：", typeof content);
+  console.log("处理后内容前100字符：", content.substring(0, 100));
+
   if (item.type === "path") {
-    learningPathResult.value = item.content;
+    learningPathResult.value = content;
     showPathDialog.value = true;
   } else {
-    gapsAnalysisResult.value = item.content;
+    gapsAnalysisResult.value = content;
     showGapsDialog.value = true;
   }
 };
@@ -528,12 +702,63 @@ const exportGaps = () => {
 
 const renderMarkdown = (content) => {
   if (!content) return "";
-  return marked(content);
+  const html = marked(content);
+  return DOMPurify.sanitize(html);
+};
+
+const renderSimpleContent = (content) => {
+  if (!content) return "";
+
+  const html = marked(content);
+  const sanitized = DOMPurify.sanitize(html);
+
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = sanitized;
+
+  const simpleHtml = document.createElement("div");
+
+  Array.from(tempDiv.children).forEach((child) => {
+    if (
+      child.tagName === "H1" ||
+      child.tagName === "H2" ||
+      child.tagName === "H3"
+    ) {
+      simpleHtml.appendChild(child.cloneNode(true));
+    } else if (child.tagName === "UL" || child.tagName === "OL") {
+      const simpleList = child.cloneNode(false);
+      Array.from(child.children)
+        .slice(0, 5)
+        .forEach((li) => {
+          simpleList.appendChild(li.cloneNode(true));
+        });
+      if (simpleList.children.length > 0) {
+        simpleHtml.appendChild(simpleList);
+      }
+    } else if (child.tagName === "P") {
+      const text = child.textContent.trim();
+      if (text.length > 0 && text.length < 200) {
+        simpleHtml.appendChild(child.cloneNode(true));
+      }
+    } else if (child.tagName === "BLOCKQUOTE") {
+      simpleHtml.appendChild(child.cloneNode(true));
+    }
+  });
+
+  return simpleHtml.innerHTML;
 };
 
 onMounted(() => {
   if (userStore.isLoggedIn()) {
     loadHistoryList();
+  }
+});
+
+onUnmounted(() => {
+  if (pathTaskPolling.value) {
+    clearInterval(pathTaskPolling.value);
+  }
+  if (gapsTaskPolling.value) {
+    clearInterval(gapsTaskPolling.value);
   }
 });
 </script>
@@ -678,80 +903,246 @@ onMounted(() => {
 }
 
 .markdown-content {
-  line-height: 1.8;
+  line-height: 1.7;
   color: #2c3e50;
+  font-size: 14px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 6px;
 }
 
 .markdown-content :deep(h1) {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
-  margin: 20px 0 10px 0;
-  color: #2c3e50;
+  margin: 16px 0 12px 0;
+  color: #1a1a1a;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e0e0e0;
 }
 
 .markdown-content :deep(h2) {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  margin: 18px 0 8px 0;
-  color: #34495e;
+  margin: 14px 0 10px 0;
+  color: #2c3e50;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .markdown-content :deep(h3) {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  margin: 16px 0 6px 0;
+  margin: 12px 0 8px 0;
+  color: #34495e;
+}
+
+.markdown-content :deep(h4) {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 10px 0 6px 0;
   color: #34495e;
 }
 
 .markdown-content :deep(p) {
-  margin: 10px 0;
+  margin: 8px 0;
+  line-height: 1.6;
 }
 
-.markdown-content :deep(ul) {
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
   padding-left: 20px;
-  margin: 10px 0;
+  margin: 8px 0;
 }
 
 .markdown-content :deep(li) {
-  margin: 5px 0;
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.markdown-content :deep(ul ul),
+.markdown-content :deep(ol ol),
+.markdown-content :deep(ul ol),
+.markdown-content :deep(ol ul) {
+  margin: 6px 0;
+}
+
+.markdown-content :deep(strong) {
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.markdown-content :deep(em) {
+  font-style: italic;
+}
+
+.markdown-content :deep(a) {
+  color: #3498db;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.markdown-content :deep(a:hover) {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+.markdown-content :deep(blockquote) {
+  border-left: 3px solid #3498db;
+  padding: 10px 12px;
+  margin: 12px 0;
+  background: #f8f9fa;
+  color: #6c757d;
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
 }
 
 .markdown-content :deep(code) {
-  background: #f5f5f5;
+  background: #f1f3f5;
   padding: 2px 6px;
-  border-radius: 4px;
-  font-family: "Courier New", monospace;
+  border-radius: 3px;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 13px;
+  color: #e83e8c;
 }
 
 .markdown-content :deep(pre) {
-  background: #f5f5f5;
-  padding: 15px;
-  border-radius: 8px;
+  background: #1e1e1e;
+  padding: 12px;
+  border-radius: 6px;
   overflow-x: auto;
-  margin: 15px 0;
+  margin: 12px 0;
+  border: 1px solid #333;
 }
 
 .markdown-content :deep(pre code) {
   background: transparent;
   padding: 0;
+  color: #f8f8f2;
+  font-size: 12px;
 }
 
 .markdown-content :deep(table) {
   width: 100%;
   border-collapse: collapse;
-  margin: 15px 0;
+  margin: 12px 0;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .markdown-content :deep(th),
 .markdown-content :deep(td) {
-  border: 1px solid #ddd;
-  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  padding: 8px 10px;
   text-align: left;
 }
 
 .markdown-content :deep(th) {
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.markdown-content :deep(tr:nth-child(even)) {
+  background: #f8f9fa;
+}
+
+.markdown-content :deep(tr:hover) {
+  background: #e9ecef;
+}
+
+.markdown-content :deep(hr) {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #3498db, transparent);
+  margin: 16px 0;
+}
+
+.markdown-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 10px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.markdown-content :deep(.task-list-item) {
+  list-style: none;
+  padding: 8px;
+  margin: 6px 0;
+  background: #f8f9fa;
+  border-left: 3px solid #3498db;
+  border-radius: 3px;
+}
+
+.markdown-content :deep(.highlight) {
+  background: linear-gradient(120deg, #ffeaa7 0%, #fdcb6e 100%);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.view-mode-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.simple-content {
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 6px;
+  line-height: 1.6;
+}
+
+.simple-content :deep(h1) {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 12px 0 8px 0;
+  color: #1a1a1a;
+}
+
+.simple-content :deep(h2) {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 10px 0 6px 0;
+  color: #2c3e50;
+}
+
+.simple-content :deep(h3) {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 8px 0 4px 0;
+  color: #34495e;
+}
+
+.simple-content :deep(p) {
+  margin: 6px 0;
+  color: #2c3e50;
+}
+
+.simple-content :deep(ul),
+.simple-content :deep(ol) {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.simple-content :deep(li) {
+  margin: 3px 0;
+  color: #2c3e50;
+}
+
+.simple-content :deep(blockquote) {
+  border-left: 3px solid #3498db;
+  padding: 8px 10px;
+  margin: 8px 0;
+  background: #f8f9fa;
+  color: #6c757d;
+  border-radius: 0 3px 3px 0;
+  font-style: italic;
 }
 
 .dialog-footer {

@@ -12,6 +12,7 @@ import com.secondbrain.service.ReviewCardService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -43,11 +44,6 @@ public class KafkaConsumerService {
         this.ebbinghausService = ebbinghausService;
     }
 
-    @KafkaListener(
-            topics = "chat-collect-topic",
-            groupId = "ai-second-brain-group",
-            containerFactory = "kafkaListenerContainerFactory"
-    )
     public void handleChatCollect(String message) {
         log.info("收到Kafka消息，开始处理对话采集...");
         

@@ -71,13 +71,39 @@ public class AiServiceImpl implements AiService {
         return callAiApiWithRetry(prompt);
     }
 
+    @Override
+    public String generateAnswer(String prompt) {
+        return callAiApiWithRetry(prompt);
+    }
+
+    @Override
+    public List<KnowledgeDTO> extractKnowledge(String content, String userApiKey) {
+        String prompt = buildPrompt(content);
+        String response = callAiApiWithRetry(prompt, userApiKey);
+        return parseResponse(response);
+    }
+
+    @Override
+    public String generateQuestion(String prompt, String userApiKey) {
+        return callAiApiWithRetry(prompt, userApiKey);
+    }
+
+    @Override
+    public String generateAnswer(String prompt, String userApiKey) {
+        return callAiApiWithRetry(prompt, userApiKey);
+    }
+
     private String callAiApiWithRetry(String prompt) {
+        return callAiApiWithRetry(prompt, null);
+    }
+
+    private String callAiApiWithRetry(String prompt, String userApiKey) {
         int retryCount = 0;
         Exception lastException = null;
 
         while (retryCount < MAX_RETRY_TIMES) {
             try {
-                String response = callAiApi(prompt);
+                String response = callAiApi(prompt, userApiKey);
                 if (response != null && !response.isEmpty()) {
                     log.info("AI API调用成功，重试次数：{}", retryCount);
                     return response;
@@ -138,22 +164,35 @@ public class AiServiceImpl implements AiService {
     }
 
     private String callAiApi(String prompt) {
+        return callAiApi(prompt, null);
+    }
+
+    private String callAiApi(String prompt, String userApiKey) {
         try {
             String url, apiKey, model;
 
             if ("qwen".equalsIgnoreCase(provider)) {
                 url = qwenBaseUrl + "/chat/completions";
-                apiKey = qwenApiKey;
+                apiKey = userApiKey != null && !userApiKey.isEmpty() ? userApiKey : qwenApiKey;
                 model = qwenModel;
             } else if ("deepseek".equalsIgnoreCase(provider)) {
                 url = deepseekBaseUrl + "/chat/completions";
-                apiKey = deepseekApiKey;
+                apiKey = userApiKey != null && !userApiKey.isEmpty() ? userApiKey : deepseekApiKey;
                 model = deepseekModel;
             } else {
                 url = openaiBaseUrl + "/chat/completions";
-                apiKey = openaiApiKey;
+                apiKey = userApiKey != null && !userApiKey.isEmpty() ? userApiKey : openaiApiKey;
                 model = openaiModel;
             }
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                log.error("API Key为空，无法调用AI服务");
+                return null;
+            }
+
+            String apiKeySource = userApiKey != null && !userApiKey.isEmpty() ? "用户API Key" : "平台API Key";
+            String maskedApiKey = apiKey.substring(0, Math.min(8, apiKey.length())) + "..." + apiKey.substring(Math.max(0, apiKey.length() - 4));
+            log.info("使用{}调用AI服务，API Key：{}，模型：{}", apiKeySource, maskedApiKey, model);
 
             JSONObject requestBody = new JSONObject();
             requestBody.put("model", model);
@@ -185,7 +224,7 @@ public class AiServiceImpl implements AiService {
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("AI API响应状态码：{}，响应体长度：{}", response.getStatusCode(), response.getBody().length());
+                log.info("AI API响应状态码：{}，响应体长度：{}，使用的API Key来源：{}", response.getStatusCode(), response.getBody().length(), apiKeySource);
                 log.info("AI API响应体前100字符：{}", response.getBody().substring(0, Math.min(100, response.getBody().length())));
                 
                 JSONObject jsonResponse = JSON.parseObject(response.getBody());
@@ -194,12 +233,12 @@ public class AiServiceImpl implements AiService {
                     JSONObject choice = choices.getJSONObject(0);
                     JSONObject messageObj = choice.getJSONObject("message");
                     String content = messageObj.getString("content");
-                    log.info("AI API响应内容长度：{}", content.length());
+                    log.info("AI API响应内容长度：{}，使用的API Key来源：{}", content.length(), apiKeySource);
                     return content;
                 }
             }
 
-            log.error("AI API调用失败：{}", response.getStatusCode());
+            log.error("AI API调用失败：{}，使用的API Key来源：{}", response.getStatusCode(), apiKeySource);
             return null;
 
         } catch (Exception e) {

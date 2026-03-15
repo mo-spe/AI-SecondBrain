@@ -16,6 +16,9 @@ public class UpdateUserDTO {
     
     @Schema(description = "个人简介")
     private String bio;
+    
+    @Schema(description = "API Key")
+    private String apiKey;
 
     public String getUsername() {
         return username;
@@ -47,5 +50,13 @@ public class UpdateUserDTO {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
     }
 }

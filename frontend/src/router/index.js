@@ -57,6 +57,18 @@ const routes = [
         meta: { title: "知识搜索" },
       },
       {
+        path: "rag-qa",
+        name: "RagQA",
+        component: () => import("@/views/RagQA.vue"),
+        meta: { title: "RAG知识问答" },
+      },
+      {
+        path: "knowledge-graph",
+        name: "KnowledgeGraph",
+        component: () => import("@/views/KnowledgeGraph.vue"),
+        meta: { title: "知识图谱" },
+      },
+      {
         path: "report",
         name: "Report",
         component: () => import("@/views/Report.vue"),

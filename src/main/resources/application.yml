@@ -13,15 +13,15 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/second_brain?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    url: jdbc:mysql://localhost:3306/second_brain?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      host: localhost
+      port: 6379
+      password: 123321
       database: 0
       timeout: 3000ms
       lettuce:
@@ -33,7 +33,7 @@ spring:
 
   kafka:
     enabled: ${KAFKA_ENABLED:true}
-    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    bootstrap-servers: localhost:9092
     consumer:
       group-id: ai-second-brain-group
       auto-offset-reset: earliest
@@ -47,7 +47,7 @@ spring:
 
   elasticsearch:
     enabled: ${ES_ENABLED:true}
-    uris: ${ES_URL:http://localhost:9200}
+    uris: http://localhost:9200
     username: ${ES_USERNAME:elastic}
     password: ${ES_PASSWORD:elastic123}
     connection-timeout: 5s
@@ -126,6 +126,10 @@ deerflow:
   api:
     url: ${DEERFLOW_API_URL:http://localhost:8000}
     timeout: ${DEERFLOW_API_TIMEOUT:300}
+  local:
+    enabled: ${DEERFLOW_LOCAL_ENABLED:true}
+    learning-path-url: ${DEERFLOW_LOCAL_LEARNING_PATH_URL:http://localhost:8000}
+    report-url: ${DEERFLOW_LOCAL_REPORT_URL:http://localhost:8000}
   qwen:
     api-key: ${QWEN_API_KEY:}
     base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}

@@ -1,0 +1,22 @@
+-- 创建测试知识关系
+INSERT INTO knowledge_relation (user_id, from_knowledge_id, to_knowledge_id, relation_type, relation_name, weight) VALUES
+(1, 1, 2, 'contains', '包含', 1.0),
+(1, 1, 3, 'contains', '包含', 1.0),
+(1, 1, 4, 'contains', '包含', 1.0),
+(1, 2, 5, 'depends', '依赖', 0.8),
+(1, 3, 6, 'depends', '依赖', 0.8),
+(1, 4, 7, 'depends', '依赖', 0.8),
+(1, 5, 8, 'related', '相关', 0.6),
+(1, 6, 9, 'related', '相关', 0.6),
+(1, 7, 10, 'related', '相关', 0.6),
+(1, 8, 11, 'related', '相关', 0.6),
+(1, 9, 12, 'related', '相关', 0.6),
+(1, 10, 13, 'related', '相关', 0.6),
+(1, 11, 14, 'related', '相关', 0.6),
+(1, 12, 15, 'related', '相关', 0.6),
+(1, 13, 16, 'related', '相关', 0.6),
+(1, 14, 17, 'related', '相关', 0.6),
+(1, 15, 18, 'related', '相关', 0.6),
+(1, 16, 19, 'related', '相关', 0.6),
+(1, 17, 20, 'related', '相关', 0.6),
+(1, 18, 21, 'related', '相关', 0.6);

@@ -2,6 +2,7 @@ package com.secondbrain.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.Result;
+import com.secondbrain.dto.AsyncTaskResponse;
 import com.secondbrain.dto.ReportRequest;
 import com.secondbrain.entity.LearningReport;
 import com.secondbrain.service.DeerFlowReportService;
@@ -54,6 +55,33 @@ public class ReportController {
         } catch (Exception e) {
             log.error("生成学习报告失败", e);
             return Result.error("生成学习报告失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/generate-async")
+    @Operation(summary = "异步生成学习报告", description = "异步生成学习报告，返回任务ID")
+    public Result<AsyncTaskResponse> generateReportAsync(
+            @RequestBody ReportRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserId(httpRequest);
+            if (userId == null) {
+                return Result.error("无法获取用户ID，请重新登录");
+            }
+            
+            log.info("收到异步生成学习报告请求，用户ID：{}，主题：{}，天数：{}", 
+                userId, request.getTopic(), request.getDays());
+            
+            AsyncTaskResponse task = deerFlowReportService.generateLearningReportAsync(
+                userId, 
+                request.getTopic(), 
+                request.getDays()
+            );
+            
+            return Result.success("任务已创建，请使用任务ID查询进度", task);
+        } catch (Exception e) {
+            log.error("异步生成学习报告失败", e);
+            return Result.error("异步生成学习报告失败：" + e.getMessage());
         }
     }
 

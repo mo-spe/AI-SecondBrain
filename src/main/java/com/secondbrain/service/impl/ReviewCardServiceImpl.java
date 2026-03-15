@@ -359,31 +359,21 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
     @Override
     public long countPendingByUserId(Long userId) {
-        LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime todayEnd = todayStart.plusDays(1);
-        
         return reviewCardMapper.selectCount(
             new LambdaQueryWrapper<ReviewCard>()
                 .eq(ReviewCard::getUserId, userId)
                 .eq(ReviewCard::getReviewCount, 0)
                 .eq(ReviewCard::getDeleted, 0)
-                .ge(ReviewCard::getNextReviewTime, todayStart)
-                .lt(ReviewCard::getNextReviewTime, todayEnd)
         );
     }
 
     @Override
     public long countCompletedByUserId(Long userId) {
-        LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime todayEnd = todayStart.plusDays(1);
-        
         return reviewCardMapper.selectCount(
             new LambdaQueryWrapper<ReviewCard>()
                 .eq(ReviewCard::getUserId, userId)
                 .gt(ReviewCard::getReviewCount, 0)
                 .eq(ReviewCard::getDeleted, 0)
-                .ge(ReviewCard::getNextReviewTime, todayStart)
-                .lt(ReviewCard::getNextReviewTime, todayEnd)
         );
     }
 

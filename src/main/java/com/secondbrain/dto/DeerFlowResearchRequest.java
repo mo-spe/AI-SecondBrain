@@ -6,6 +6,8 @@ public class DeerFlowResearchRequest {
     
     private String topic;
     
+    private String goal;
+    
     private String depth;
     
     private String currentLevel;
@@ -28,6 +30,14 @@ public class DeerFlowResearchRequest {
 
     public void setTopic(String topic) {
         this.topic = topic;
+    }
+
+    public String getGoal() {
+        return goal;
+    }
+
+    public void setGoal(String goal) {
+        this.goal = goal;
     }
 
     public String getDepth() {

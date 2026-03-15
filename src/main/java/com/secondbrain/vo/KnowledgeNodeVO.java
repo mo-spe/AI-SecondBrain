@@ -34,6 +34,9 @@ public class KnowledgeNodeVO {
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
 
+    @Schema(description = "搜索分数（语义搜索相关度）")
+    private Double score;
+
     public Long getId() {
         return id;
     }
@@ -104,5 +107,13 @@ public class KnowledgeNodeVO {
 
     public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;
+    }
+
+    public Double getScore() {
+        return score;
+    }
+
+    public void setScore(Double score) {
+        this.score = score;
     }
 }

@@ -1,12 +1,16 @@
 package com.secondbrain.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.secondbrain.common.Result;
+import com.secondbrain.dto.AsyncTaskResponse;
 import com.secondbrain.dto.DeerFlowResearchRequest;
 import com.secondbrain.dto.DeerFlowResearchResponse;
 import com.secondbrain.dto.ResearchHistoryRequest;
 import com.secondbrain.entity.ResearchHistory;
 import com.secondbrain.service.DeerFlowResearchService;
 import com.secondbrain.service.ResearchHistoryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/deerflow")
+@Tag(name = "AI知识研究", description = "AI知识研究接口")
 public class DeerFlowResearchController {
 
     private static final Logger log = LoggerFactory.getLogger(DeerFlowResearchController.class);
@@ -29,6 +34,60 @@ public class DeerFlowResearchController {
     @Autowired
     private ResearchHistoryService researchHistoryService;
 
+    @Autowired
+    private com.secondbrain.service.UserService userService;
+
+    @PostMapping("/research/learning-report-async")
+    @Operation(summary = "异步生成学习报告", description = "异步生成学习报告，返回任务ID")
+    public Result<AsyncTaskResponse> generateLearningReportAsync(
+            @RequestBody DeerFlowResearchRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            Long userId = (Long) httpRequest.getAttribute("userId");
+            if (userId == null) {
+                userId = 1L;
+                log.warn("无法获取用户ID，使用默认用户ID：{}", userId);
+            }
+            
+            String topic = request.getTopic();
+            if (topic == null || topic.isEmpty()) {
+                topic = request.getLearningData();
+            }
+            if (topic == null || topic.isEmpty()) {
+                topic = request.getGoal();
+            }
+            
+            String depth = request.getDepth();
+            if (depth == null || depth.isEmpty()) {
+                depth = "medium";
+            }
+            
+            log.info("收到异步生成学习报告请求，用户ID：{}，主题：{}，深度：{}", userId, topic, depth);
+            
+            String userApiKey = null;
+            try {
+                com.secondbrain.entity.User user = userService.getUserById(userId);
+                if (user != null) {
+                    userApiKey = user.getApiKey();
+                }
+            } catch (Exception e) {
+                log.warn("获取用户API Key失败：{}", e.getMessage());
+            }
+            
+            AsyncTaskResponse task = deerFlowResearchService.generateLearningReportAsync(
+                userId,
+                topic,
+                depth,
+                userApiKey
+            );
+            
+            return Result.success("任务已创建，请使用任务ID查询进度", task);
+        } catch (Exception e) {
+            log.error("异步生成学习报告失败", e);
+            return Result.error("异步生成学习报告失败：" + e.getMessage());
+        }
+    }
+
     @PostMapping("/research/learning-report")
     public ResponseEntity<Map<String, Object>> generateLearningReport(@RequestBody DeerFlowResearchRequest request) {
         try {
@@ -37,7 +96,8 @@ public class DeerFlowResearchController {
             String report = deerFlowResearchService.generateDeepLearningReport(
                 request.getLearningData(),
                 request.getTopic(),
-                request.getDepth()
+                request.getDepth(),
+                null
             );
 
             Map<String, Object> response = new HashMap<>();
@@ -64,7 +124,8 @@ public class DeerFlowResearchController {
             String learningPath = deerFlowResearchService.generateLearningPath(
                 request.getTopic(),
                 request.getCurrentLevel(),
-                request.getTargetLevel()
+                request.getTargetLevel(),
+                null
             );
 
             Map<String, Object> response = new HashMap<>();
@@ -83,6 +144,63 @@ public class DeerFlowResearchController {
         }
     }
 
+    @PostMapping("/research/learning-path-async")
+    @Operation(summary = "异步生成学习路径", description = "异步生成学习路径，返回任务ID")
+    public Result<AsyncTaskResponse> generateLearningPathAsync(
+            @RequestBody DeerFlowResearchRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            Long userId = (Long) httpRequest.getAttribute("userId");
+            if (userId == null) {
+                userId = 1L;
+                log.warn("无法获取用户ID，使用默认用户ID：{}", userId);
+            }
+            
+            String topic = request.getTopic();
+            if (topic == null || topic.isEmpty()) {
+                topic = request.getLearningData();
+            }
+            if (topic == null || topic.isEmpty()) {
+                topic = request.getGoal();
+            }
+            
+            String currentLevel = request.getCurrentLevel();
+            if (currentLevel == null || currentLevel.isEmpty()) {
+                currentLevel = "beginner";
+            }
+            
+            String targetLevel = request.getTargetLevel();
+            if (targetLevel == null || targetLevel.isEmpty()) {
+                targetLevel = "advanced";
+            }
+            
+            log.info("收到异步生成学习路径请求，用户ID：{}，主题：{}，当前水平：{}，目标水平：{}", userId, topic, currentLevel, targetLevel);
+            
+            String userApiKey = null;
+            try {
+                com.secondbrain.entity.User user = userService.getUserById(userId);
+                if (user != null) {
+                    userApiKey = user.getApiKey();
+                }
+            } catch (Exception e) {
+                log.warn("获取用户API Key失败：{}", e.getMessage());
+            }
+            
+            AsyncTaskResponse task = deerFlowResearchService.generateLearningPathAsync(
+                userId,
+                topic,
+                currentLevel,
+                targetLevel,
+                userApiKey
+            );
+            
+            return Result.success("任务已创建，请使用任务ID查询进度", task);
+        } catch (Exception e) {
+            log.error("异步生成学习路径失败", e);
+            return Result.error("异步生成学习路径失败：" + e.getMessage());
+        }
+    }
+
     @PostMapping("/research/knowledge-gap")
     public ResponseEntity<Map<String, Object>> researchKnowledgeGap(@RequestBody DeerFlowResearchRequest request) {
         try {
@@ -90,7 +208,8 @@ public class DeerFlowResearchController {
 
             String gapAnalysis = deerFlowResearchService.researchKnowledgeGap(
                 request.getUserKnowledge(),
-                request.getTopic()
+                request.getTopic(),
+                null
             );
 
             Map<String, Object> response = new HashMap<>();
@@ -109,7 +228,46 @@ public class DeerFlowResearchController {
         }
     }
 
+    @PostMapping("/research/knowledge-gap-async")
+    @Operation(summary = "异步分析知识盲区", description = "异步分析知识盲区，返回任务ID")
+    public Result<AsyncTaskResponse> researchKnowledgeGapAsync(
+            @RequestBody DeerFlowResearchRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            Long userId = (Long) httpRequest.getAttribute("userId");
+            if (userId == null) {
+                userId = 1L;
+                log.warn("无法获取用户ID，使用默认用户ID：{}", userId);
+            }
+            
+            log.info("收到异步知识盲区分析请求，用户ID：{}，目标主题：{}", userId, request.getTopic());
+            
+            String userApiKey = null;
+            try {
+                com.secondbrain.entity.User user = userService.getUserById(userId);
+                if (user != null) {
+                    userApiKey = user.getApiKey();
+                }
+            } catch (Exception e) {
+                log.warn("获取用户API Key失败：{}", e.getMessage());
+            }
+            
+            AsyncTaskResponse task = deerFlowResearchService.researchKnowledgeGapAsync(
+                userId,
+                request.getUserKnowledge(),
+                request.getTopic(),
+                userApiKey
+            );
+            
+            return Result.success("任务已创建，请使用任务ID查询进度", task);
+        } catch (Exception e) {
+            log.error("异步知识盲区分析失败", e);
+            return Result.error("异步知识盲区分析失败：" + e.getMessage());
+        }
+    }
+
     @GetMapping("/health")
+    @Operation(summary = "健康检查", description = "检查DeerFlow研究服务健康状态")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         try {
             boolean isHealthy = deerFlowResearchService.checkHealth();
@@ -167,9 +325,10 @@ public class DeerFlowResearchController {
     public ResponseEntity<Map<String, Object>> getResearchHistoryList(
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String type,
             HttpServletRequest httpRequest) {
         try {
-            log.info("收到获取研究历史列表请求，当前页：{}，每页大小：{}", current, size);
+            log.info("收到获取研究历史列表请求，当前页：{}，每页大小：{}，类型：{}", current, size, type);
 
             Long userId = (Long) httpRequest.getAttribute("userId");
             if (userId == null) {
@@ -187,7 +346,7 @@ public class DeerFlowResearchController {
                 return ResponseEntity.ok(response);
             }
 
-            IPage<ResearchHistory> page = researchHistoryService.getList(current, size, userId);
+            IPage<ResearchHistory> page = researchHistoryService.getList(current, size, userId, type);
 
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
@@ -238,6 +397,27 @@ public class DeerFlowResearchController {
             response.put("code", 500);
             response.put("message", "删除失败：" + e.getMessage());
             return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @GetMapping("/async-task/status/{taskId}")
+    @Operation(summary = "查询异步任务状态", description = "根据任务ID查询异步任务的执行状态和结果")
+    public Result<AsyncTaskResponse> getTaskStatus(
+            @PathVariable String taskId) {
+        try {
+            log.info("收到任务状态查询请求，taskNumber：{}", taskId);
+            
+            AsyncTaskResponse task = deerFlowResearchService.getTaskStatus(taskId);
+            
+            if (task == null) {
+                log.warn("任务不存在，taskNumber：{}", taskId);
+                return Result.error("任务不存在");
+            }
+            
+            return Result.success("查询成功", task);
+        } catch (Exception e) {
+            log.error("查询任务状态失败，taskNumber：{}", taskId, e);
+            return Result.error("查询任务状态失败：" + e.getMessage());
         }
     }
 }

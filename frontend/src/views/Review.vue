@@ -36,7 +36,7 @@
               </div>
             </div>
             <div class="stat-body">
-              <div class="stat-value">{{ todayCompleted }}</div>
+              <div class="stat-value">{{ totalCompleted }}</div>
               <div class="stat-label">已完成</div>
             </div>
           </div>
@@ -48,7 +48,7 @@
               </div>
             </div>
             <div class="stat-body">
-              <div class="stat-value">{{ overallAccuracy }}%</div>
+              <div class="stat-value">{{ totalAccuracy }}%</div>
               <div class="stat-label">准确率</div>
             </div>
           </div>
@@ -527,6 +527,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { reviewAPI } from "@/api/review";
+import { statisticsAPI } from "@/api/statistics";
 import {
   Trophy,
   Document,
@@ -569,6 +570,8 @@ const todayCompleted = ref(0);
 const todayPending = ref(0);
 const overallAccuracy = ref(0);
 const streakDays = ref(0);
+const totalCompleted = ref(0);
+const totalAccuracy = ref(0);
 
 let timerInterval = null;
 let startTime = null;
@@ -639,10 +642,40 @@ const loadReviewCards = async () => {
     }
 
     streakDays.value = await calculateStreakDays();
+
+    loadGlobalStatistics();
   } catch (error) {
     ElMessage.error("加载复习卡片失败：" + error.message);
   } finally {
     loading.value = false;
+  }
+};
+
+const loadGlobalStatistics = async () => {
+  try {
+    const response = await statisticsAPI.getStatistics();
+    totalCompleted.value = response.completedReviewCount || 0;
+
+    const reviewedCards = reviewList.value.filter(
+      (card) => card.reviewCount > 0,
+    );
+    if (reviewedCards.length > 0) {
+      const totalCorrectCount = reviewedCards.reduce(
+        (sum, card) => sum + (card.correctCount || 0),
+        0,
+      );
+      const totalReviewCount = reviewedCards.reduce(
+        (sum, card) => sum + (card.reviewCount || 0),
+        0,
+      );
+      totalAccuracy.value = Math.round(
+        (totalCorrectCount / totalReviewCount) * 100,
+      );
+    } else {
+      totalAccuracy.value = 0;
+    }
+  } catch (error) {
+    console.error("加载全局统计数据失败", error);
   }
 };
 
@@ -807,6 +840,9 @@ const submitReview = async () => {
     reviewResult.value = result;
     showResult.value = true;
     ElMessage.success("提交成功");
+
+    loadReviewCards();
+    loadGlobalStatistics();
   } catch (error) {
     ElMessage.error("提交失败：" + error.message);
   } finally {

@@ -35,6 +35,7 @@ public class ResearchHistoryServiceImpl extends ServiceImpl<ResearchHistoryMappe
         history.setContent(request.getContent());
         history.setCurrentLevel(request.getCurrentLevel());
         history.setTargetLevel(request.getTargetLevel());
+        history.setDepth(request.getDepth());
         
         if (request.getUserKnowledge() != null && !request.getUserKnowledge().isEmpty()) {
             try {
@@ -62,6 +63,21 @@ public class ResearchHistoryServiceImpl extends ServiceImpl<ResearchHistoryMappe
         LambdaQueryWrapper<ResearchHistory> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ResearchHistory::getUserId, userId)
                .orderByDesc(ResearchHistory::getCreateTime);
+        
+        return this.page(page, wrapper);
+    }
+
+    @Override
+    public IPage<ResearchHistory> getList(int current, int size, Long userId, String type) {
+        Page<ResearchHistory> page = new Page<>(current, size);
+        LambdaQueryWrapper<ResearchHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResearchHistory::getUserId, userId);
+        
+        if (type != null && !type.isEmpty()) {
+            wrapper.eq(ResearchHistory::getType, type);
+        }
+        
+        wrapper.orderByDesc(ResearchHistory::getCreateTime);
         
         return this.page(page, wrapper);
     }

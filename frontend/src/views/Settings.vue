@@ -80,6 +80,24 @@
                   />
                 </el-form-item>
 
+                <el-form-item label="API Key" prop="apiKey">
+                  <el-input
+                    v-model="settingsForm.apiKey"
+                    type="password"
+                    placeholder="请输入API Key"
+                    size="large"
+                    show-password
+                  >
+                    <template #prefix>
+                      <el-icon><Key /></el-icon>
+                    </template>
+                  </el-input>
+                  <div class="form-tip">
+                    <p>用于AI功能调用的API Key</p>
+                    <p>请妥善保管，不要泄露给他人</p>
+                  </div>
+                </el-form-item>
+
                 <el-form-item>
                   <el-button
                     type="primary"
@@ -316,6 +334,7 @@ import {
   SwitchButton,
   Lock,
   Camera,
+  Key,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -334,6 +353,7 @@ const settingsForm = ref({
   email: "",
   phone: "",
   bio: "",
+  apiKey: "",
 });
 
 const passwordForm = ref({
@@ -406,6 +426,7 @@ const loadUserInfo = async () => {
     settingsForm.value.email = data.email || "";
     settingsForm.value.phone = data.phone || "";
     settingsForm.value.bio = data.bio || "";
+    settingsForm.value.apiKey = data.apiKey || "";
   } catch (error) {
     ElMessage.error("加载用户信息失败：" + error.message);
   }
@@ -423,6 +444,7 @@ const handleSave = async () => {
           email: settingsForm.value.email,
           phone: settingsForm.value.phone,
           bio: settingsForm.value.bio,
+          apiKey: settingsForm.value.apiKey,
         });
 
         await loadUserInfo();
@@ -848,6 +870,26 @@ onMounted(() => {
 :deep(.el-form-item__content) {
   display: flex;
   align-items: center;
+}
+
+.form-tip {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+}
+
+.form-tip p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.5;
+}
+
+.form-tip p:first-child {
+  font-weight: 500;
+  color: #303133;
 }
 
 @media (max-width: 1024px) {

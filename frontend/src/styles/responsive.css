@@ -1,0 +1,240 @@
+/* 移动端响应式设计增强 */
+
+/* 超小屏幕设备 (手机竖屏, < 576px) */
+@media (max-width: 575.98px) {
+  .el-container {
+    padding: 8px;
+  }
+
+  .el-card {
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+
+  .el-button {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .el-input__inner {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .el-select {
+    width: 100%;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .el-table th,
+  .el-table td {
+    padding: 8px 4px;
+  }
+
+  .el-dialog {
+    width: 95% !important;
+    margin: 0 auto;
+  }
+
+  .el-dialog__body {
+    padding: 16px;
+  }
+
+  .el-form-item__label {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .el-tag {
+    margin: 2px;
+    font-size: 12px;
+  }
+
+  .el-pagination {
+    text-align: center;
+  }
+
+  .el-pagination button,
+  .el-pagination li {
+    min-width: 32px;
+    height: 32px;
+    line-height: 30px;
+    font-size: 12px;
+  }
+}
+
+/* 小屏幕设备 (手机横屏, 576px - 767.98px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .el-container {
+    padding: 12px;
+  }
+
+  .el-card {
+    margin-bottom: 16px;
+  }
+
+  .el-button {
+    min-height: 40px;
+    padding: 10px 14px;
+  }
+
+  .el-dialog {
+    width: 90% !important;
+  }
+}
+
+/* 中等屏幕设备 (平板, 768px - 991.98px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .knowledge-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .el-dialog {
+    width: 80% !important;
+  }
+}
+
+/* 大屏幕设备 (桌面, >= 992px) */
+@media (min-width: 992px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .knowledge-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 超大屏幕设备 (大桌面, >= 1200px) */
+@media (min-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .knowledge-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .el-button {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .el-input__inner {
+    min-height: 48px;
+  }
+
+  .el-select {
+    min-height: 48px;
+  }
+
+  .el-checkbox__inner {
+    width: 24px;
+    height: 24px;
+  }
+
+  .el-radio__inner {
+    width: 24px;
+    height: 24px;
+  }
+
+  .el-switch {
+    height: 32px;
+  }
+
+  .el-switch__core {
+    width: 52px;
+    height: 32px;
+  }
+}
+
+/* 横屏模式优化 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .top-navbar {
+    height: 48px;
+  }
+
+  .el-container {
+    padding-top: 48px;
+  }
+
+  .el-dialog {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* 暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .el-card {
+    background-color: #1a1a1a;
+    border-color: #333;
+  }
+
+  .el-button--default {
+    background-color: #2a2a2a;
+    border-color: #444;
+    color: #fff;
+  }
+}
+
+/* 减少动画效果 (用户偏好设置) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .el-button {
+    border-width: 2px;
+  }
+
+  .el-input__inner {
+    border-width: 2px;
+  }
+
+  .el-card {
+    border-width: 2px;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .el-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+
+  .el-button {
+    display: none;
+  }
+}

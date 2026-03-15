@@ -37,17 +37,15 @@
                         </el-input>
                       </el-form-item>
 
-                      <el-form-item label="时间范围">
+                      <el-form-item label="分析深度">
                         <el-select
-                          v-model="reportForm.days"
+                          v-model="reportForm.depth"
                           size="large"
                           style="width: 100%"
                         >
-                          <el-option label="最近1天" :value="1" />
-                          <el-option label="最近7天" :value="7" />
-                          <el-option label="最近30天" :value="30" />
-                          <el-option label="最近90天" :value="90" />
-                          <el-option label="全部时间" :value="365" />
+                          <el-option label="浅度分析" value="shallow" />
+                          <el-option label="中度分析" value="medium" />
+                          <el-option label="深度分析" value="deep" />
                         </el-select>
                       </el-form-item>
 
@@ -71,24 +69,30 @@
               <el-tab-pane label="历史报告" name="history">
                 <div class="tab-content">
                   <div class="history-section">
-                    <div v-loading="loading" class="report-list">
+                    <div v-loading="loading" class="history-list">
                       <div
                         v-for="report in reportList"
                         :key="report.id"
-                        class="report-item"
+                        class="history-item"
                         @click="viewReport(report)"
                       >
-                        <div class="report-header">
-                          <div class="report-title">{{ report.topic }}</div>
-                          <div class="report-time">
+                        <div class="history-header">
+                          <div class="history-title">
+                            <el-tag type="primary" size="small">
+                              学习报告
+                            </el-tag>
+                            <span>{{ report.topic }}</span>
+                          </div>
+                          <div class="history-time">
                             <el-icon><Clock /></el-icon>
                             <span>{{ formatDate(report.createTime) }}</span>
                           </div>
                         </div>
-                        <div class="report-meta">
-                          <el-tag type="info" size="small">
-                            {{ report.days }}天
-                          </el-tag>
+                        <div class="history-meta">
+                          <div class="meta-item">
+                            <el-icon><Document /></el-icon>
+                            <span>{{ getDepthText(report.depth) }}</span>
+                          </div>
                           <el-button
                             type="danger"
                             size="small"
@@ -168,7 +172,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Document,
@@ -179,19 +183,45 @@ import {
   Close,
   Download,
 } from "@element-plus/icons-vue";
-import { reportAPI } from "@/api/report";
+import { deerFlowAPI } from "@/api/deerflow";
+import request from "@/utils/request";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
+import { useUserStore } from "@/stores/user";
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  headerIds: false,
+  mangle: false,
+});
+
+const userStore = useUserStore();
+
+const saveHistory = async (historyData) => {
+  if (!userStore.isLoggedIn()) {
+    return;
+  }
+
+  try {
+    await deerFlowAPI.saveResearchHistory(historyData);
+  } catch (error) {
+    console.error("保存历史记录失败：", error);
+  }
+};
 
 const activeTab = ref("generate");
 const reportForm = ref({
   topic: "",
-  days: 30,
+  depth: "medium",
 });
 const generating = ref(false);
 const loading = ref(false);
 const showDetailDialog = ref(false);
 const currentReport = ref(null);
 const reportList = ref([]);
+const currentTask = ref(null);
+const taskPolling = ref(null);
 
 const pagination = ref({
   current: 1,
@@ -208,34 +238,98 @@ const generateReport = async () => {
   generating.value = true;
 
   try {
-    const report = await reportAPI.generateReport(reportForm.value);
-    ElMessage.success("学习报告生成成功");
-    currentReport.value = {
-      topic: reportForm.value.topic,
-      content: report,
-      createTime: new Date(),
-      days: reportForm.value.days,
-    };
-    showDetailDialog.value = true;
-    reportForm.value.topic = "";
+    const task = await deerFlowAPI.generateLearningReport(reportForm.value);
+    currentTask.value = task;
+
+    if (task.status === "COMPLETED") {
+      ElMessage.success("学习报告生成成功");
+      currentReport.value = {
+        topic: reportForm.value.topic,
+        content: task.result,
+        createTime: new Date(),
+        depth: reportForm.value.depth,
+      };
+      showDetailDialog.value = true;
+      reportForm.value.topic = "";
+      loadReportList();
+    } else {
+      ElMessage.success("学习报告生成任务已创建，正在后台生成...");
+      startTaskPolling(task.taskId);
+    }
   } catch (error) {
+    console.error("生成学习报告失败：", error);
     ElMessage.error("生成学习报告失败：" + (error.message || "未知错误"));
   } finally {
     generating.value = false;
   }
 };
 
+const startTaskPolling = (taskId) => {
+  if (taskPolling.value) {
+    clearInterval(taskPolling.value);
+  }
+
+  taskPolling.value = setInterval(async () => {
+    try {
+      const response = await request({
+        url: `/async-task/status/${taskId}`,
+        method: "get",
+      });
+
+      if (response.status === "COMPLETED") {
+        clearInterval(taskPolling.value);
+        taskPolling.value = null;
+
+        currentReport.value = {
+          topic: reportForm.value.topic,
+          content: response.result,
+          createTime: new Date(),
+          depth: reportForm.value.depth,
+        };
+        showDetailDialog.value = true;
+        reportForm.value.topic = "";
+
+        ElMessage.success("学习报告生成完成！");
+
+        if (userStore.isLoggedIn()) {
+          saveHistory({
+            type: "report",
+            topic: reportForm.value.topic,
+            depth: reportForm.value.depth,
+            content: response.result,
+          });
+        }
+
+        loadReportList();
+      } else if (response.status === "FAILED") {
+        clearInterval(taskPolling.value);
+        taskPolling.value = null;
+        currentTask.value = null;
+
+        ElMessage.error(
+          "学习报告生成失败：" + (response.errorMessage || "未知错误"),
+        );
+      }
+    } catch (error) {
+      console.error("查询任务状态失败：", error);
+    }
+  }, 3000);
+};
+
 const loadReportList = async () => {
   try {
     loading.value = true;
-    const data = await reportAPI.getReportList({
+    const data = await deerFlowAPI.getResearchHistoryList({
       current: pagination.value.current,
       size: pagination.value.size,
+      type: "report",
     });
+
     reportList.value = data.records || [];
-    pagination.value.total = data.total || 0;
+    pagination.value.total = data.total;
   } catch (error) {
-    ElMessage.error("加载报告列表失败：" + error.message);
+    console.error("加载学习报告失败：", error);
+    ElMessage.error("加载学习报告失败：" + error.message);
   } finally {
     loading.value = false;
   }
@@ -258,7 +352,7 @@ const deleteReport = async (report) => {
       },
     );
 
-    await reportAPI.deleteReport(report.id);
+    await deerFlowAPI.deleteResearchHistory(report.id);
     ElMessage.success("删除成功");
     loadReportList();
   } catch (error) {
@@ -291,9 +385,33 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleString("zh-CN");
 };
 
+const getDepthText = (depth) => {
+  const depthMap = {
+    shallow: "浅度分析",
+    medium: "中度分析",
+    deep: "深度分析",
+  };
+  return depthMap[depth] || depth;
+};
+
 const renderMarkdown = (content) => {
   if (!content) return "";
-  return marked(content);
+
+  let parsedContent = content;
+
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "string") {
+      parsedContent = parsed;
+    } else if (typeof parsed === "object") {
+      parsedContent = JSON.stringify(parsed, null, 2);
+    }
+  } catch (e) {
+    console.log("内容不是JSON格式，直接使用原始内容");
+  }
+
+  const html = marked(parsedContent);
+  return DOMPurify.sanitize(html);
 };
 
 const handleSizeChange = (size) => {
@@ -309,6 +427,12 @@ const handleCurrentChange = (current) => {
 
 onMounted(() => {
   loadReportList();
+});
+
+onUnmounted(() => {
+  if (taskPolling.value) {
+    clearInterval(taskPolling.value);
+  }
 });
 </script>
 
@@ -447,69 +571,70 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.report-list {
+.history-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: 400px;
+  gap: 15px;
 }
 
-.report-item {
-  background: white;
-  border: 2px solid #f0f0f0;
+.history-item {
+  background: #f5f7fa;
   border-radius: 12px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.3s;
+  border: 2px solid transparent;
 }
 
-.report-item:hover {
+.history-item:hover {
+  background: #fff;
   border-color: #667eea;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
 }
 
-.report-header {
+.history-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 12px;
 }
 
-.report-title {
-  flex: 1;
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
-  line-height: 1.4;
-}
-
-.report-time {
+.history-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #909399;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
 }
 
-.report-time .el-icon {
-  color: #667eea;
+.history-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: #7f8c8d;
 }
 
-.report-meta {
+.history-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: #7f8c8d;
 }
 
 .pagination-wrapper {
   display: flex;
   justify-content: center;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  margin-top: 30px;
 }
 
 .detail-content {
@@ -726,6 +851,20 @@ onMounted(() => {
   :deep(.el-tabs__item) {
     padding: 0 15px;
     font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .history-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 }
 </style>

@@ -13,13 +13,19 @@ public interface ChatService {
 
     void collectChat(ChatCollectRequest request, Long userId);
 
+    void collectChat(ChatCollectRequest request, Long userId, String userApiKey);
+
     int batchImportChats(BatchChatImportRequest request, Long userId);
+
+    int batchImportChats(BatchChatImportRequest request, Long userId, String userApiKey);
 
     Page<ChatRecordDTO> getChatList(Long current, Long size, String platform, String keyword, Long userId);
 
     ChatRecordDTO getChatById(Long id, Long userId);
 
     List<KnowledgeDTO> extractKnowledge(String content);
+
+    List<KnowledgeDTO> extractKnowledge(String content, String userApiKey);
 
     long countByUserId(Long userId);
 
