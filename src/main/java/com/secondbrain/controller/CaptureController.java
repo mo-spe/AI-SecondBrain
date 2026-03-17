@@ -46,12 +46,22 @@ public class CaptureController {
     @PostMapping("/note")
     @Operation(summary = "笔记捕捉", description = "提交笔记内容进行知识捕捉")
     public Result<String> captureNote(@RequestBody NoteCaptureRequest request, HttpServletRequest httpRequest) {
+        log.info("========== 收到笔记捕捉请求 ==========");
+        log.info("请求参数：title={}, contentLength={}, userId={}", 
+            request.getTitle(), 
+            request.getContent() != null ? request.getContent().length() : 0,
+            request.getUserId());
+        
         try {
             Long currentUserId = getUserId(httpRequest, request.getUserId());
+            log.info("解析用户 ID 成功：userId={}", currentUserId);
+            
             String result = noteCaptureService.captureMarkdownNote(request);
+            log.info("笔记捕捉完成：result={}", result);
+            
             return Result.success(result);
         } catch (Exception e) {
-            log.error("笔记捕捉失败", e);
+            log.error("笔记捕捉失败，title={}", request.getTitle(), e);
             return Result.error("笔记捕捉失败：" + e.getMessage());
         }
     }

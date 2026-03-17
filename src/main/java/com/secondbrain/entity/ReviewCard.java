@@ -27,8 +27,6 @@ public class ReviewCard {
 
     private Integer incorrectCount;
 
-    private Double averageAccuracy;
-
     private Integer masteryLevel;
 
     private Double memoryStrength;
@@ -40,6 +38,10 @@ public class ReviewCard {
     private Integer status;
 
     private String aiGenerated;
+
+    private String generationType;
+
+    private Integer isRestored;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
@@ -130,14 +132,6 @@ public class ReviewCard {
         this.incorrectCount = incorrectCount;
     }
 
-    public Double getAverageAccuracy() {
-        return averageAccuracy;
-    }
-
-    public void setAverageAccuracy(Double averageAccuracy) {
-        this.averageAccuracy = averageAccuracy;
-    }
-
     public Integer getMasteryLevel() {
         return masteryLevel;
     }
@@ -184,6 +178,22 @@ public class ReviewCard {
 
     public void setAiGenerated(String aiGenerated) {
         this.aiGenerated = aiGenerated;
+    }
+
+    public String getGenerationType() {
+        return generationType;
+    }
+
+    public void setGenerationType(String generationType) {
+        this.generationType = generationType;
+    }
+
+    public Integer getIsRestored() {
+        return isRestored;
+    }
+
+    public void setIsRestored(Integer isRestored) {
+        this.isRestored = isRestored;
     }
 
     public LocalDateTime getCreateTime() {

@@ -10,6 +10,8 @@ public interface ReviewCardService {
 
     ReviewCard generateReviewCard(Long nodeId, String cardType);
 
+    ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType);
+
     List<ReviewCard> getTodayReviewCards(Long userId);
 
     ReviewCard getReviewCardById(Long id);
@@ -22,9 +24,13 @@ public interface ReviewCardService {
 
     void deleteReviewCard(Long id);
     
-    void deleteAllReviewCards();
+    void deleteAllReviewCards(Long userId);
     
-    int generateReviewCardsForAllNodes();
+    int generateReviewCardsForAllNodes(Long userId);
+    
+    void generateReviewCardsForAllNodesAsync();
+    
+    int restoreReviewCards(Long userId);
     
     void updateMissingAnswers();
 
@@ -35,4 +41,13 @@ public interface ReviewCardService {
     long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime);
     
     int calculateStreakDays(Long userId);
+
+    void recordQualityFeedback(Long cardId, Integer rating, String comment);
+    
+    /**
+     * 获取用户全局准确率
+     * @param userId 用户 ID
+     * @return 准确率（0-100 之间的整数）
+     */
+    int getUserAccuracy(Long userId);
 }

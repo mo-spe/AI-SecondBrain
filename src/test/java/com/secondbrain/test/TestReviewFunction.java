@@ -120,17 +120,16 @@ public class TestReviewFunction {
         }
 
         ReviewCard card = cards.get(0);
-        System.out.println("卡片ID：" + card.getId());
+        System.out.println("卡片 ID：" + card.getId());
         System.out.println("问题：" + card.getQuestion());
         System.out.println("当前复习次数：" + card.getReviewCount());
-        System.out.println("当前准确率：" + String.format("%.4f", card.getAverageAccuracy()));
 
         System.out.println("\n模拟复习（正确）");
         reviewCardService.submitReviewResult(card.getId(), "A", 30);
 
         ReviewCard updatedCard = reviewCardMapper.selectById(card.getId());
         System.out.println("复习后复习次数：" + updatedCard.getReviewCount());
-        System.out.println("复习后准确率：" + String.format("%.4f", updatedCard.getAverageAccuracy()));
+        System.out.println("答对次数：" + updatedCard.getCorrectCount());
         System.out.println("掌握程度：" + updatedCard.getMasteryLevel());
         System.out.println("记忆强度：" + String.format("%.4f", updatedCard.getMemoryStrength()));
         System.out.println("下次复习时间：" + updatedCard.getNextReviewTime());
@@ -140,7 +139,7 @@ public class TestReviewFunction {
 
         ReviewCard updatedCard2 = reviewCardMapper.selectById(card.getId());
         System.out.println("复习后复习次数：" + updatedCard2.getReviewCount());
-        System.out.println("复习后准确率：" + String.format("%.4f", updatedCard2.getAverageAccuracy()));
+        System.out.println("答对次数：" + updatedCard2.getCorrectCount());
         System.out.println("掌握程度：" + updatedCard2.getMasteryLevel());
         System.out.println("记忆强度：" + String.format("%.4f", updatedCard2.getMemoryStrength()));
         System.out.println("下次复习时间：" + updatedCard2.getNextReviewTime());
@@ -158,10 +157,10 @@ public class TestReviewFunction {
 
         for (int i = 0; i < todayCards.size(); i++) {
             ReviewCard card = todayCards.get(i);
-            System.out.println("\n" + (i + 1) + ". 卡片ID：" + card.getId());
+            System.out.println("\n" + (i + 1) + ". 卡片 ID：" + card.getId());
             System.out.println("   问题：" + card.getQuestion());
             System.out.println("   复习次数：" + card.getReviewCount());
-            System.out.println("   准确率：" + String.format("%.4f", card.getAverageAccuracy()));
+            System.out.println("   答对次数：" + card.getCorrectCount());
             System.out.println("   掌握程度：" + card.getMasteryLevel());
             System.out.println("   下次复习时间：" + card.getNextReviewTime());
         }

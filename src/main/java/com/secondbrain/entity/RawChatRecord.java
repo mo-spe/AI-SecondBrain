@@ -24,6 +24,8 @@ public class RawChatRecord {
     @TableLogic
     private Integer deleted;
 
+    private Integer processed;
+
     public Long getId() {
         return id;
     }
@@ -78,5 +80,13 @@ public class RawChatRecord {
 
     public void setDeleted(Integer deleted) {
         this.deleted = deleted;
+    }
+
+    public Integer getProcessed() {
+        return processed;
+    }
+
+    public void setProcessed(Integer processed) {
+        this.processed = processed;
     }
 }

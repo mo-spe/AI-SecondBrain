@@ -56,7 +56,7 @@ public class RagServiceImpl implements RagService {
             log.info("检索到{}条相关知识，耗时{}ms", references.size(), response.getRetrievalTime());
 
             if (references.isEmpty()) {
-                response.setAnswer("抱歉，我在您的知识库中没有找到相关的知识。您可以先添加一些相关的知识点，然后再提问。");
+                response.setAnswer("抱歉，我在您的知识库中没有找到相关的知识。这可能是因为：\n1. 您还没有添加相关的知识点\n2. 知识点还没有生成向量索引\n3. API Key配置有问题\n\n您可以先添加一些相关的知识点，然后等待向量索引生成，或者检查API Key配置。");
                 response.setReferences(new ArrayList<>());
                 return response;
             }
@@ -73,6 +73,13 @@ public class RagServiceImpl implements RagService {
             
             log.info("RAG问答完成，答案长度：{}，生成耗时：{}ms", answer.length(), response.getGenerationTime());
             
+        } catch (RuntimeException e) {
+            log.error("RAG问答失败", e);
+            if (e.getMessage().contains("API Key")) {
+                response.setAnswer("抱歉，AI服务不可用。请前往【个人设置】配置有效的API Key。错误信息：" + e.getMessage());
+            } else {
+                response.setAnswer("抱歉，回答问题时出现错误：" + e.getMessage());
+            }
         } catch (Exception e) {
             log.error("RAG问答失败", e);
             response.setAnswer("抱歉，回答问题时出现错误：" + e.getMessage());

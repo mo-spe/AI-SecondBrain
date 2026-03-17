@@ -472,6 +472,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { knowledgeAPI } from "@/api/knowledge";
 import { reviewAPI } from "@/api/review";
@@ -495,6 +496,8 @@ import {
   Tickets,
   Grid,
 } from "@element-plus/icons-vue";
+
+const router = useRouter();
 
 const loading = ref(false);
 const saveLoading = ref(false);
@@ -730,6 +733,7 @@ const generateQuestion = async (knowledge) => {
     const result = await reviewAPI.generateReviewCard({
       nodeId: knowledge.id,
       cardType: "choice",
+      generationType: "manual",
     });
 
     console.log("生成题目结果:", result);
@@ -737,7 +741,20 @@ const generateQuestion = async (knowledge) => {
     ElMessage.success("生成题目成功");
   } catch (error) {
     console.error("生成题目失败:", error);
-    ElMessage.error("生成题目失败：" + error.message);
+    if (error.message && error.message.includes("API Key")) {
+      ElMessageBox.alert(
+        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
+        "需要配置API Key",
+        {
+          confirmButtonText: "前往设置",
+          type: "warning",
+        },
+      ).then(() => {
+        router.push("/settings");
+      });
+    } else {
+      ElMessage.error("生成题目失败：" + (error.message || "未知错误"));
+    }
   } finally {
     knowledge.generating = false;
   }

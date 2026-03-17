@@ -30,18 +30,19 @@ public class JwtInterceptor implements HandlerInterceptor {
             
             try {
                 Long userId = jwtUtil.getUserIdFromToken(token);
+                log.info("JWT 解析结果，userId: {}", userId);
                 if (userId != null) {
                     request.setAttribute("userId", userId);
-                    log.info("JWT验证成功，userId: {}", userId);
+                    log.info("JWT 验证成功，userId: {}", userId);
                     return true;
                 } else {
-                    log.warn("JWT解析成功但userId为null");
+                    log.warn("JWT 解析成功但 userId 为 null");
                 }
             } catch (Exception e) {
-                log.error("JWT验证失败: {}", e.getMessage(), e);
+                log.error("JWT 验证失败：{}", e.getMessage(), e);
             }
         } else {
-            log.warn("没有找到有效的Authorization header");
+            log.warn("没有找到有效的 Authorization header");
         }
         
         return true;

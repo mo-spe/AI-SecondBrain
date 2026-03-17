@@ -48,8 +48,8 @@ public class VectorSearchServiceImpl implements VectorSearchService {
         List<Float> questionEmbedding = embeddingService.generateEmbedding(question, defaultModel, userApiKey);
         
         if (questionEmbedding == null || questionEmbedding.isEmpty()) {
-            log.warn("问题向量化失败，返回空结果");
-            return new ArrayList<>();
+            log.error("问题向量化失败，无法进行检索");
+            throw new RuntimeException("问题向量化失败，请检查API Key配置或稍后重试");
         }
 
         List<KnowledgeEmbedding> embeddings = embeddingMapper.getByUserId(userId);

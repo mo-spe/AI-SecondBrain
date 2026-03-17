@@ -53,37 +53,31 @@ public class ReviewJob extends QuartzJobBean {
     private void autoGenerateReviewCards() {
         log.info("开始自动生成复习卡片");
 
-        LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
-        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime now = LocalDateTime.now();
 
-        List<KnowledgeNode> recentNodes = knowledgeNodeMapper.selectList(
+        List<KnowledgeNode> nodesNeedReview = knowledgeNodeMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeNode>()
-                        .ge(KnowledgeNode::getCreateTime, yesterday)
-                        .lt(KnowledgeNode::getCreateTime, today)
+                        .le(KnowledgeNode::getNextReviewTime, now)
                         .eq(KnowledgeNode::getDeleted, 0)
         );
 
         int generatedCount = 0;
-        for (KnowledgeNode node : recentNodes) {
+        
+        for (KnowledgeNode node : nodesNeedReview) {
             try {
-                List<ReviewCard> existingCards = reviewCardMapper.selectList(
-                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewCard>()
-                                .eq(ReviewCard::getNodeId, node.getId())
-                                .eq(ReviewCard::getDeleted, 0)
-                );
-
-                if (existingCards.isEmpty()) {
-                    ReviewCard card = reviewCardService.generateReviewCard(node.getId(), "simple");
-                    if (card != null) {
-                        generatedCount++;
-                    }
+                ReviewCard card = reviewCardService.generateReviewCard(node.getId(), "choice", "auto");
+                if (card != null) {
+                    generatedCount++;
+                    log.info("为知识点生成复习卡片成功，nodeId：{}，nextReviewTime：{}，cardId：{}", 
+                            node.getId(), node.getNextReviewTime(), card.getId());
                 }
             } catch (Exception e) {
                 log.error("生成复习卡片失败，nodeId：{}", node.getId(), e);
             }
         }
 
-        log.info("自动生成复习卡片完成，共生成{}张卡片", generatedCount);
+        log.info("自动生成复习卡片完成，需要复习的知识点数：{}，生成{}张卡片", 
+                nodesNeedReview.size(), generatedCount);
     }
 
     private void sendDailyReviewNotifications() {

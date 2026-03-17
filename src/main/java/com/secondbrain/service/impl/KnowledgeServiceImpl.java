@@ -9,6 +9,7 @@ import com.secondbrain.service.CacheService;
 import com.secondbrain.service.EbbinghausService;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.KnowledgeService;
+import com.secondbrain.service.KnowledgeVectorService;
 import com.secondbrain.service.RelationRecommendationService;
 import com.secondbrain.service.VectorSearchService;
 import com.secondbrain.vo.KnowledgeNodeVO;
@@ -41,6 +42,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Autowired(required = false)
     private RelationRecommendationService relationRecommendationService;
+
+    @Autowired(required = false)
+    private KnowledgeVectorService knowledgeVectorService;
 
     public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, CacheService cacheService, EbbinghausService ebbinghausService, VectorSearchService vectorSearchService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
@@ -169,6 +173,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (node == null) {
             throw new RuntimeException("知识点不存在");
         }
+
         if (!node.getUserId().equals(userId)) {
             throw new RuntimeException("无权更新此知识点");
         }
@@ -186,6 +191,11 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (elasticsearchService != null) {
             KnowledgeNode updatedNode = knowledgeNodeMapper.selectById(id);
             elasticsearchService.syncKnowledgeNode(updatedNode);
+        }
+        
+        if (knowledgeVectorService != null) {
+            KnowledgeNode nodeForVector = knowledgeNodeMapper.selectById(id);
+            triggerVectorGenerationAsync(nodeForVector);
         }
         
         log.info("更新知识点内容并清除缓存，id：{}", id);
@@ -212,6 +222,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             triggerRelationRecommendationAsync(node.getId(), userId);
         }
         
+        if (knowledgeVectorService != null) {
+            triggerVectorGenerationAsync(node);
+        }
+        
         log.info("创建知识点成功，id：{}，userId：{}", node.getId(), userId);
         
         return convertToVO(node);
@@ -224,6 +238,16 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             relationRecommendationService.recommendRelations(knowledgeId, userId);
         } catch (Exception e) {
             log.error("关系推荐失败，knowledgeId：{}，userId：{}", knowledgeId, userId, e);
+        }
+    }
+
+    @Async
+    public void triggerVectorGenerationAsync(KnowledgeNode node) {
+        try {
+            log.info("异步触发向量生成，knowledgeId：{}，title：{}", node.getId(), node.getTitle());
+            knowledgeVectorService.generateAndSaveVector(node);
+        } catch (Exception e) {
+            log.error("向量生成失败，knowledgeId：{}", node.getId(), e);
         }
     }
 

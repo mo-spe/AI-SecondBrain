@@ -25,8 +25,8 @@
                     <el-upload
                       class="upload-demo"
                       drag
-                      :auto-upload="false"
-                      :on-change="handleDocumentUpload"
+                      :auto-upload="true"
+                      :http-request="customUpload"
                       accept=".pdf,.doc,.docx,.txt,.xlsx,.xls"
                       :limit="1"
                     >
@@ -119,7 +119,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   UploadFilled,
   Document,
@@ -129,6 +129,9 @@ import {
 } from "@element-plus/icons-vue";
 import { captureAPI } from "@/api/capture";
 import { userAPI } from "@/api/user";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const activeTab = ref("document");
 const documentFile = ref(null);
@@ -155,13 +158,31 @@ const handleDocumentUpload = async (file) => {
   }
 
   documentFile.value = file;
+};
+
+const customUpload = async (options) => {
+  const { file, onProgress, onSuccess, onError } = options;
 
   try {
-    await captureAPI.captureDocument(file.raw, userId.value);
+    await captureAPI.captureDocument(file, userId.value);
     ElMessage.success("文档上传成功，正在提取知识点...");
+    onSuccess();
     documentFile.value = null;
   } catch (error) {
-    ElMessage.error("文档上传失败：" + (error.message || "未知错误"));
+    if (error.message && error.message.includes("API Key")) {
+      ElMessageBox.alert(
+        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
+        "需要配置API Key",
+        {
+          confirmButtonText: "前往设置",
+          type: "warning",
+        },
+      ).then(() => {
+        router.push("/settings");
+      });
+    } else {
+      ElMessage.error("文档上传失败：" + (error.message || "未知错误"));
+    }
   }
 };
 
@@ -187,7 +208,20 @@ const handleNoteCapture = async () => {
     ElMessage.success("笔记捕捉成功，正在提取知识点...");
     noteForm.value = { title: "", content: "" };
   } catch (error) {
-    ElMessage.error("笔记捕捉失败：" + (error.message || "未知错误"));
+    if (error.message && error.message.includes("API Key")) {
+      ElMessageBox.alert(
+        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
+        "需要配置API Key",
+        {
+          confirmButtonText: "前往设置",
+          type: "warning",
+        },
+      ).then(() => {
+        router.push("/settings");
+      });
+    } else {
+      ElMessage.error("笔记捕捉失败：" + (error.message || "未知错误"));
+    }
   } finally {
     noteLoading.value = false;
   }

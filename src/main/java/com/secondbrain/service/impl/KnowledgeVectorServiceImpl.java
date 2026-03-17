@@ -4,11 +4,13 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.secondbrain.entity.KnowledgeEmbedding;
 import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.entity.User;
 import com.secondbrain.mapper.KnowledgeEmbeddingMapper;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.EmbeddingService;
 import com.secondbrain.service.KnowledgeVectorService;
+import com.secondbrain.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,8 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeVectorServiceImpl.class);
 
+    private static final String defaultModel = "text-embedding-v2";
+
     @Autowired
     private EmbeddingService embeddingService;
 
@@ -33,6 +37,9 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
     @Autowired
     private KnowledgeNodeMapper knowledgeNodeMapper;
 
+    @Autowired
+    private UserService userService;
+
     @Autowired(required = false)
     private ElasticsearchService elasticsearchService;
 
@@ -40,11 +47,31 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
     @Async("vectorTaskExecutor")
     @Transactional
     public void generateAndSaveVector(KnowledgeNode node) {
+        Long userId = node.getUserId();
+        generateAndSaveVector(node, userId);
+    }
+    
+    private void generateAndSaveVector(KnowledgeNode node, Long userId) {
         try {
-            log.info("开始为知识节点生成向量，nodeId：{}，title：{}", node.getId(), node.getTitle());
+            log.info("开始为知识节点生成向量，nodeId：{}，title：{}，userId：{}", node.getId(), node.getTitle(), userId);
 
             String contentForEmbedding = prepareContentForEmbedding(node);
-            List<Float> embedding = embeddingService.generateEmbedding(contentForEmbedding);
+            
+            // 获取用户 API Key
+            String userApiKey = null;
+            if (userId != null) {
+                try {
+                    User user = userService.getUserById(userId);
+                    if (user != null) {
+                        userApiKey = user.getApiKey();
+                        log.info("获取用户 API Key，userId：{}，API Key：{}", userId, userApiKey != null ? userApiKey.substring(0, Math.min(10, userApiKey.length())) + "..." : "null");
+                    }
+                } catch (Exception e) {
+                    log.warn("获取用户 API Key 失败，userId：{}", userId, e);
+                }
+            }
+            
+            List<Float> embedding = embeddingService.generateEmbedding(contentForEmbedding, defaultModel, userApiKey);
 
             if (embedding == null || embedding.isEmpty()) {
                 log.warn("向量生成失败，nodeId：{}", node.getId());
@@ -73,7 +100,7 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
             if (elasticsearchService != null) {
                 elasticsearchService.syncKnowledgeNode(node);
-                log.info("同步到Elasticsearch，nodeId：{}", node.getId());
+                log.info("同步到 Elasticsearch，nodeId：{}", node.getId());
             }
 
             log.info("向量生成完成，nodeId：{}，维度：{}", node.getId(), embedding.size());
@@ -102,7 +129,7 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
             for (KnowledgeNode node : nodes) {
                 try {
-                    generateAndSaveVector(node);
+                    generateAndSaveVector(node, userId);
                     successCount++;
                     Thread.sleep(100);
                 } catch (Exception e) {

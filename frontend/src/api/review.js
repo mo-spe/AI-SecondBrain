@@ -53,6 +53,13 @@ export const reviewAPI = {
     });
   },
 
+  restoreReviewCards() {
+    return request({
+      url: "/review/restore",
+      method: "post",
+    });
+  },
+
   updateMissingAnswers() {
     return request({
       url: "/review/update-answers",
@@ -63,6 +70,21 @@ export const reviewAPI = {
   getStreakDays() {
     return request({
       url: "/review/streak-days",
+      method: "get",
+    });
+  },
+
+  submitQualityFeedback(data) {
+    return request({
+      url: "/review/quality-feedback",
+      method: "post",
+      data,
+    });
+  },
+
+  getUserAccuracy() {
+    return request({
+      url: "/review/accuracy",
       method: "get",
     });
   },

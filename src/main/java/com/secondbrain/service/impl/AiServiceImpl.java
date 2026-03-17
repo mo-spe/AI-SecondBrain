@@ -124,8 +124,8 @@ public class AiServiceImpl implements AiService {
             }
         }
 
-        log.error("AI API调用失败，已重试{}次", MAX_RETRY_TIMES, lastException);
-        return fallbackResponse();
+        log.error("AI API调用失败，已重试{}次，请检查API Key配置", MAX_RETRY_TIMES, lastException);
+        throw new RuntimeException("AI服务调用失败，请配置有效的API Key。请前往个人设置添加API Key，或联系管理员配置平台API Key。");
     }
 
     private String fallbackResponse() {

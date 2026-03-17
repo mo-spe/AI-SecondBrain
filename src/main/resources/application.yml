@@ -19,7 +19,7 @@ spring:
 
   data:
     redis:
-      host: localhost
+      host: 192.168.100.128
       port: 6379
       password: 123321
       database: 0
@@ -40,6 +40,10 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       enable-auto-commit: false
+      heartbeat-interval: 30000
+      session-timeout: 900000
+      max-poll-records: 1
+      max-poll-interval: 300000
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer

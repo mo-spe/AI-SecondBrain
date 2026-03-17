@@ -28,7 +28,7 @@ public class AuthServiceImpl implements AuthService {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getUsername, registerDTO.getUsername());
         if (userMapper.selectCount(wrapper) > 0) {
-            throw new RuntimeException("用户名已存在");
+            throw new RuntimeException("用户已存在");
         }
 
         User user = new User();
@@ -44,11 +44,11 @@ public class AuthServiceImpl implements AuthService {
         User user = userMapper.selectOne(wrapper);
 
         if (user == null) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new RuntimeException("没有该用户");
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new RuntimeException("密码错误");
         }
 
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());

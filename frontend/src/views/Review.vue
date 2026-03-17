@@ -108,7 +108,6 @@
               <el-option label="智能推荐" value="smart" />
               <el-option label="按时间" value="time" />
               <el-option label="按难度" value="difficulty" />
-              <el-option label="按准确率" value="accuracy" />
             </el-select>
           </div>
 
@@ -120,7 +119,11 @@
               :loading="generating"
             >
               <el-icon><Plus /></el-icon>
-              生成卡片
+              生成练习卡片
+            </el-button>
+            <el-button type="success" size="large" @click="generateReviewCards">
+              <el-icon><Document /></el-icon>
+              恢复复习题目
             </el-button>
             <el-button type="danger" size="large" @click="deleteAllCards">
               <el-icon><Delete /></el-icon>
@@ -199,60 +202,45 @@
                     </template>
                   </el-table-column>
                   <el-table-column
-                    prop="reviewCount"
-                    label="复习次数"
-                    width="100"
+                    prop="nodeReviewCount"
+                    label="知识点复习次数"
+                    width="120"
                     align="center"
                   >
                     <template #default="{ row }">
                       <el-badge
-                        :value="row.reviewCount"
+                        :value="row.nodeReviewCount"
                         :max="10"
                         type="warning"
                       />
                     </template>
                   </el-table-column>
                   <el-table-column
-                    prop="averageAccuracy"
-                    label="准确率"
-                    width="100"
-                    align="center"
-                  >
-                    <template #default="{ row }">
-                      <el-progress
-                        type="circle"
-                        :percentage="row.averageAccuracy * 100"
-                        :width="50"
-                        :color="getAccuracyColor(row.averageAccuracy)"
-                      />
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    prop="masteryLevel"
-                    label="掌握程度"
+                    prop="nodeMasteryLevel"
+                    label="知识点掌握程度"
                     width="120"
                     align="center"
                   >
                     <template #default="{ row }">
                       <el-tag
-                        :type="getMasteryLevelColor(row.masteryLevel)"
+                        :type="getMasteryLevelColor(row.nodeMasteryLevel)"
                         effect="dark"
                         size="large"
                       >
-                        {{ getMasteryLevelText(row.masteryLevel) }}
+                        {{ getMasteryLevelText(row.nodeMasteryLevel) }}
                       </el-tag>
                     </template>
                   </el-table-column>
                   <el-table-column
-                    prop="nextReviewTime"
-                    label="下次复习"
+                    prop="createTime"
+                    label="生成时间"
                     width="160"
                     align="center"
                   >
                     <template #default="{ row }">
                       <div class="time-cell">
                         <el-icon><Clock /></el-icon>
-                        <span>{{ formatDate(row.nextReviewTime) }}</span>
+                        <span>{{ row.createTime }}</span>
                       </div>
                     </template>
                   </el-table-column>
@@ -305,9 +293,25 @@
                           <el-tag
                             type="danger"
                             effect="dark"
-                            v-if="card.reviewCount === 0"
+                            v-if="
+                              card.reviewCount === 0 && card.isRestored === 0
+                            "
                           >
                             新卡片
+                          </el-tag>
+                          <el-tag
+                            :type="
+                              card.generationType === 'manual'
+                                ? 'warning'
+                                : 'success'
+                            "
+                            effect="dark"
+                          >
+                            {{
+                              card.generationType === "manual"
+                                ? "手动练习"
+                                : "正式复习"
+                            }}
                           </el-tag>
                         </div>
                         <div class="card-difficulty">
@@ -333,26 +337,25 @@
                         <div class="card-stats">
                           <div class="stat-row">
                             <el-icon><Document /></el-icon>
-                            <span>复习 {{ card.reviewCount }} 次</span>
-                          </div>
-                          <div class="stat-row">
-                            <el-icon><TrendCharts /></el-icon>
                             <span
-                              >准确率
-                              {{
-                                (card.averageAccuracy * 100).toFixed(1)
-                              }}%</span
+                              >知识点复习 {{ card.nodeReviewCount }} 次</span
                             >
                           </div>
                           <div class="stat-row">
                             <el-icon><Medal /></el-icon>
                             <el-tag
-                              :type="getMasteryLevelColor(card.masteryLevel)"
+                              :type="
+                                getMasteryLevelColor(card.nodeMasteryLevel)
+                              "
                               effect="dark"
                               size="small"
                             >
-                              {{ getMasteryLevelText(card.masteryLevel) }}
+                              {{ getMasteryLevelText(card.nodeMasteryLevel) }}
                             </el-tag>
+                          </div>
+                          <div class="stat-row">
+                            <el-icon><Clock /></el-icon>
+                            <span>生成：{{ card.createTime }}</span>
                           </div>
                         </div>
                       </div>
@@ -382,9 +385,9 @@
               description="暂无待复习卡片"
               :image-size="150"
             >
-              <el-button type="primary" @click="generateAllCards">
+              <el-button type="primary" @click="generateReviewCards">
                 <el-icon><Plus /></el-icon>
-                生成复习卡片
+                恢复复习题目
               </el-button>
             </el-empty>
           </div>
@@ -397,7 +400,10 @@
       title="复习答题"
       width="800px"
       :close-on-click-modal="false"
+      :lock-scroll="false"
       class="review-dialog"
+      append-to-body
+      @close="closeReviewDialog"
     >
       <div v-if="currentCard" class="review-dialog-content">
         <div class="dialog-header">
@@ -405,17 +411,30 @@
             <el-tag
               :type="getCardTypeColor(currentCard.cardType)"
               effect="dark"
-              size="large"
+              size="default"
             >
               {{ getCardTypeText(currentCard.cardType) }}
+            </el-tag>
+            <el-tag
+              :type="
+                currentCard.generationType === 'manual' ? 'warning' : 'success'
+              "
+              effect="dark"
+              size="default"
+            >
+              {{
+                currentCard.generationType === "manual"
+                  ? "手动练习"
+                  : "正式复习"
+              }}
             </el-tag>
             <el-rate
               v-model="currentCard.difficulty"
               disabled
               show-score
               text-color="#ff9900"
-              :max="3"
-              size="large"
+              :max="5"
+              size="small"
             />
           </div>
         </div>
@@ -424,7 +443,7 @@
           <h3>{{ parseQuestionText(currentCard.question) }}</h3>
         </div>
 
-        <div class="dialog-answer-section" v-if="!showResult">
+        <div class="dialog-answer-section">
           <div class="answer-header">
             <el-icon><Edit /></el-icon>
             <h4>你的答案</h4>
@@ -435,11 +454,46 @@
               v-for="option in parseChoiceOptions(currentCard.question)"
               :key="option.key"
               class="choice-option"
-              :class="{ selected: reviewForm.selectedOption === option.key }"
-              @click="reviewForm.selectedOption = option.key"
+              :class="{
+                selected: reviewForm.selectedOption === option.key,
+                'correct-answer':
+                  showResult && option.key === reviewResult?.correctAnswer,
+                'wrong-answer':
+                  showResult &&
+                  reviewForm.selectedOption === option.key &&
+                  option.key !== reviewResult?.correctAnswer,
+              }"
+              @click="!showResult && (reviewForm.selectedOption = option.key)"
             >
-              <div class="option-letter">{{ option.key }}</div>
-              <div class="option-content">{{ option.content }}</div>
+              <div class="option-content-wrapper">
+                <div class="option-header">
+                  <div class="option-letter">{{ option.key }}</div>
+                  <div class="option-status" v-if="showResult">
+                    <el-icon
+                      v-if="option.key === reviewResult?.correctAnswer"
+                      color="#67c23a"
+                    >
+                      <CircleCheck />
+                    </el-icon>
+                    <el-icon
+                      v-else-if="reviewForm.selectedOption === option.key"
+                      color="#f56c6c"
+                    >
+                      <CircleClose />
+                    </el-icon>
+                  </div>
+                </div>
+                <div class="option-content">{{ option.content }}</div>
+                <div
+                  class="option-explanation"
+                  v-if="showResult && getOptionExplanation(option.key)"
+                >
+                  <div class="explanation-label">解析：</div>
+                  <div class="explanation-text">
+                    {{ getOptionExplanation(option.key) }}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -450,11 +504,12 @@
             :rows="6"
             placeholder="请输入你的答案..."
             size="large"
+            :disabled="showResult"
           />
         </div>
 
-        <div class="dialog-result-section" v-if="showResult && reviewResult">
-          <div class="result-header">
+        <div class="dialog-result-summary" v-if="showResult && reviewResult">
+          <div class="result-summary-header">
             <el-icon
               :size="24"
               :color="reviewResult.isCorrect ? '#67c23a' : '#f56c6c'"
@@ -473,20 +528,10 @@
             </h3>
           </div>
 
-          <div class="result-content">
-            <div class="result-item" v-if="reviewResult.correctAnswer">
-              <div class="result-label">正确答案</div>
-              <div class="result-value">{{ reviewResult.correctAnswer }}</div>
-            </div>
-
-            <div class="result-item" v-if="reviewResult.explanation">
-              <div class="result-label">
-                <el-icon><QuestionFilled /></el-icon>
-                解析
-              </div>
-              <div class="result-value explanation">
-                {{ reviewResult.explanation }}
-              </div>
+          <div class="result-summary-content" v-if="reviewResult.explanation">
+            <div class="result-summary-label">整体解析</div>
+            <div class="result-summary-text">
+              {{ reviewResult.explanation }}
             </div>
           </div>
         </div>
@@ -497,25 +542,27 @@
             <span>{{ formatTime(reviewForm.duration) }}</span>
           </div>
           <div class="timer-info">
-            <span>用时统计</span>
+            <el-icon><InfoFilled /></el-icon>
+            <span>请认真思考后选择答案</span>
           </div>
         </div>
       </div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="closeReviewDialog" size="large">
-            <el-icon><Close /></el-icon>
-            {{ showResult ? "关闭" : "取消" }}
+          <el-button @click="closeReviewDialog" size="default">
+            取消
           </el-button>
           <el-button
             v-if="!showResult"
             type="primary"
             @click="submitReview"
+            size="default"
             :loading="submitting"
-            size="large"
           >
-            <el-icon><Check /></el-icon>
             提交答案
+          </el-button>
+          <el-button v-else type="primary" @click="nextReview" size="default">
+            下一题
           </el-button>
         </div>
       </template>
@@ -607,7 +654,35 @@ const progressColor = computed(() => {
 });
 
 const sortedReviewList = computed(() => {
-  return reviewList.value;
+  let sorted = [...reviewList.value];
+
+  switch (sortBy.value) {
+    case "smart":
+      sorted.sort((a, b) => {
+        const aScore =
+          (a.nodeMasteryLevel || 0) * 0.6 + (a.difficulty || 1) * 0.4;
+        const bScore =
+          (b.nodeMasteryLevel || 0) * 0.6 + (b.difficulty || 1) * 0.4;
+        return bScore - aScore;
+      });
+      break;
+    case "time":
+      sorted.sort((a, b) => {
+        const aTime = a.nextReviewTime
+          ? new Date(a.nextReviewTime).getTime()
+          : 0;
+        const bTime = b.nextReviewTime
+          ? new Date(b.nextReviewTime).getTime()
+          : 0;
+        return aTime - bTime;
+      });
+      break;
+    case "difficulty":
+      sorted.sort((a, b) => (b.difficulty || 1) - (a.difficulty || 1));
+      break;
+  }
+
+  return sorted;
 });
 
 const loadReviewCards = async () => {
@@ -622,24 +697,8 @@ const loadReviewCards = async () => {
     ).length;
     todayPending.value = todayTotal.value - todayCompleted.value;
 
-    const reviewedCards = reviewList.value.filter(
-      (card) => card.reviewCount > 0,
-    );
-    if (reviewedCards.length > 0) {
-      const totalCorrectCount = reviewedCards.reduce(
-        (sum, card) => sum + (card.correctCount || 0),
-        0,
-      );
-      const totalReviewCount = reviewedCards.reduce(
-        (sum, card) => sum + (card.reviewCount || 0),
-        0,
-      );
-      overallAccuracy.value = Math.round(
-        (totalCorrectCount / totalReviewCount) * 100,
-      );
-    } else {
-      overallAccuracy.value = 0;
-    }
+    // 从后端获取用户全局准确率
+    overallAccuracy.value = await reviewAPI.getUserAccuracy();
 
     streakDays.value = await calculateStreakDays();
 
@@ -656,24 +715,8 @@ const loadGlobalStatistics = async () => {
     const response = await statisticsAPI.getStatistics();
     totalCompleted.value = response.completedReviewCount || 0;
 
-    const reviewedCards = reviewList.value.filter(
-      (card) => card.reviewCount > 0,
-    );
-    if (reviewedCards.length > 0) {
-      const totalCorrectCount = reviewedCards.reduce(
-        (sum, card) => sum + (card.correctCount || 0),
-        0,
-      );
-      const totalReviewCount = reviewedCards.reduce(
-        (sum, card) => sum + (card.reviewCount || 0),
-        0,
-      );
-      totalAccuracy.value = Math.round(
-        (totalCorrectCount / totalReviewCount) * 100,
-      );
-    } else {
-      totalAccuracy.value = 0;
-    }
+    // 从后端获取用户全局准确率
+    totalAccuracy.value = await reviewAPI.getUserAccuracy();
   } catch (error) {
     console.error("加载全局统计数据失败", error);
   }
@@ -753,31 +796,90 @@ const getMasteryLevelText = (level) => {
 const parseQuestionText = (question) => {
   if (!question) return "";
   const lines = question.split("\n");
+  let questionText = "";
+
   for (const line of lines) {
+    const trimmedLine = line.trim();
     if (
-      line.trim() &&
-      !line.startsWith("A.") &&
-      !line.startsWith("B.") &&
-      !line.startsWith("C.") &&
-      !line.startsWith("D.") &&
-      !line.startsWith("正确答案：")
+      trimmedLine &&
+      !trimmedLine.startsWith("A.") &&
+      !trimmedLine.startsWith("B.") &&
+      !trimmedLine.startsWith("C.") &&
+      !trimmedLine.startsWith("D.") &&
+      !trimmedLine.startsWith("A、") &&
+      !trimmedLine.startsWith("B、") &&
+      !trimmedLine.startsWith("C、") &&
+      !trimmedLine.startsWith("D、") &&
+      !trimmedLine.startsWith("正确答案：") &&
+      !trimmedLine.startsWith("解析：") &&
+      !trimmedLine.startsWith("【正确答案】") &&
+      !trimmedLine.startsWith("【解析】")
     ) {
-      return line.trim();
+      if (questionText) {
+        questionText += " ";
+      }
+      questionText += trimmedLine;
     }
   }
-  return question;
+
+  return questionText || question;
 };
 
 const parseChoiceOptions = (question) => {
   const options = [];
   const lines = question.split("\n");
+  let inOptionsSection = false;
+
   for (const line of lines) {
-    const match = line.match(/^([A-D])\.\s*(.+)$/);
+    const trimmedLine = line.trim();
+
+    if (
+      trimmedLine.startsWith("选项解析：") ||
+      trimmedLine.startsWith("解析：")
+    ) {
+      break;
+    }
+
+    const match = trimmedLine.match(/^([A-D])\.\s*(.+)$/);
     if (match) {
       options.push({ key: match[1], content: match[2].trim() });
+      inOptionsSection = true;
     }
   }
   return options;
+};
+
+const getOptionExplanation = (optionKey) => {
+  if (!currentCard.value || !currentCard.value.question) {
+    return null;
+  }
+
+  const lines = currentCard.value.question.split("\n");
+  let foundOptionExplanation = false;
+  let explanation = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (line.startsWith("选项解析：")) {
+      foundOptionExplanation = true;
+      continue;
+    }
+
+    if (foundOptionExplanation) {
+      const optionMatch = line.match(/^([A-D])\.\s*(.+)$/);
+      if (optionMatch) {
+        if (optionMatch[1] === optionKey) {
+          explanation = optionMatch[2].trim();
+          break;
+        } else if (explanation) {
+          break;
+        }
+      }
+    }
+  }
+
+  return explanation || null;
 };
 
 const formatDate = (dateStr) => {
@@ -810,11 +912,15 @@ const closeReviewDialog = () => {
   reviewDialogVisible.value = false;
   showResult.value = false;
   reviewResult.value = null;
+  reviewForm.value = {
+    answer: "",
+    selectedOption: "",
+    duration: 0,
+  };
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
   }
-  loadReviewCards();
 };
 
 const submitReview = async () => {
@@ -827,6 +933,7 @@ const submitReview = async () => {
     }
 
     if (!answer) {
+      submitting.value = false;
       ElMessage.warning("请先填写答案");
       return;
     }
@@ -854,11 +961,42 @@ const submitReview = async () => {
   }
 };
 
+const nextReview = () => {
+  const currentIndex = reviewList.value.findIndex(
+    (card) => card.id === currentCard.value.id,
+  );
+  const nextIndex = currentIndex + 1;
+
+  if (nextIndex < reviewList.value.length) {
+    const nextCard = reviewList.value[nextIndex];
+    currentCard.value = nextCard;
+    reviewForm.value = {
+      answer: "",
+      selectedOption: "",
+      duration: 0,
+    };
+    showResult.value = false;
+    reviewResult.value = null;
+
+    startTime = Date.now();
+    if (timerInterval) {
+      clearInterval(timerInterval);
+    }
+    timerInterval = setInterval(() => {
+      reviewForm.value.duration = Math.floor((Date.now() - startTime) / 1000);
+    }, 1000);
+  } else {
+    reviewDialogVisible.value = false;
+    loadReviewCards();
+    ElMessage.info("已经是最后一题了");
+  }
+};
+
 const generateAllCards = async () => {
   try {
     await ElMessageBox.confirm(
-      "确定要为所有知识点生成复习卡片吗？",
-      "确认生成",
+      "确定要为所有知识点生成练习卡片吗？这些卡片与复习规律无关，仅用于练习。",
+      "确认生成练习卡片",
       {
         confirmButtonText: "确定",
         cancelButtonText: "取消",
@@ -868,11 +1006,36 @@ const generateAllCards = async () => {
 
     generating.value = true;
     const count = await reviewAPI.generateAllReviewCards();
-    ElMessage.success(`成功生成 ${count} 张复习卡片`);
+    ElMessage.success(`成功生成 ${count} 张练习卡片`);
     loadReviewCards();
   } catch (error) {
     if (error !== "cancel") {
-      ElMessage.error("生成失败：" + error.message);
+      ElMessage.error("生成练习卡片失败：" + error.message);
+    }
+  } finally {
+    generating.value = false;
+  }
+};
+
+const generateReviewCards = async () => {
+  try {
+    await ElMessageBox.confirm(
+      "确定要恢复复习题目吗？这将把之前清空（软删除）的题目重新显示在复习中心。",
+      "确认恢复复习题目",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "info",
+      },
+    );
+
+    generating.value = true;
+    const restoredCount = await reviewAPI.restoreReviewCards();
+    ElMessage.success(`成功恢复 ${restoredCount} 张复习卡片`);
+    loadReviewCards();
+  } catch (error) {
+    if (error !== "cancel") {
+      ElMessage.error("恢复复习题目失败：" + error.message);
     }
   } finally {
     generating.value = false;
@@ -900,7 +1063,7 @@ const deleteCard = async (card) => {
 const deleteAllCards = async () => {
   try {
     await ElMessageBox.confirm(
-      "确定要清空所有复习卡片吗？此操作不可恢复！",
+      "确定要清空所有复习题目吗？清空后题目会被隐藏，但不会删除，可以通过'恢复复习题目'按钮重新显示。",
       "确认清空",
       {
         confirmButtonText: "确定",
@@ -910,7 +1073,7 @@ const deleteAllCards = async () => {
     );
 
     await reviewAPI.deleteAllReviewCards();
-    ElMessage.success("清空成功");
+    ElMessage.success("清空成功，题目已隐藏");
     loadReviewCards();
   } catch (error) {
     if (error !== "cancel") {
@@ -935,6 +1098,257 @@ onUnmounted(() => {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+}
+
+.review-dialog {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.review-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-bottom: none;
+}
+
+.review-dialog :deep(.el-dialog__title) {
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.review-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.review-dialog :deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.review-dialog-content {
+  color: #303133;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.dialog-badges {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.dialog-question {
+  margin-bottom: 24px;
+}
+
+.dialog-question h3 {
+  font-size: 18px;
+  color: #303133;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.dialog-answer-section {
+  margin-bottom: 24px;
+}
+
+.answer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #667eea;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.choice-options {
+  display: grid;
+  gap: 12px;
+}
+
+.choice-option {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: white;
+}
+
+.choice-option:hover:not(.correct-answer):not(.wrong-answer) {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.choice-option.selected {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.choice-option.correct-answer {
+  border-color: #67c23a;
+  background: rgba(103, 194, 58, 0.1);
+}
+
+.choice-option.wrong-answer {
+  border-color: #f56c6c;
+  background: rgba(245, 108, 108, 0.1);
+}
+
+.option-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.option-letter {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #303133;
+  flex-shrink: 0;
+}
+
+.choice-option.correct-answer .option-letter {
+  background: #67c23a;
+  color: white;
+}
+
+.choice-option.wrong-answer .option-letter {
+  background: #f56c6c;
+  color: white;
+}
+
+.option-status {
+  flex-shrink: 0;
+}
+
+.option-content {
+  flex: 1;
+  color: #606266;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.option-explanation {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #667eea;
+}
+
+.explanation-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 4px;
+}
+
+.explanation-text {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.5;
+}
+
+.dialog-result-summary {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+}
+
+.result-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.result-summary-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.result-summary-header.correct h3 {
+  color: #67c23a;
+}
+
+.result-summary-header.incorrect h3 {
+  color: #f56c6c;
+}
+
+.result-summary-content {
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  border-left: 3px solid #667eea;
+}
+
+.result-summary-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 8px;
+}
+
+.result-summary-text {
+  font-size: 15px;
+  color: #303133;
+  line-height: 1.6;
+}
+
+.dialog-timer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.timer-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #667eea;
+}
+
+.timer-info {
+  color: #909399;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .background-gradient {
@@ -1322,126 +1736,6 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
-.review-dialog-content {
-  color: #303133;
-}
-
-.dialog-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
-}
-
-.dialog-badges {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.dialog-question {
-  margin-bottom: 24px;
-}
-
-.dialog-question h3 {
-  font-size: 18px;
-  color: #303133;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.dialog-answer-section {
-  margin-bottom: 24px;
-}
-
-.answer-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  color: #667eea;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.choice-options {
-  display: grid;
-  gap: 12px;
-}
-
-.choice-option {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.choice-option:hover {
-  border-color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
-}
-
-.choice-option.selected {
-  border-color: #667eea;
-  background: rgba(102, 126, 234, 0.1);
-}
-
-.option-letter {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: #303133;
-  flex-shrink: 0;
-}
-
-.option-content {
-  flex: 1;
-  color: #606266;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.dialog-timer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 12px;
-}
-
-.timer-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 24px;
-  font-weight: bold;
-  color: #667eea;
-}
-
-.timer-info {
-  color: #909399;
-  font-size: 14px;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
-}
-
 :deep(.el-empty) {
   background: transparent;
   color: #909399;
@@ -1569,83 +1863,5 @@ onUnmounted(() => {
   .card-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.dialog-result-section {
-  margin-top: 24px;
-  padding: 20px;
-  background: #f5f7fa;
-  border-radius: 12px;
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.result-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e4e7ed;
-}
-
-.result-header h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.result-header h3.correct {
-  color: #67c23a;
-}
-
-.result-header h3.incorrect {
-  color: #f56c6c;
-}
-
-.result-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.result-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.result-label {
-  font-size: 14px;
-  font-weight: bold;
-  color: #606266;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.result-value {
-  font-size: 15px;
-  color: #303133;
-  line-height: 1.6;
-  padding: 12px 16px;
-  background: white;
-  border-radius: 8px;
-  border-left: 3px solid #667eea;
-}
-
-.result-value.explanation {
-  background: #fff9e6;
-  border-left-color: #e6a23c;
 }
 </style>

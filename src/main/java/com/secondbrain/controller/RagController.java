@@ -22,6 +22,8 @@ import java.util.List;
 @Slf4j
 public class RagController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RagController.class);
+
     private final RagService ragService;
     private final KnowledgeVectorService knowledgeVectorService;
     private final KnowledgeNodeMapper knowledgeNodeMapper;

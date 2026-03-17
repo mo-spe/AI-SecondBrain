@@ -350,25 +350,70 @@ const pagination = ref({
   total: 0,
 });
 
-const commonKnowledge = [
-  "Java基础",
-  "Python基础",
-  "Spring Boot",
-  "MySQL数据库",
-  "Redis",
-  "RESTful API",
-  "Git版本控制",
-  "Linux基础",
-  "Docker",
-  "前端开发",
-  "Vue.js",
-  "React",
-  "Node.js",
-  "微服务架构",
-  "消息队列",
-  "分布式系统",
-  "算法与数据结构",
-];
+const commonKnowledge = ref([]);
+
+// 加载用户的知识点列表
+const loadUserKnowledge = async () => {
+  try {
+    // 获取所有知识点（不分页，第一页 100 条）
+    const response = await request.get("/knowledge/list", {
+      params: {
+        current: 1,
+        size: 100,
+      },
+    });
+
+    const nodes = response?.records || [];
+
+    if (nodes && nodes.length > 0) {
+      // 提取知识点标题作为选项
+      commonKnowledge.value = nodes.map((node) => node.title);
+    } else {
+      // 如果没有知识点，提供一些默认选项
+      commonKnowledge.value = [
+        "Java 基础",
+        "Python 基础",
+        "Spring Boot",
+        "MySQL 数据库",
+        "Redis",
+        "RESTful API",
+        "Git 版本控制",
+        "Linux 基础",
+        "Docker",
+        "前端开发",
+        "Vue.js",
+        "React",
+        "Node.js",
+        "微服务架构",
+        "消息队列",
+        "分布式系统",
+        "算法与数据结构",
+      ];
+    }
+  } catch (error) {
+    console.error("加载用户知识点失败：", error);
+    // 加载失败时使用默认选项
+    commonKnowledge.value = [
+      "Java 基础",
+      "Python 基础",
+      "Spring Boot",
+      "MySQL 数据库",
+      "Redis",
+      "RESTful API",
+      "Git 版本控制",
+      "Linux 基础",
+      "Docker",
+      "前端开发",
+      "Vue.js",
+      "React",
+      "Node.js",
+      "微服务架构",
+      "消息队列",
+      "分布式系统",
+      "算法与数据结构",
+    ];
+  }
+};
 
 const generateLearningPath = async () => {
   if (!pathForm.value.topic) {
@@ -750,6 +795,7 @@ const renderSimpleContent = (content) => {
 onMounted(() => {
   if (userStore.isLoggedIn()) {
     loadHistoryList();
+    loadUserKnowledge();
   }
 });
 

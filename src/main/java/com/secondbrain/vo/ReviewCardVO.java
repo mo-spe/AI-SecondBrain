@@ -24,8 +24,6 @@ public class ReviewCardVO {
 
     private Integer incorrectCount;
 
-    private Double averageAccuracy;
-
     private Integer masteryLevel;
 
     private Double memoryStrength;
@@ -37,6 +35,14 @@ public class ReviewCardVO {
     private Integer status;
 
     private String aiGenerated;
+
+    private String createTime;
+
+    private Integer nodeReviewCount;
+
+    private Integer nodeMasteryLevel;
+
+    private Integer isRestored;
 
     public Long getId() {
         return id;
@@ -126,14 +132,6 @@ public class ReviewCardVO {
         this.incorrectCount = incorrectCount;
     }
 
-    public Double getAverageAccuracy() {
-        return averageAccuracy;
-    }
-
-    public void setAverageAccuracy(Double averageAccuracy) {
-        this.averageAccuracy = averageAccuracy;
-    }
-
     public Integer getMasteryLevel() {
         return masteryLevel;
     }
@@ -180,5 +178,37 @@ public class ReviewCardVO {
 
     public void setAiGenerated(String aiGenerated) {
         this.aiGenerated = aiGenerated;
+    }
+
+    public String getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(String createTime) {
+        this.createTime = createTime;
+    }
+
+    public Integer getNodeReviewCount() {
+        return nodeReviewCount;
+    }
+
+    public void setNodeReviewCount(Integer nodeReviewCount) {
+        this.nodeReviewCount = nodeReviewCount;
+    }
+
+    public Integer getNodeMasteryLevel() {
+        return nodeMasteryLevel;
+    }
+
+    public void setNodeMasteryLevel(Integer nodeMasteryLevel) {
+        this.nodeMasteryLevel = nodeMasteryLevel;
+    }
+
+    public Integer getIsRestored() {
+        return isRestored;
+    }
+
+    public void setIsRestored(Integer isRestored) {
+        this.isRestored = isRestored;
     }
 }

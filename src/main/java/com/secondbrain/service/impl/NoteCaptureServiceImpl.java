@@ -26,23 +26,29 @@ public class NoteCaptureServiceImpl implements NoteCaptureService {
 
     @Override
     public String captureMarkdownNote(NoteCaptureRequest request) {
+        log.info("【NoteCaptureService】开始捕捉笔记，标题：{}，用户 ID：{}", request.getTitle(), request.getUserId());
+        
         try {
-            log.info("开始捕捉笔记，标题：{}，用户ID：{}", request.getTitle(), request.getUserId());
-
             String content = parseMarkdown(request.getContent());
+            log.info("【NoteCaptureService】Markdown 解析成功，原始长度：{}，解析后长度：{}", 
+                request.getContent().length(), content.length());
 
             RawChatRecord record = new RawChatRecord();
             record.setUserId(request.getUserId());
             record.setContent(content);
             record.setSourceUrl("NOTE:" + request.getTitle());
             record.setCreateTime(LocalDateTime.now());
+            
+            log.info("【NoteCaptureService】准备发送 Kafka 消息，record: userId={}, contentLength={}, sourceUrl={}", 
+                record.getUserId(), record.getContent().length(), record.getSourceUrl());
 
             kafkaProducerService.sendChatCollect(record);
-
+            
+            log.info("【NoteCaptureService】Kafka 消息发送成功，标题：{}", request.getTitle());
             log.info("笔记捕捉成功，标题：{}，内容长度：{}", request.getTitle(), content.length());
             return "笔记捕捉成功";
         } catch (Exception e) {
-            log.error("笔记捕捉失败，标题：{}", request.getTitle(), e);
+            log.error("【NoteCaptureService】笔记捕捉失败，标题：{}", request.getTitle(), e);
             throw new RuntimeException("笔记捕捉失败：" + e.getMessage());
         }
     }

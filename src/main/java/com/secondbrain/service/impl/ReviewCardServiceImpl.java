@@ -15,6 +15,8 @@ import com.secondbrain.service.ReviewCardService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,56 +33,54 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     private final EbbinghausService ebbinghausService;
     private final QuestionGenerationService questionGenerationService;
     private final ImportanceCalculationService importanceCalculationService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public ReviewCardServiceImpl(ReviewCardMapper reviewCardMapper, KnowledgeNodeMapper knowledgeNodeMapper,
                              EbbinghausService ebbinghausService, QuestionGenerationService questionGenerationService,
-                             ImportanceCalculationService importanceCalculationService) {
+                             ImportanceCalculationService importanceCalculationService, JdbcTemplate jdbcTemplate) {
         this.reviewCardMapper = reviewCardMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.ebbinghausService = ebbinghausService;
         this.questionGenerationService = questionGenerationService;
         this.importanceCalculationService = importanceCalculationService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     public ReviewCard generateReviewCard(Long nodeId, String cardType) {
+        return generateReviewCard(nodeId, cardType, "auto");
+    }
+
+    @Override
+    public ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(nodeId);
         if (node == null) {
             log.warn("知识点不存在，nodeId：{}", nodeId);
             return null;
         }
 
-        ReviewCard card = questionGenerationService.generateHighQualityQuestion(node, cardType);
+        ReviewCard card = questionGenerationService.generateHighQualityQuestion(node, cardType, node.getUserId());
+        card.setGenerationType(generationType);
 
         reviewCardMapper.insert(card);
-        log.info("生成复习卡片成功，nodeId：{}，cardType：{}，cardId：{}", nodeId, cardType, card.getId());
+        log.info("生成复习卡片成功，nodeId：{}，cardType：{}，generationType：{}，cardId：{}", 
+                nodeId, cardType, generationType, card.getId());
         
         return card;
     }
 
     @Override
     public List<ReviewCard> getTodayReviewCards(Long userId) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime todayStart = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime todayEnd = todayStart.plusDays(1);
-
         LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReviewCard::getUserId, userId);
         wrapper.eq(ReviewCard::getDeleted, 0);
-        
-        wrapper.and(w -> {
-            w.ge(ReviewCard::getNextReviewTime, todayStart)
-             .lt(ReviewCard::getNextReviewTime, todayEnd)
-             .or()
-             .lt(ReviewCard::getNextReviewTime, todayStart);
-        });
-        
+        wrapper.eq(ReviewCard::getStatus, 0);
         wrapper.orderByAsc(ReviewCard::getNextReviewTime);
 
         List<ReviewCard> cards = reviewCardMapper.selectList(wrapper);
         
-        log.info("获取今日待复习卡片，userId：{}，卡片数：{}", userId, cards.size());
+        log.info("获取待复习卡片，userId：{}，卡片数：{}（包含自动和手动生成的）", userId, cards.size());
         
         return cards;
     }
@@ -108,14 +108,12 @@ public class ReviewCardServiceImpl implements ReviewCardService {
             card.setIncorrectCount(card.getIncorrectCount() + 1);
         }
 
-        int totalReviews = card.getCorrectCount() + card.getIncorrectCount();
-        double averageAccuracy = totalReviews > 0 ? (double) card.getCorrectCount() / totalReviews : 0.0;
-        card.setAverageAccuracy(averageAccuracy);
-
-        int masteryLevel = ebbinghausService.calculateMasteryLevel(card.getReviewCount(), averageAccuracy);
+        // 使用答对率计算掌握程度（不再保存准确率到卡片）
+        double accuracy = card.getReviewCount() > 0 ? (double) card.getCorrectCount() / card.getReviewCount() : 0.0;
+        int masteryLevel = ebbinghausService.calculateMasteryLevel(card.getReviewCount(), accuracy);
         card.setMasteryLevel(masteryLevel);
 
-        double memoryStrength = ebbinghausService.calculateMemoryStrength(card.getReviewCount(), averageAccuracy);
+        double memoryStrength = ebbinghausService.calculateMemoryStrength(card.getReviewCount(), accuracy);
         card.setMemoryStrength(memoryStrength);
 
         card.setLastReviewTime(LocalDateTime.now());
@@ -124,16 +122,28 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
         reviewCardMapper.updateById(card);
 
-        updateReviewSchedule(cardId, isCorrect);
-
-        syncToKnowledgeNode(card);
-
-        log.info("提交复习结果成功，cardId：{}，isCorrect：{}，duration：{}秒，reviewCount：{}，accuracy：{}，masteryLevel：{}",
-                cardId, isCorrect, duration, card.getReviewCount(), averageAccuracy, masteryLevel);
+        boolean isAutoGenerated = "auto".equals(card.getGenerationType());
+        
+        if (isAutoGenerated) {
+            updateReviewSchedule(cardId, isCorrect);
+            syncToKnowledgeNode(card);
+            log.info("提交自动生成复习结果成功，cardId：{}，isCorrect：{}，duration：{}秒，reviewCount：{}，masteryLevel：{}",
+                    cardId, isCorrect, duration, card.getReviewCount(), masteryLevel);
+        } else {
+            log.info("提交手动生成练习结果成功，cardId：{}，isCorrect：{}，duration：{}秒",
+                    cardId, isCorrect, duration);
+        }
 
         String explanation = extractExplanation(card.getQuestion());
         String message = isCorrect ? "回答正确！继续保持！" : "回答错误，正确答案是：" + card.getAnswer();
-        return new ReviewResultDTO(isCorrect, card.getAnswer(), explanation, message);
+        
+        ReviewResultDTO result = new ReviewResultDTO(isCorrect, card.getAnswer(), explanation, message);
+        
+        // 无论自动生成还是手动生成，提交后都硬删除
+        reviewCardMapper.deleteById(cardId);
+        log.info("复习卡片已完成并硬删除，cardId：{}", cardId);
+        
+        return result;
     }
 
     private String extractExplanation(String question) {
@@ -263,50 +273,65 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     }
 
     @Override
-    public void deleteAllReviewCards() {
+    public void deleteAllReviewCards(Long userId) {
         LambdaUpdateWrapper<ReviewCard> wrapper = new LambdaUpdateWrapper<>();
         wrapper.set(ReviewCard::getDeleted, 1);
         wrapper.eq(ReviewCard::getDeleted, 0);
-        reviewCardMapper.update(null, wrapper);
-        log.info("删除所有复习卡片成功");
+        wrapper.eq(ReviewCard::getUserId, userId);
+        int deletedCount = reviewCardMapper.update(null, wrapper);
+        log.info("软删除所有复习卡片成功，userId：{}，共{}张", userId, deletedCount);
     }
 
     @Override
-    public int generateReviewCardsForAllNodes() {
-        log.info("开始为所有知识点生成复习卡片");
+    public int restoreReviewCards(Long userId) {
+        // 使用 JdbcTemplate 执行原生 SQL，绕过@TableLogic 的自动处理
+        // 恢复卡片：将 deleted 设为 0，同时将 is_restored 设为 1
+        String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE user_id = ? AND deleted = 1";
+        int count = jdbcTemplate.update(sql, userId);
+        
+        log.info("恢复复习卡片成功，userId：{}，共{}张", userId, count);
+        return count;
+    }
+
+    @Override
+    public int generateReviewCardsForAllNodes(Long userId) {
+        log.info("开始为用户{}的所有知识点生成手动练习卡片", userId);
         
         List<KnowledgeNode> allNodes = knowledgeNodeMapper.selectList(
                 new LambdaQueryWrapper<KnowledgeNode>()
                         .eq(KnowledgeNode::getDeleted, 0)
+                        .eq(KnowledgeNode::getUserId, userId)
         );
 
         int generatedCount = 0;
         for (KnowledgeNode node : allNodes) {
             try {
-                List<ReviewCard> existingCards = reviewCardMapper.selectList(
-                        new LambdaQueryWrapper<ReviewCard>()
-                                .eq(ReviewCard::getNodeId, node.getId())
-                                .eq(ReviewCard::getDeleted, 0)
-                );
-
-                if (existingCards.isEmpty()) {
-                    String[] cardTypes = {"simple", "choice"};
-                    for (String cardType : cardTypes) {
-                        ReviewCard card = generateReviewCard(node.getId(), cardType);
-                        if (card != null) {
-                            generatedCount++;
-                            log.info("生成复习卡片成功，nodeId：{}，cardType：{}，cardId：{}", 
-                                    node.getId(), cardType, card.getId());
-                        }
+                for (int i = 0; i < 2; i++) {
+                    ReviewCard card = generateReviewCard(node.getId(), "choice", "manual");
+                    if (card != null) {
+                        generatedCount++;
+                        log.info("生成手动练习卡片成功，nodeId：{}，cardType：{}，cardId：{}", 
+                                node.getId(), "choice", card.getId());
                     }
                 }
             } catch (Exception e) {
-                log.error("生成复习卡片失败，nodeId：{}", node.getId(), e);
+                log.error("生成手动练习卡片失败，nodeId：{}", node.getId(), e);
             }
         }
 
-        log.info("为所有知识点生成复习卡片完成，共生成{}张卡片", generatedCount);
+        log.info("为用户{}的所有知识点生成手动练习卡片完成，共生成{}张卡片", userId, generatedCount);
         return generatedCount;
+    }
+
+    @Override
+    @Async("vectorTaskExecutor")
+    public void generateReviewCardsForAllNodesAsync() {
+        log.info("异步生成所有知识点的复习卡片");
+        try {
+            generateReviewCardsForAllNodes(1L);
+        } catch (Exception e) {
+            log.error("异步生成复习卡片失败", e);
+        }
     }
 
     @Override
@@ -420,5 +445,65 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         }
 
         return streakDays;
+    }
+
+    @Override
+    public void recordQualityFeedback(Long cardId, Integer rating, String comment) {
+        try {
+            ReviewCard card = reviewCardMapper.selectById(cardId);
+            if (card == null) {
+                log.warn("记录质量反馈失败，卡片不存在，cardId：{}", cardId);
+                return;
+            }
+
+            log.info("记录题目质量反馈，cardId：{}，rating：{}，comment：{}", cardId, rating, comment);
+
+            if (rating != null && rating < 3) {
+                log.warn("题目质量评价较低，cardId：{}，rating：{}，comment：{}，建议优化题目生成策略", 
+                        cardId, rating, comment);
+            }
+
+            if (comment != null && !comment.isEmpty()) {
+                log.info("用户反馈内容：{}", comment);
+            }
+
+        } catch (Exception e) {
+            log.error("记录质量反馈失败，cardId：{}", cardId, e);
+        }
+    }
+
+    @Override
+    public int getUserAccuracy(Long userId) {
+        // 统计用户所有题目的答题情况
+        List<ReviewCard> cards = reviewCardMapper.selectList(
+            new LambdaQueryWrapper<ReviewCard>()
+                .eq(ReviewCard::getUserId, userId)
+                .gt(ReviewCard::getReviewCount, 0)
+                .eq(ReviewCard::getDeleted, 0)
+        );
+
+        if (cards.isEmpty()) {
+            return 0;
+        }
+
+        // 计算总答题次数和答对次数
+        int totalAttempts = 0;
+        int totalCorrect = 0;
+
+        for (ReviewCard card : cards) {
+            totalAttempts += card.getReviewCount();
+            totalCorrect += card.getCorrectCount();
+        }
+
+        // 计算准确率
+        if (totalAttempts == 0) {
+            return 0;
+        }
+
+        int accuracy = (int) Math.round((double) totalCorrect / totalAttempts * 100);
+        log.info("用户全局准确率，userId：{}，总答题：{}，答对：{}，准确率：{}%", 
+                userId, totalAttempts, totalCorrect, accuracy);
+        
+        return accuracy;
     }
 }

@@ -2,6 +2,8 @@ package com.secondbrain.controller;
 
 import com.secondbrain.common.Result;
 import com.secondbrain.dto.ReviewResultDTO;
+import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.service.ReviewCardService;
 import com.secondbrain.util.JwtUtil;
 import com.secondbrain.vo.ReviewCardVO;
@@ -20,11 +22,13 @@ public class ReviewCardController {
 
     private final ReviewCardService reviewCardService;
     private final JwtUtil jwtUtil;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
 
     @Autowired
-    public ReviewCardController(ReviewCardService reviewCardService, JwtUtil jwtUtil) {
+    public ReviewCardController(ReviewCardService reviewCardService, JwtUtil jwtUtil, KnowledgeNodeMapper knowledgeNodeMapper) {
         this.reviewCardService = reviewCardService;
         this.jwtUtil = jwtUtil;
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
     }
 
     @PostMapping("/generate")
@@ -35,8 +39,9 @@ public class ReviewCardController {
                 token = token.substring(7);
             }
             Long userId = jwtUtil.getUserIdFromToken(token);
+            String generationType = request.getGenerationType() != null ? request.getGenerationType() : "auto";
             com.secondbrain.entity.ReviewCard card = reviewCardService.generateReviewCard(
-                    request.getNodeId(), request.getCardType()
+                    request.getNodeId(), request.getCardType(), generationType
             );
 
             if (card == null) {
@@ -84,8 +89,6 @@ public class ReviewCardController {
                             return a.getNextReviewTime().compareTo(b.getNextReviewTime());
                         case "difficulty":
                             return b.getDifficulty().compareTo(a.getDifficulty());
-                        case "accuracy":
-                            return a.getAverageAccuracy().compareTo(b.getAverageAccuracy());
                         default:
                             return 0;
                     }
@@ -157,7 +160,7 @@ public class ReviewCardController {
                 token = token.substring(7);
             }
             Long userId = jwtUtil.getUserIdFromToken(token);
-            reviewCardService.deleteAllReviewCards();
+            reviewCardService.deleteAllReviewCards(userId);
 
             return Result.success();
         } catch (Exception e) {
@@ -174,11 +177,28 @@ public class ReviewCardController {
             }
             Long userId = jwtUtil.getUserIdFromToken(token);
             
-            int generatedCount = reviewCardService.generateReviewCardsForAllNodes();
+            int generatedCount = reviewCardService.generateReviewCardsForAllNodes(userId);
             
-            return Result.success("成功生成" + generatedCount + "张复习卡片");
+            return Result.success("成功生成" + generatedCount + "张练习卡片");
         } catch (Exception e) {
-            return Result.error("生成复习卡片失败：" + e.getMessage());
+            return Result.error("生成练习卡片失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/restore")
+    public Result<Integer> restoreReviewCards(HttpServletRequest httpRequest) {
+        try {
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            int restoredCount = reviewCardService.restoreReviewCards(userId);
+            
+            return Result.success(restoredCount);
+        } catch (Exception e) {
+            return Result.error("恢复复习卡片失败：" + e.getMessage());
         }
     }
 
@@ -209,6 +229,44 @@ public class ReviewCardController {
         }
     }
 
+    @PostMapping("/quality-feedback")
+    public Result<String> submitQualityFeedback(@RequestBody QualityFeedbackRequest request, HttpServletRequest httpRequest) {
+        try {
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            reviewCardService.recordQualityFeedback(
+                    request.getCardId(),
+                    request.getRating(),
+                    request.getComment()
+            );
+            
+            return Result.success("感谢您的反馈！");
+        } catch (Exception e) {
+            return Result.error("提交质量反馈失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/accuracy")
+    public Result<Integer> getUserAccuracy(HttpServletRequest httpRequest) {
+        try {
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            int accuracy = reviewCardService.getUserAccuracy(userId);
+            
+            return Result.success(accuracy);
+        } catch (Exception e) {
+            return Result.error("获取准确率失败：" + e.getMessage());
+        }
+    }
+
     private ReviewCardVO convertToVO(com.secondbrain.entity.ReviewCard card) {
         ReviewCardVO vo = new ReviewCardVO();
         BeanUtils.copyProperties(card, vo);
@@ -220,6 +278,19 @@ public class ReviewCardController {
         if (card.getNextReviewTime() != null) {
             vo.setNextReviewTime(card.getNextReviewTime().format(formatter));
         }
+        if (card.getCreateTime() != null) {
+            vo.setCreateTime(card.getCreateTime().format(formatter));
+        }
+
+        // 获取知识点的复习次数和掌握程度
+        if (card.getNodeId() != null) {
+            com.secondbrain.entity.KnowledgeNode node = knowledgeNodeMapper.selectById(card.getNodeId());
+            if (node != null) {
+                vo.setNodeReviewCount(node.getReviewCount() != null ? node.getReviewCount() : 0);
+                vo.setNodeMasteryLevel(node.getMasteryLevel() != null ? node.getMasteryLevel() : 0);
+                vo.setNodeTitle(node.getTitle());
+            }
+        }
 
         return vo;
     }
@@ -227,6 +298,7 @@ public class ReviewCardController {
     public static class GenerateCardRequest {
         private Long nodeId;
         private String cardType;
+        private String generationType;
 
         public Long getNodeId() {
             return nodeId;
@@ -242,6 +314,14 @@ public class ReviewCardController {
 
         public void setCardType(String cardType) {
             this.cardType = cardType;
+        }
+
+        public String getGenerationType() {
+            return generationType;
+        }
+
+        public void setGenerationType(String generationType) {
+            this.generationType = generationType;
         }
     }
 
@@ -272,6 +352,36 @@ public class ReviewCardController {
 
         public void setDuration(Integer duration) {
             this.duration = duration;
+        }
+    }
+
+    public static class QualityFeedbackRequest {
+        private Long cardId;
+        private Integer rating;
+        private String comment;
+
+        public Long getCardId() {
+            return cardId;
+        }
+
+        public void setCardId(Long cardId) {
+            this.cardId = cardId;
+        }
+
+        public Integer getRating() {
+            return rating;
+        }
+
+        public void setRating(Integer rating) {
+            this.rating = rating;
+        }
+
+        public String getComment() {
+            return comment;
+        }
+
+        public void setComment(String comment) {
+            this.comment = comment;
         }
     }
 }

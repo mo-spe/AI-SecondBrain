@@ -118,18 +118,21 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   ChatDotRound,
   Edit,
   Promotion,
   Delete,
-  ChatLineRound,
-  Timer,
   MagicStick,
   Document,
+  Clock,
+  ArrowRight,
 } from "@element-plus/icons-vue";
+import { useRouter } from "vue-router";
 import request from "@/utils/request";
+
+const router = useRouter();
 
 const question = ref("");
 const answer = ref("");
@@ -163,7 +166,21 @@ const handleAsk = async () => {
     generationTime.value = result.generationTime;
     ElMessage.success("回答完成");
   } catch (error) {
-    ElMessage.error("回答失败：" + error.message);
+    console.error("回答失败:", error);
+    if (error.message && error.message.includes("API Key")) {
+      ElMessageBox.alert(
+        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
+        "需要配置API Key",
+        {
+          confirmButtonText: "前往设置",
+          type: "warning",
+        },
+      ).then(() => {
+        router.push("/settings");
+      });
+    } else {
+      ElMessage.error("回答失败：" + (error.message || "未知错误"));
+    }
   } finally {
     loading.value = false;
   }
