@@ -1,0 +1,346 @@
+-- MySQL dump 10.13  Distrib 8.0.26, for Win64 (x86_64)
+--
+-- Host: localhost    Database: second_brain
+-- ------------------------------------------------------
+-- Server version	8.0.26
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `async_task`
+--
+
+DROP TABLE IF EXISTS `async_task`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `async_task` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'task ID',
+  `task_number` varchar(64) NOT NULL COMMENT 'task number',
+  `user_id` bigint NOT NULL COMMENT 'user ID',
+  `task_type` varchar(50) NOT NULL COMMENT 'task type',
+  `status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT 'task status',
+  `progress` int DEFAULT '0' COMMENT 'progress',
+  `parameters` text COMMENT 'task parameters',
+  `result` text COMMENT 'task result',
+  `error_message` text COMMENT 'error message',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time',
+  `start_time` datetime DEFAULT NULL COMMENT 'start time',
+  `complete_time` datetime DEFAULT NULL COMMENT 'complete time',
+  `deleted` int NOT NULL DEFAULT '0' COMMENT 'deleted',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `task_number` (`task_number`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_task_number` (`task_number`),
+  KEY `idx_status` (`status`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='async task table';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `knowledge_embedding`
+--
+
+DROP TABLE IF EXISTS `knowledge_embedding`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `knowledge_embedding` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '涓婚敭ID',
+  `knowledge_id` bigint NOT NULL COMMENT '鐭ヨ瘑鑺傜偣ID',
+  `content` text NOT NULL COMMENT '鐢ㄤ簬鍚戦噺鍖栫殑鍐�?',
+  `embedding` text NOT NULL COMMENT '鍚戦噺琛ㄧず锛圝SON鏍煎紡瀛樺偍锛',
+  `model` varchar(50) DEFAULT 'text-embedding-v2' COMMENT 'embedding妯″�?,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '鍒涘缓鏃堕棿',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '鏇存柊鏃堕棿',
+  PRIMARY KEY (`id`),
+  KEY `idx_knowledge_id` (`knowledge_id`),
+  KEY `idx_model` (`model`),
+  CONSTRAINT `knowledge_embedding_ibfk_1` FOREIGN KEY (`knowledge_id`) REFERENCES `knowledge_node` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=203 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='鐭ヨ瘑鍚戦噺�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `knowledge_node`
+--
+
+DROP TABLE IF EXISTS `knowledge_node`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `knowledge_node` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `chat_record_id` bigint DEFAULT NULL COMMENT '来源对话记录ID',
+  `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '知识点标�?,
+  `content_md` text COLLATE utf8mb4_unicode_ci COMMENT 'Markdown格式内容',
+  `summary` text COLLATE utf8mb4_unicode_ci COMMENT '摘要',
+  `vector_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '向量ID（用于Elasticsearch�?,
+  `importance` tinyint NOT NULL DEFAULT '3' COMMENT '重要程度 1-5',
+  `mastery_level` tinyint NOT NULL DEFAULT '0' COMMENT '掌握程度 0-100',
+  `review_count` int NOT NULL DEFAULT '0' COMMENT '复习次数',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `last_review_time` datetime DEFAULT NULL COMMENT '上次复习时间',
+  `next_review_time` datetime DEFAULT NULL COMMENT '下次复习时间',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除标识',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_chat_record_id` (`chat_record_id`),
+  KEY `idx_next_review_time` (`next_review_time`),
+  KEY `idx_importance` (`importance`),
+  KEY `idx_mastery_level` (`mastery_level`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=341 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识节点�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `knowledge_node_tag_relation`
+--
+
+DROP TABLE IF EXISTS `knowledge_node_tag_relation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `knowledge_node_tag_relation` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `node_id` bigint NOT NULL COMMENT '知识节点ID',
+  `tag_id` bigint NOT NULL COMMENT '标签ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_node_tag` (`node_id`,`tag_id`),
+  KEY `idx_node_id` (`node_id`),
+  KEY `idx_tag_id` (`tag_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识节点标签关联�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `knowledge_relation`
+--
+
+DROP TABLE IF EXISTS `knowledge_relation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `knowledge_relation` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '涓婚敭ID',
+  `user_id` bigint NOT NULL COMMENT '鐢ㄦ埛ID',
+  `from_knowledge_id` bigint NOT NULL COMMENT '璧峰?鐭ヨ瘑ID',
+  `to_knowledge_id` bigint NOT NULL COMMENT '�?爣鐭ヨ瘑ID',
+  `relation_type` varchar(50) NOT NULL COMMENT '鍏崇郴绫诲瀷锛歝ontains/depends/related/inherits/implements',
+  `relation_name` varchar(100) DEFAULT NULL COMMENT '鍏崇郴鍚嶇�?,
+  `weight` decimal(5,4) DEFAULT '1.0000' COMMENT '鍏崇郴鏉冮噸',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '鍒涘缓鏃堕棿',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '鏇存柊鏃堕棿',
+  `deleted` tinyint DEFAULT '0' COMMENT '�?惁鍒犻櫎',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_from` (`from_knowledge_id`),
+  KEY `idx_to` (`to_knowledge_id`),
+  KEY `idx_type` (`relation_type`),
+  CONSTRAINT `knowledge_relation_ibfk_1` FOREIGN KEY (`from_knowledge_id`) REFERENCES `knowledge_node` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `knowledge_relation_ibfk_2` FOREIGN KEY (`to_knowledge_id`) REFERENCES `knowledge_node` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=129 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='鐭ヨ瘑鍏崇郴�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `knowledge_tag`
+--
+
+DROP TABLE IF EXISTS `knowledge_tag`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `knowledge_tag` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `tag_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '标签名称',
+  `tag_color` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '标签颜色',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除标识',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_tag_name` (`tag_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识标签�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `learning_report`
+--
+
+DROP TABLE IF EXISTS `learning_report`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `learning_report` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `topic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` longtext COLLATE utf8mb4_unicode_ci,
+  `days` int NOT NULL,
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `raw_chat_record`
+--
+
+DROP TABLE IF EXISTS `raw_chat_record`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `raw_chat_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `platform` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源平台 ChatGPT/DeepSeek/Kimi/Other',
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '对话内容',
+  `source_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '原始链接',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除标识',
+  `processed` tinyint DEFAULT '0' COMMENT 'processed: 0-not processed, 1-processed',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_platform` (`platform`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='原始对话记录�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `research_history`
+--
+
+DROP TABLE IF EXISTS `research_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `research_history` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `topic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` longtext COLLATE utf8mb4_unicode_ci,
+  `current_level` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `target_level` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `depth` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '深度（仅学习报告�?,
+  `user_knowledge` json DEFAULT NULL,
+  `knowledge_count` int DEFAULT '0',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_type` (`type`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `review_card`
+--
+
+DROP TABLE IF EXISTS `review_card`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `review_card` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `node_id` bigint NOT NULL,
+  `user_id` bigint NOT NULL,
+  `question` text,
+  `answer` text,
+  `card_type` varchar(20) NOT NULL DEFAULT 'simple',
+  `difficulty` int NOT NULL DEFAULT '1',
+  `review_count` int NOT NULL DEFAULT '0',
+  `correct_count` int NOT NULL DEFAULT '0',
+  `incorrect_count` int NOT NULL DEFAULT '0',
+  `mastery_level` int NOT NULL DEFAULT '0',
+  `memory_strength` decimal(5,4) NOT NULL DEFAULT '0.0000',
+  `last_review_time` datetime DEFAULT NULL,
+  `next_review_time` datetime DEFAULT NULL,
+  `status` int NOT NULL DEFAULT '0',
+  `ai_generated` varchar(10) NOT NULL DEFAULT 'false',
+  `generation_type` varchar(20) NOT NULL DEFAULT 'auto' COMMENT '????????uto-???????????????, manual-???????????????',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` int NOT NULL DEFAULT '0',
+  `is_restored` tinyint(1) DEFAULT '0' COMMENT '是否被恢复过�?-否，1-�?,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_node_id` (`node_id`),
+  KEY `idx_next_review_time` (`next_review_time`),
+  KEY `idx_status` (`status`),
+  KEY `idx_generation_type` (`generation_type`),
+  KEY `idx_status_generation_type` (`status`,`generation_type`)
+) ENGINE=InnoDB AUTO_INCREMENT=1518 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `review_log`
+--
+
+DROP TABLE IF EXISTS `review_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `review_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `node_id` bigint NOT NULL COMMENT '知识节点ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `result` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '复习结果 easy/hard/forgot/completed',
+  `duration` int DEFAULT NULL COMMENT '复习时长（秒�?,
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除标识',
+  PRIMARY KEY (`id`),
+  KEY `idx_node_id` (`node_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_result` (`result`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='复习记录�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user`
+--
+
+DROP TABLE IF EXISTS `user`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户�?,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '密码（BCrypt加密�?,
+  `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '邮箱',
+  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '手机�?,
+  `bio` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '个人简�?,
+  `avatar` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '???URL',
+  `api_key` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'API Key',
+  `register_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
+  `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时�?,
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除标识',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  KEY `idx_username` (`username`),
+  KEY `idx_email` (`email`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户�?;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping routines for database 'second_brain'
+--
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-03-17 18:52:51
