@@ -94,3 +94,6 @@ cansaiziliao/
 check_*.sql
 add_avatar_column.sql
 create_learning_report_table.sql
+
+.env
+backups/

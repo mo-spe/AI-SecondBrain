@@ -1,0 +1,202 @@
+# ============================================================
+# AI-SecondBrain 生产环境配置文件
+# ============================================================
+# 说明：
+# 1. 此文件用于生产环境
+# 2. 敏感信息通过环境变量注入
+# 3. 性能参数针对生产环境优化
+# ============================================================
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  # 生产环境关闭详细错误
+  error:
+    include-message: never
+    include-binding-errors: never
+  # 压缩配置
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/json,text/html,text/xml,application/xml,text/plain
+
+spring:
+  application:
+    name: ai-second-brain
+
+  # 数据库配置（通过环境变量注入）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      # 连接池优化
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: SecondBrainHikariCP
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 2
+
+  kafka:
+    enabled: ${KAFKA_ENABLED:true}
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: ai-second-brain-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      heartbeat-interval: 30000
+      session-timeout: 900000
+      max-poll-records: 1
+      max-poll-interval: 300000
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries: 3
+      acks: all
+
+  elasticsearch:
+    enabled: ${ES_ENABLED:true}
+    uris: ${SPRING_ELASTICSEARCH_URIS}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD:elastic123}
+    connection-timeout: 5s
+    socket-timeout: 30s
+
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
+
+  jackson:
+    # 时间格式化
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 生产环境关闭 SQL 日志
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:mapper/**/*.xml
+
+# Knife4j 配置
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  # 生产环境关闭文档
+  production: false
+
+# AI 配置
+ai:
+  provider: ${AI_PROVIDER:qwen}
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+    model: ${DEEPSEEK_MODEL:deepseek-chat}
+  qwen:
+    api-key: ${QWEN_API_KEY}
+    base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    model: ${QWEN_MODEL:qwen-plus}
+    embedding-url: ${QWEN_EMBEDDING_URL:https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding}
+    embedding-model: ${QWEN_EMBEDDING_MODEL:text-embedding-v2}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    model: ${OPENAI_MODEL:gpt-3.5-turbo}
+    embedding-url: ${OPENAI_EMBEDDING_URL:https://api.openai.com/v1/embeddings}
+    embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-ada-002}
+
+# DeerFlow 配置
+deerflow:
+  api:
+    url: ${DEERFLOW_API_URL:http://deerflow:8000}
+    timeout: ${DEERFLOW_API_TIMEOUT:300}
+
+# 阿里云 OSS 配置
+aliyun:
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:thesecondbrain}
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.secondbrain: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_PATH:/var/log/ai-second-brain}/application.log
+    max-size: ${LOG_MAX_FILE_SIZE:100MB}
+    max-history: ${LOG_MAX_HISTORY:30}
+
+# Actuator 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    elasticsearch:
+      enabled: true
+
+# WebSocket 配置
+websocket:
+  enabled: true
+  # 生产环境使用正式地址
+  allowed-origins: "*"

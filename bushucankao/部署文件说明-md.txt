@@ -1,0 +1,626 @@
+# AI-SecondBrain 阿里云部署文件说明
+
+## 📦 生成的部署文件清单
+
+本文档详细说明了为阿里云生产环境部署生成的所有文件。
+
+---
+
+## 🎯 核心部署文件
+
+### 1. docker-compose.prod.yml ✓
+**路径**: `d:\AI-SecondBrain\docker-compose.prod.yml`
+
+**说明**: 生产环境 Docker 编排文件
+
+**包含服务**:
+- MySQL 8.0（数据库）
+- Redis 7（缓存）
+- Zookeeper + Kafka（消息队列）
+- Elasticsearch 8.11（搜索引擎）
+- DeerFlow（AI 服务）
+- Spring Boot 后端
+- Vue.js 前端（构建阶段）
+- Nginx（Web 服务器）
+
+**主要特性**:
+- ✅ 健康检查配置
+- ✅ 数据持久化
+- ✅ 网络隔离
+- ✅ 环境变量注入
+- ✅ 资源限制
+- ✅ 日志管理
+
+**使用方法**:
+```bash
+# 构建并启动
+docker-compose -f docker-compose.prod.yml up -d
+
+# 查看状态
+docker-compose -f docker-compose.prod.yml ps
+
+# 查看日志
+docker-compose -f docker-compose.prod.yml logs -f
+```
+
+---
+
+### 2. .env.production ✓
+**路径**: `d:\AI-SecondBrain\.env.production`
+
+**说明**: 生产环境变量配置文件
+
+**包含配置**:
+- 数据库密码（MySQL）
+- 缓存密码（Redis）
+- API 密钥（AI 服务）
+- 域名配置
+- JVM 参数
+- 日志配置
+- 监控配置
+
+**使用方法**:
+```bash
+# 复制示例文件
+cp .env.example .env.production
+
+# 编辑配置
+vim .env.production
+
+# 必须修改的配置
+MYSQL_ROOT_PASSWORD=强密码
+REDIS_PASSWORD=强密码
+QWEN_API_KEY=API 密钥
+```
+
+**注意**: 此文件包含敏感信息，已添加到 `.gitignore`
+
+---
+
+### 3. Dockerfile（后端）✓
+**路径**: `d:\AI-SecondBrain\Dockerfile`
+
+**说明**: 后端 Spring Boot 应用 Docker 构建文件
+
+**特点**:
+- ✅ 多阶段构建（减小镜像大小）
+- ✅ Maven 构建优化（依赖缓存）
+- ✅ Spring Boot 分层（优化缓存）
+- ✅ 非 root 用户运行（安全）
+- ✅ JVM 参数优化
+- ✅ 健康检查配置
+
+**构建命令**:
+```bash
+docker build -t ai-second-brain-backend .
+```
+
+---
+
+### 4. Dockerfile（前端）✓
+**路径**: `d:\AI-SecondBrain\frontend\Dockerfile`
+
+**说明**: 前端 Vue.js 应用 Docker 构建文件
+
+**特点**:
+- ✅ 多阶段构建
+- ✅ Node.js 18 构建
+- ✅ Nginx Alpine 运行
+- ✅ Gzip 压缩
+- ✅ 静态资源缓存
+- ✅ 健康检查端点
+
+**构建命令**:
+```bash
+cd frontend
+docker build -t ai-second-brain-frontend .
+```
+
+---
+
+### 5. application-prod.yml ✓
+**路径**: `d:\AI-SecondBrain\src\main\resources\application-prod.yml`
+
+**说明**: Spring Boot 生产环境配置文件
+
+**配置内容**:
+- 数据库连接池（HikariCP）
+- Redis 连接配置
+- Kafka 配置
+- Elasticsearch 配置
+- 邮件配置
+- AI 服务配置
+- 日志配置
+- 监控端点（Actuator）
+
+**主要特性**:
+- ✅ 环境变量注入
+- ✅ 性能优化配置
+- ✅ 生产安全配置
+- ✅ 日志级别控制
+
+---
+
+## 🔧 Nginx 配置文件
+
+### 6. nginx/nginx.conf ✓
+**路径**: `d:\AI-SecondBrain\nginx\nginx.conf`
+
+**说明**: Nginx 主配置文件
+
+**配置内容**:
+- 工作进程数
+- 日志格式
+- Gzip 压缩
+- MIME 类型
+- 性能优化
+
+---
+
+### 7. nginx/conf.d/default.conf ✓
+**路径**: `d:\AI-SecondBrain\nginx\conf.d\default.conf`
+
+**说明**: Nginx 虚拟主机配置
+
+**配置内容**:
+- 前端静态文件服务
+- 后端 API 代理
+- WebSocket 支持
+- HTTPS 配置（可选）
+- 健康检查端点
+- 超时配置
+
+**主要特性**:
+- ✅ 反向代理
+- ✅ 负载均衡
+- ✅ SSL/TLS 支持
+- ✅ 跨域支持
+- ✅ 性能优化
+
+---
+
+## 🗄️ Redis 配置文件
+
+### 8. redis/redis.conf ✓
+**路径**: `d:\AI-SecondBrain\redis\redis.conf`
+
+**说明**: Redis 生产环境配置文件
+
+**配置内容**:
+- 密码认证
+- 持久化配置（RDB + AOF）
+- 内存管理
+- 慢查询日志
+- 性能优化
+- 客户端限制
+
+**主要特性**:
+- ✅ 数据安全
+- ✅ 性能优化
+- ✅ 监控支持
+- ✅ 故障恢复
+
+---
+
+## 📜 部署脚本
+
+### 9. deploy.sh ✓
+**路径**: `d:\AI-SecondBrain\deploy.sh`
+
+**说明**: Linux/Mac 自动化部署脚本
+
+**功能**:
+- ✅ 检查 Docker 环境
+- ✅ 检查配置文件
+- ✅ 创建必要目录
+- ✅ 停止旧服务
+- ✅ 清理旧容器
+- ✅ 构建新镜像
+- ✅ 启动新服务
+- ✅ 检查服务状态
+- ✅ 备份数据
+- ✅ 查看日志
+
+**使用方法**:
+```bash
+chmod +x deploy.sh
+bash deploy.sh deploy      # 完整部署
+bash deploy.sh build       # 仅构建
+bash deploy.sh start       # 启动服务
+bash deploy.sh stop        # 停止服务
+bash deploy.sh restart     # 重启服务
+bash deploy.sh status      # 查看状态
+bash deploy.sh logs        # 查看日志
+bash deploy.sh backup      # 备份数据
+bash deploy.sh clean       # 清理
+bash deploy.sh help        # 帮助信息
+```
+
+---
+
+### 10. deploy.bat ✓
+**路径**: `d:\AI-SecondBrain\deploy.bat`
+
+**说明**: Windows 自动化部署脚本
+
+**功能**: 与 `deploy.sh` 相同，适用于 Windows 环境
+
+**使用方法**:
+```cmd
+deploy.bat deploy      # 完整部署
+deploy.bat build       # 仅构建
+deploy.bat start       # 启动服务
+deploy.bat stop        # 停止服务
+deploy.bat restart     # 重启服务
+deploy.bat status      # 查看状态
+deploy.bat logs        # 查看日志
+deploy.bat clean       # 清理
+deploy.bat help        # 帮助信息
+```
+
+---
+
+### 11. check_deployment.sh ✓
+**路径**: `d:\AI-SecondBrain\check_deployment.sh`
+
+**说明**: 部署前环境检查脚本
+
+**检查项**:
+- ✅ Docker 环境
+- ✅ 配置文件
+- ✅ Docker Compose 配置
+- ✅ 目录结构
+- ✅ 安全配置
+- ✅ 系统资源
+- ✅ 端口占用
+- ✅ 服务状态
+
+**使用方法**:
+```bash
+chmod +x check_deployment.sh
+bash check_deployment.sh
+```
+
+**输出**:
+- ✓ 通过项（绿色）
+- ✗ 失败项（红色）
+- ⚠ 警告项（黄色）
+
+---
+
+## 📚 文档文件
+
+### 12. DEPLOYMENT.md ✓
+**路径**: `d:\AI-SecondBrain\DEPLOYMENT.md`
+
+**说明**: 详细部署文档
+
+**内容**:
+- 部署前准备
+- 服务器配置要求
+- 快速部署（推荐）
+- 手动部署
+- 配置说明
+- 常见问题
+- 运维管理
+- 性能优化
+- HTTPS 配置
+- 监控告警
+
+**章节**:
+1. 部署前准备
+2. 快速部署
+3. 手动部署
+4. 配置说明
+5. HTTPS 配置
+6. 常见问题
+7. 运维管理
+8. 性能优化
+
+---
+
+### 13. QUICKSTART.md ✓
+**路径**: `d:\AI-SecondBrain\QUICKSTART.md`
+
+**说明**: 快速开始指南
+
+**内容**:
+- 5 分钟快速部署
+- 验证部署
+- 常用操作
+- 下一步配置
+- 故障排查
+- 系统要求
+- 安全建议
+
+**特点**:
+- ✅ 步骤简洁
+- ✅ 命令完整
+- ✅ 时间估算
+- ✅ 快速上手
+
+---
+
+### 14. PRE_DEPLOYMENT_CHECKLIST.md ✓
+**路径**: `d:\AI-SecondBrain\PRE_DEPLOYMENT_CHECKLIST.md`
+
+**说明**: 部署前检查清单
+
+**内容**:
+- 服务器配置检查
+- Docker 环境检查
+- 项目文件检查
+- 环境变量检查
+- 安全检查
+- 系统资源检查
+- 端口检查
+- 服务状态检查
+- 数据库准备
+- SSL 证书准备
+- 备份策略
+- 性能优化
+- 文档准备
+- 应急计划
+
+**特点**:
+- ✅ 15 大类检查项
+- ✅ 必须/推荐分类
+- ✅ 详细检查命令
+- ✅ 检查总结
+
+---
+
+### 15. PRODUCTION_FILES.md ✓
+**路径**: `d:\AI-SecondBrain\PRODUCTION_FILES.md`
+
+**说明**: 生产环境文件结构说明
+
+**内容**:
+- 完整文件列表
+- 必需文件清单
+- 文件详细说明
+- 安全文件说明
+- 文件大小估算
+- 文件完整性检查
+
+**特点**:
+- ✅ 文件树结构
+- ✅ 文件大小估算
+- ✅ 检查命令
+- ✅ 问题处理
+
+---
+
+## 🗄️ 数据库文件
+
+### 16. complete_database_schema_verified.sql ✓
+**路径**: `d:\AI-SecondBrain\complete_database_schema_verified.sql`
+
+**说明**: 经过实际数据库验证的完整建表语句
+
+**包含**:
+- 12 张表的完整结构
+- 所有索引配置
+- 所有注释说明
+- 外键关系（可选）
+- 初始化数据
+
+**表列表**:
+1. user（用户表）
+2. raw_chat_record（对话记录表）
+3. knowledge_node（知识节点表）
+4. knowledge_embedding（知识向量表）
+5. review_log（复习记录表）
+6. knowledge_tag（标签表）
+7. knowledge_node_tag_relation（节点标签关联表）
+8. knowledge_relation（知识关系表）
+9. review_card（复习卡片表）
+10. learning_report（学习报告表）
+11. async_task（异步任务表）
+12. research_history（研究历史表）
+
+**特点**:
+- ✅ 已验证（与实际数据库一致）
+- ✅ 完整（包含所有表）
+- ✅ 准确（字段、类型、索引）
+- ✅ 有注释（详细说明）
+
+---
+
+## 📊 文件统计
+
+### 文件类型分布
+- Docker 配置：3 个
+- Spring Boot 配置：1 个
+- Nginx 配置：2 个
+- Redis 配置：1 个
+- 部署脚本：2 个
+- 检查脚本：1 个
+- 文档：4 个
+- 数据库：1 个
+
+**总计**: 15 个文件
+
+### 文件大小估算
+- 配置文件：~50KB
+- 脚本文件：~30KB
+- 文档文件：~200KB
+- 数据库脚本：~20KB
+
+**总计**: ~300KB
+
+---
+
+## 🎯 使用流程
+
+### 1. 部署前
+```bash
+# 1. 检查文件完整性
+ls -la docker-compose.prod.yml
+ls -la .env.production
+ls -la Dockerfile
+# ...
+
+# 2. 运行检查脚本
+bash check_deployment.sh
+
+# 3. 查看检查报告
+# 确保所有检查项通过
+```
+
+### 2. 配置环境
+```bash
+# 1. 复制环境变量文件
+cp .env.example .env.production
+
+# 2. 编辑配置
+vim .env.production
+
+# 3. 修改必要配置
+# - MYSQL_ROOT_PASSWORD
+# - REDIS_PASSWORD
+# - QWEN_API_KEY
+# - DOMAIN_NAME（可选）
+```
+
+### 3. 执行部署
+```bash
+# 1. 执行部署脚本
+bash deploy.sh
+
+# 2. 等待部署完成（3-5 分钟）
+
+# 3. 查看部署结果
+docker-compose -f docker-compose.prod.yml ps
+```
+
+### 4. 验证部署
+```bash
+# 1. 访问前端
+# http://服务器 IP
+
+# 2. 访问 API 文档
+# http://服务器 IP/api/doc.html
+
+# 3. 健康检查
+curl http://服务器 IP/api/actuator/health
+```
+
+### 5. 运维管理
+```bash
+# 1. 查看日志
+docker-compose -f docker-compose.prod.yml logs -f
+
+# 2. 重启服务
+docker-compose -f docker-compose.prod.yml restart
+
+# 3. 备份数据
+bash deploy.sh backup
+
+# 4. 更新版本
+git pull
+bash deploy.sh
+```
+
+---
+
+## 🔒 安全注意事项
+
+### 敏感文件保护
+以下文件包含敏感信息，不应提交到 Git：
+- `.env.production`
+- `ssl/cert.pem`
+- `ssl/key.pem`
+- `logs/`
+
+### 密码安全
+- 使用强密码（至少 16 位）
+- 包含大小写字母、数字、特殊字符
+- 定期更换密码
+
+### 网络安全
+- 配置防火墙
+- 只开放必要端口
+- 使用 SSH 密钥登录
+- 禁用 root 密码登录
+
+---
+
+## 📞 故障排查
+
+### 文件缺失
+如果文件缺失：
+1. 检查 Git 仓库
+2. 查看 `.gitignore`
+3. 从备份恢复
+4. 重新生成文件
+
+### 配置错误
+如果配置错误：
+1. 运行检查脚本
+2. 查看错误日志
+3. 对比示例配置
+4. 联系技术支持
+
+### 部署失败
+如果部署失败：
+1. 查看 Docker 日志
+2. 检查资源使用
+3. 验证配置文件
+4. 重新执行部署
+
+---
+
+## ✅ 检查清单
+
+部署前请确保以下文件存在且正确：
+
+### 核心文件
+- [ ] docker-compose.prod.yml
+- [ ] .env.production（需手动创建）
+- [ ] Dockerfile
+- [ ] frontend/Dockerfile
+- [ ] src/main/resources/application-prod.yml
+
+### 配置文件
+- [ ] nginx/nginx.conf
+- [ ] nginx/conf.d/default.conf
+- [ ] redis/redis.conf
+
+### 脚本文件
+- [ ] deploy.sh
+- [ ] check_deployment.sh
+
+### 文档文件
+- [ ] DEPLOYMENT.md
+- [ ] QUICKSTART.md
+- [ ] PRE_DEPLOYMENT_CHECKLIST.md
+
+### 数据库
+- [ ] complete_database_schema_verified.sql
+
+---
+
+## 🎉 总结
+
+已为您生成完整的生产环境部署文件，包括：
+
+✅ **15 个核心文件**
+✅ **完整的 Docker 配置**
+✅ **详细的部署文档**
+✅ **自动化部署脚本**
+✅ **环境检查工具**
+✅ **数据库表结构**
+
+**所有文件已就绪，可以开始部署到阿里云！** 🚀
+
+---
+
+**下一步操作**:
+1. 上传文件到服务器
+2. 修改 `.env.production` 配置
+3. 运行 `check_deployment.sh` 检查
+4. 执行 `deploy.sh` 部署
+5. 验证部署结果
+
+**祝您部署顺利！** 🎊
