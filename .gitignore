@@ -1,99 +1,143 @@
-HELP.md
+# ===============================
+# 编译产物
+# ===============================
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+build/
+dist/
+*.class
+*.jar
+*.war
+*.ear
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# Gradle
+.gradle/
+build/
+
+# ===============================
+# 依赖目录
+# ===============================
+node_modules/
+.m2/
+__pycache__/
+.venv/
+venv/
+env/
+
+# ===============================
+# IDE 配置
+# ===============================
+.idea/
+.vscode/
 *.iml
 *.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-### Logs ###
-logs/
-*.log
-
-### OS ###
-.DS_Store
-Thumbs.db
-
-### Config ###
-application-local.yml
-application-dev.yml
-
-### Environment Variables ###
+# ===============================
+# 敏感信息
+# ===============================
 .env
 .env.local
-.env.production
 .env.*.local
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+*.keystore
+*.password
+*.secret
 
-### Python ###
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.manifest
-*.spec
+# ===============================
+# 日志文件
+# ===============================
+logs/
+*.log
+log/
 
-### DeerFlow ###
+# ===============================
+# 系统文件
+# ===============================
+.DS_Store
+Thumbs.db
+desktop.ini
+.Spotlight-V100
+.Trashes
+
+# ===============================
+# Docker 数据卷（不提交）
+# ===============================
+mysql-data/
+redis-data/
+elasticsearch-data/
+kafka-data/
+zookeeper-data/
+
+# ===============================
+# 临时文件
+# ===============================
+*.tmp
+*.bak
+*.swp
+*~
+*.orig
+*.pid
+*.lock
+
+# ===============================
+# 备份文件
+# ===============================
+backups/
+backup/
+*.sql.bak
+
+# ===============================
+# 特定项目文件
+# ===============================
+
+# DeerFlow 运行时文件
 deerflow/deer-flow/
 deerflow/__pycache__/
 deerflow/*.pyc
-deerflow/deerflow_research_service.py
-deerflow/deerflow_report.py
-deerflow/deerflow_multiagent_service.py
 deerflow/api_server.py
 deerflow/start_server.bat
 deerflow/test_api.py
 
-### Competition Docs ###
+# 竞赛资料（不提交）
 cansaiziliao/
 
-### Check Scripts ###
+# 测试和调试脚本
 check_*.sql
 add_avatar_column.sql
 create_learning_report_table.sql
+recreate_*.sql
+create_test_*.sql
+update_*.sql
 
-.env
-backups/
+# 本地配置文件
+application-local.yml
+application-dev.yml
+*.local.yml
+
+# 数据库导出（敏感数据）
+*.dump
+*.sql.gz
+
+# 证书和密钥
+ssl/
+certs/
+*.crt
+*.key
+
+# 上传的文件（如果有）
+uploads/
+files/
