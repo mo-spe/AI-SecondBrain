@@ -17,7 +17,7 @@ services:
       - "${MYSQL_PORT}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./src/main/resources/sql:/docker-entrypoint-initdb.d:ro
+      - ./complete_database_schema_verified.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./logs/mysql:/var/log/mysql
     networks:
       - ai-second-brain-network

@@ -130,7 +130,7 @@
 #### 步骤 1：克隆项目
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/AI-SecondBrain.git
+git clone https://github.com/mo-spe/AI-SecondBrain.git
 cd AI-SecondBrain
 ```
 
@@ -439,6 +439,7 @@ docker-compose exec mysql mysql -u root -p -e "SHOW DATABASES;"
 
 ## 📖 相关文档
 
+- [开发环境搭建指南](DEVELOPMENT_GUIDE.md) - 详细的本地开发环境配置步骤
 - [贡献指南](CONTRIBUTING.md) - 如何参与项目开发
 - [LICENSE](LICENSE) - MIT 开源协议
 
@@ -448,39 +449,118 @@ docker-compose exec mysql mysql -u root -p -e "SHOW DATABASES;"
 
 ### 开发环境搭建
 
-1. **克隆项目**
+#### 1. 克隆项目
 
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/AI-SecondBrain.git
-   cd AI-SecondBrain
-   ```
+```bash
+git clone https://github.com/mo-spe/AI-SecondBrain.git
+cd AI-SecondBrain
+```
 
-2. **启动开发环境**
+#### 2. 启动基础服务
 
-   ```bash
-   docker-compose up -d mysql redis
-   ```
+```bash
+# 启动 MySQL、Redis 和 Elasticsearch
+docker-compose up -d mysql redis elasticsearch
+```
 
-3. **配置本地环境**
+#### 3. 配置本地环境
 
-   ```bash
-   cp .env.example .env.dev
-   # 编辑 .env.dev 配置开发环境
-   ```
+```bash
+# 复制环境变量文件
+cp .env.example .env
 
-4. **运行后端**
+# 编辑 .env 文件，配置开发环境
+# Windows: notepad .env
+# macOS/Linux: vim .env
+```
 
-   ```bash
-   cd src
-   mvn spring-boot:run
-   ```
+**必须配置的项目**：
 
-5. **运行前端**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+```bash
+# 数据库配置
+MYSQL_ROOT_PASSWORD=your_password
+MYSQL_PASSWORD=your_password
+REDIS_PASSWORD=your_password
+
+# AI API 密钥（至少配置一个）
+QWEN_API_KEY=your_qwen_api_key_here
+```
+
+#### 4. 启动 DeerFlow AI 服务（可选）
+
+如果需要使用 AI 功能（知识提取、报告生成等）：
+
+```bash
+# 进入 DeerFlow 目录
+cd deerflow
+
+# 安装 Python 依赖
+pip install -r requirements.txt
+
+# 配置 DeerFlow
+cp config.yaml config.local.yaml
+# 编辑 config.local.yaml，配置 API 密钥
+
+# 启动服务
+python app.py
+# 或使用 Docker
+docker-compose up -d deerflow
+```
+
+**DeerFlow 服务说明**：
+
+- 提供 AI 知识提取、学习报告生成、智能问答等功能
+- 默认端口：8000
+- API 文档：http://localhost:8000/docs
+
+#### 5. 运行后端
+
+```bash
+# 方式一：使用 Maven（推荐）
+cd backend
+mvn spring-boot:run
+
+# 方式二：使用 IDE
+# 在 IDEA 中运行 AiSecondBrainApplication.java
+```
+
+后端服务地址：
+
+- API 文档：http://localhost:8080/api/doc.html
+- 健康检查：http://localhost:8080/api/health
+
+#### 6. 运行前端
+
+```bash
+cd frontend
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+```
+
+前端访问地址：http://localhost:5173
+
+#### 7. 初始化数据库（首次运行）
+
+```bash
+# 连接 MySQL
+docker-compose exec mysql mysql -u root -p
+
+# 执行初始化脚本
+source /docker-entrypoint-initdb.d/complete_database_schema_verified.sql
+```
+
+#### 8. 验证环境
+
+访问 http://localhost:5173，使用默认账号登录：
+
+- 用户名：`admin`
+- 密码：`admin123`
+
+**⚠️ 首次登录后请立即修改密码！**
 
 ### 提交 PR
 
@@ -588,9 +668,9 @@ docker-compose exec frontend wget http://backend:8080/api/health
 
 ## 📞 联系方式
 
-- **项目主页**：https://github.com/YOUR_USERNAME/AI-SecondBrain
-- **问题反馈**：https://github.com/YOUR_USERNAME/AI-SecondBrain/issues
-- **邮箱**：your-email@example.com
+- **项目主页**：https://github.com/mo-spe/AI-SecondBrain
+- **问题反馈**：https://github.com/mo-spe/AI-SecondBrain/issues
+- **邮箱**：walliamharric@gmail.com
 
 ---
 

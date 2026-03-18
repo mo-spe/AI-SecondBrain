@@ -13,15 +13,15 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/second_brain?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:second_brain}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
 
   data:
     redis:
-      host: 192.168.100.128
-      port: 6379
-      password: 123321
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
       timeout: 3000ms
       lettuce:
@@ -116,8 +116,8 @@ ai:
       model: ${QWEN_EMBEDDING_MODEL:text-embedding-v2}
 
 jwt:
-  secret: ai-second-brain-secret-key-2024-very-long-and-secure-key-for-jwt-token-generation-and-validation-256-bits-minimum
-  expiration: 86400000
+  secret: ${JWT_SECRET:ai-second-brain-secret-key-2024-very-long-and-secure-key-for-jwt-token-generation-and-validation-256-bits-minimum}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 aliyun:
   oss:

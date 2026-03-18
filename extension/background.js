@@ -1,5 +1,7 @@
-let API_BASE_URL = "https://aisecondbrain.cn/api";
-let DEBUG = false;
+// 本地开发环境配置
+// 如果要切换到生产环境，请修改此地址为：https://aisecondbrain.cn/api
+let API_BASE_URL = "http://localhost:8080/api";
+let DEBUG = true;  // 开发环境开启调试模式
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getToken") {

@@ -1,164 +1,276 @@
-# AI SecondBrain 浏览器插件
+# 插件本地开发环境快速配置指南
 
-## 功能说明
+## ✅ 已完成的修改
 
-这是一个 Chrome/Edge 浏览器插件，用于一键采集 AI 对话到个人知识库。
+### 1. 修改 `background.js`
 
-### 支持的网站
-
-- ChatGPT (chatgpt.com, chat.openai.com)
-- DeepSeek (deepseek.com)
-- Kimi (kimi.moonshot.cn)
-
-### 主要功能
-
-1. **一键采集**
-   - 在支持的 AI 对话网站上，点击右上角的"采集到知识库"按钮
-   - 自动提取当前页面的对话内容
-   - 发送到后端 API 进行处理
-
-2. **用户认证**
-   - 点击插件图标打开弹窗
-   - 输入用户名和密码登录
-   - 登录状态保存在本地存储中
-
-3. **自动提取**
-   - 智能识别不同的 AI 对话网站结构
-   - 提取用户和 AI 的对话内容
-   - 格式化为结构化数据
-
-## 安装步骤
-
-### 1. 准备图标文件
-
-由于无法直接创建 PNG 图标文件，请手动添加以下图标：
-
-在 `extension/icons/` 目录下创建以下文件：
-- `icon16.png` (16x16 像素)
-- `icon48.png` (48x48 像素)
-- `icon128.png` (128x128 像素)
-
-建议图标设计：
-- 使用大脑或知识相关的图标
-- 主色调：#667eea (蓝色) 和 #764ba2 (紫色)
-- 简洁、现代的设计风格
-
-### 2. 加载插件到浏览器
-
-#### Chrome 浏览器：
-1. 打开 Chrome 浏览器
-2. 访问 `chrome://extensions/`
-3. 开启"开发者模式"
-4. 点击"加载已解压的扩展程序"
-5. 选择 `extension` 文件夹
-6. 插件安装成功！
-
-#### Edge 浏览器：
-1. 打开 Edge 浏览器
-2. 访问 `edge://extensions/`
-3. 开启"开发人员模式"
-4. 点击"加载解压缩的扩展"
-5. 选择 `extension` 文件夹
-6. 插件安装成功！
-
-## 使用说明
-
-### 1. 首次使用
-
-1. 点击浏览器工具栏中的插件图标
-2. 在弹窗中输入用户名和密码
-3. 点击"登录"按钮
-4. 登录成功后，状态会显示"已登录"
-
-### 2. 采集对话
-
-1. 访问支持的 AI 对话网站（ChatGPT/DeepSeek/Kimi）
-2. 进行一段有价值的对话
-3. 点击页面右上角的"采集到知识库"按钮
-4. 等待采集完成提示
-5. 知识点会自动保存到您的知识库
-
-### 3. 查看知识库
-
-1. 点击插件图标
-2. 点击"前往知识库"按钮
-3. 在浏览器中打开知识库管理界面
-
-## 技术架构
-
-### 文件结构
-
-```
-extension/
-├── manifest.json          # 插件配置文件
-├── popup.html            # 弹窗页面 HTML
-├── popup.js              # 弹窗页面逻辑
-├── content.js            # 内容脚本（注入到网页）
-├── background.js          # 后台服务脚本
-├── icons/               # 图标目录（需手动添加）
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md            # 说明文档
+```javascript
+// ✅ 已修改为本地开发环境
+let API_BASE_URL = "http://localhost:8080/api";
+let DEBUG = true;  // 开启调试模式
 ```
 
-### 核心功能
+### 2. 修改 `manifest.json`
 
-1. **content.js**
-   - 检测当前网站
-   - 提取对话内容
-   - 注入采集按钮
-   - 处理采集请求
+```json
+{
+  "host_permissions": [
+    "http://localhost:8080/*",     // ✅ 已添加
+    "http://127.0.0.1:8080/*",     // ✅ 已添加
+    "https://chatgpt.com/*",
+    // ... 其他域名
+  ]
+}
+```
 
-2. **popup.js**
-   - 用户登录/登出
-   - 显示登录状态
-   - 跳转到知识库
+---
 
-3. **background.js**
-   - 处理插件消息
-   - 与后端 API 通信
-   - 存储用户 Token
+## 🚀 使用步骤
 
-## 注意事项
+### 步骤 1：启动后端服务
 
-1. **后端服务**
-   - 确保后端服务正在运行（http://localhost:8080）
-   - 确保已注册账号
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
 
-2. **CORS 配置**
-   - 后端需要配置 CORS 允许插件访问
-   - 已在 `WebMvcConfig.java` 中配置
+**验证后端启动成功**：
+- 访问：http://localhost:8080/api/doc.html
+- 看到 Swagger 文档页面表示成功
 
-3. **网络连接**
-   - 插件需要能够访问 localhost:8080
-   - 确保防火墙允许本地连接
+### 步骤 2：启动前端服务（可选）
 
-## 后续优化
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-1. **支持更多 AI 平台**
-   - Claude
-   - 文心一言
-   - 通义千问
+**验证前端启动成功**：
+- 访问：http://localhost:5173
+- 看到登录页面表示成功
 
-2. **增强提取逻辑**
-   - 支持更多对话格式
-   - 提高提取准确率
-   - 支持代码块提取
+### 步骤 3：加载浏览器插件
 
-3. **用户体验优化**
-   - 添加采集历史记录
-   - 显示采集进度
-   - 支持批量采集
+1. **打开 Chrome 浏览器**
 
-4. **离线支持**
-   - 支持离线缓存
-   - 网络恢复后自动同步
+2. **访问扩展管理页面**
+   ```
+   chrome://extensions/
+   ```
 
-## 问题反馈
+3. **开启开发者模式**
+   - 点击右上角的"开发者模式"开关
+   - 开启后会出现"加载已解压的扩展程序"按钮
 
-如果遇到问题，请检查：
-1. 浏览器控制台是否有错误信息
-2. 后端服务是否正常运行
-3. 网络连接是否正常
-4. Token 是否有效
+4. **加载插件**
+   - 点击"加载已解压的扩展程序"
+   - 选择文件夹：`d:\AI-SecondBrain\extension`
+   - 点击"选择文件夹"
+
+5. **验证加载成功**
+   - 看到 "AI SecondBrain Collector" 插件
+   - 状态显示为"已启用"
+
+### 步骤 4：测试插件功能
+
+1. **访问 AI 平台**
+   - 打开任意支持的 AI 平台，例如：
+     - https://chatgpt.com
+     - https://chat.deepseek.com
+     - https://kimi.moonshot.cn
+
+2. **进行对话**
+   - 与 AI 进行一段对话
+
+3. **使用插件保存**
+   - 点击浏览器右上角的插件图标
+   - 点击"保存到知识库"按钮
+   - 查看是否有成功提示
+
+4. **检查后端日志**
+   ```
+   # 在运行后端的终端查看日志
+   # 应该能看到类似这样的日志：
+   # POST /api/chat/save 200 OK
+   ```
+
+5. **验证数据保存**
+   - 访问前端：http://localhost:5173
+   - 登录（默认账号：admin / admin123）
+   - 查看对话列表中是否有刚才保存的内容
+
+---
+
+## 🔧 环境切换
+
+### 切换到生产环境
+
+如果要切换到生产环境，修改 `background.js`：
+
+```javascript
+// 注释掉本地配置
+// let API_BASE_URL = "http://localhost:8080/api";
+// let DEBUG = true;
+
+// 启用生产环境配置
+let API_BASE_URL = "https://aisecondbrain.cn/api";
+let DEBUG = false;
+```
+
+### 切换到测试环境
+
+```javascript
+let API_BASE_URL = "http://test-server:8080/api";
+let DEBUG = true;
+```
+
+---
+
+## ⚠️ 常见问题
+
+### 问题 1：插件图标不显示
+
+**解决方法**：
+1. 刷新浏览器页面
+2. 重新加载插件
+3. 检查浏览器工具栏是否隐藏了插件图标
+
+### 问题 2：保存失败，提示网络错误
+
+**检查清单**：
+- [ ] 后端服务是否启动？
+- [ ] 后端端口是否为 8080？
+- [ ] CORS 配置是否正确？
+- [ ] 防火墙是否阻止连接？
+
+**调试步骤**：
+```bash
+# 1. 检查后端是否运行
+curl http://localhost:8080/api/health
+
+# 2. 查看后端日志
+docker-compose logs backend
+
+# 3. 检查浏览器控制台
+# F12 -> Console -> 查看错误信息
+```
+
+### 问题 3：插件无法访问 AI 平台
+
+**解决方法**：
+1. 检查 `manifest.json` 中是否包含该平台的域名
+2. 重新加载插件
+3. 刷新 AI 平台页面
+
+### 问题 4：修改配置后不生效
+
+**解决方法**：
+1. 在 `chrome://extensions/` 页面点击插件的"刷新"按钮
+2. 关闭并重新打开浏览器
+3. 清除浏览器缓存
+
+---
+
+## 📝 配置说明
+
+### background.js 配置项
+
+```javascript
+// API 地址
+let API_BASE_URL = "http://localhost:8080/api";
+
+// 调试模式（开启后会输出详细日志）
+let DEBUG = true;
+```
+
+### manifest.json 配置项
+
+```json
+{
+  "host_permissions": [
+    "http://localhost:8080/*",     // 本地后端地址
+    "http://127.0.0.1:8080/*",     // 本地 IP 地址
+    // ... 其他允许的域名
+  ]
+}
+```
+
+---
+
+## 🎯 开发建议
+
+### 1. 使用调试模式
+
+开发时保持 `DEBUG = true`，可以看到详细的日志输出：
+
+```javascript
+let DEBUG = true;
+```
+
+### 2. 热重载
+
+修改插件代码后：
+1. 在 `chrome://extensions/` 页面点击刷新按钮
+2. 不需要重新加载插件
+
+### 3. 查看日志
+
+**后端日志**：
+```bash
+# 查看实时日志
+tail -f logs/ai-second-brain.log
+
+# 或者在 IDEA 中查看 Console 输出
+```
+
+**浏览器日志**：
+```
+# 打开开发者工具
+F12 -> Console
+
+# 查看插件日志
+chrome://extensions/ -> 插件 -> 检查视图
+```
+
+### 4. 快速测试
+
+创建测试脚本快速验证：
+
+```bash
+# test-plugin.sh 或 test-plugin.bat
+curl -X POST http://localhost:8080/api/chat/save \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "test",
+    "content": "测试对话内容"
+  }'
+```
+
+---
+
+## 📚 相关文档
+
+- [开发环境搭建指南](DEVELOPMENT_GUIDE.md)
+- [浏览器插件配置指南](EXTENSION_CONFIGURATION_GUIDE.md)
+- [项目完整审查报告](PROJECT_COMPLETE_REVIEW.md)
+
+---
+
+## ✅ 配置完成检查清单
+
+- [ ] 后端服务已启动（端口 8080）
+- [ ] 前端服务已启动（端口 5173，可选）
+- [ ] `background.js` 已修改为本地地址
+- [ ] `manifest.json` 已添加本地权限
+- [ ] 插件已重新加载
+- [ ] 测试保存功能正常
+- [ ] 后端日志显示请求成功
+- [ ] 前端可以看到保存的数据
+
+---
+
+**配置完成！现在可以在本地开发环境使用插件了！** 🎉
+
+**最后更新**：2026-03-19  
+**版本**：V1.0

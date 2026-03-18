@@ -33,6 +33,7 @@ git checkout -b feature/your-feature-name
 ```
 
 **分支命名规范**：
+
 - `feature/xxx` - 新功能
 - `bugfix/xxx` - Bug 修复
 - `docs/xxx` - 文档更新
@@ -89,6 +90,7 @@ git push origin feature/your-feature-name
 ```
 
 **Type 类型**：
+
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `docs`: 文档更新
@@ -98,6 +100,7 @@ git push origin feature/your-feature-name
 - `chore`: 构建/工具/配置
 
 **示例**：
+
 ```
 feat(review): add Ebbinghaus review algorithm
 
@@ -111,11 +114,13 @@ Closes #123
 #### 代码规范
 
 **后端 Java**：
+
 - 遵循 [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html)
 - 使用 Checkstyle 进行代码检查
 - 添加必要的注释和文档
 
 **前端 Vue**：
+
 - 遵循 [Vue.js Style Guide](https://vuejs.org/style-guide/)
 - 使用 ESLint 进行代码检查
 - 组件添加必要的注释
@@ -127,6 +132,7 @@ Closes #123
 - 测试覆盖率不应降低
 
 **运行测试**：
+
 ```bash
 # 后端测试
 mvn test
@@ -163,11 +169,11 @@ mvn jacoco:report
 docker-compose up -d mysql redis elasticsearch
 
 # 2. 配置开发环境
-cp .env.example .env.dev
-# 编辑 .env.dev 配置
+cp .env.example .env
+# 编辑 .env 配置
 
 # 3. 运行后端
-cd src
+cd backend
 mvn spring-boot:run
 
 # 4. 运行前端
@@ -202,10 +208,10 @@ npm run dev
 
 ## 📖 资源链接
 
-- [项目架构](competition_docs/04_项目架构总览.md)
-- [部署指南](DEPLOYMENT.md)
-- [用户手册](用户手册.md)
-- [API 文档](http://localhost:8080/api/doc.html)
+- [README.md](README.md) - 项目说明
+- [开发环境搭建指南](DEVELOPMENT_GUIDE.md) - 详细的本地开发环境配置
+- [项目结构说明](PROJECT_STRUCTURE.md) - 代码组织结构
+- [API 文档](http://localhost:8080/api/doc.html) - 在线 API 文档
 
 ---
 
@@ -214,6 +220,7 @@ npm run dev
 ### Q: 如何获取 API 密钥？
 
 A: 访问各平台官网：
+
 - [通义千问](https://dashscope.console.aliyun.com/)
 - [DeepSeek](https://platform.deepseek.com/)
 - [OpenAI](https://platform.openai.com/api-keys)
