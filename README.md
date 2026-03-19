@@ -659,10 +659,10 @@ docker-compose exec frontend wget http://backend:8080/api/health
 
 ## 👥 开发团队
 
-- **项目负责人**：[您的姓名]
-- **后端开发**：[团队成员]
-- **前端开发**：[团队成员]
-- **AI 算法**：[团队成员]
+- **项目负责人**：mo-spe
+- **后端开发**：mo-spe
+- **前端开发**：mo-spe
+- **AI 算法**：mo-spe
 
 ---
 
@@ -689,17 +689,17 @@ docker-compose exec frontend wget http://backend:8080/api/health
 
 ## 📈 项目统计
 
-![GitHub stars](https://img.shields.io/github/stars/YOUR_USERNAME/AI-SecondBrain?style=social)
-![GitHub forks](https://img.shields.io/github/forks/YOUR_USERNAME/AI-SecondBrain?style=social)
-![GitHub issues](https://img.shields.io/github/issues/YOUR_USERNAME/AI-SecondBrain)
-![GitHub license](https://img.shields.io/github/license/YOUR_USERNAME/AI-SecondBrain)
+![GitHub stars](https://img.shields.io/github/stars/mo-spe/AI-SecondBrain?style=social)
+![GitHub forks](https://img.shields.io/github/forks/mo-spe/AI-SecondBrain?style=social)
+![GitHub issues](https://img.shields.io/github/issues/mo-spe/AI-SecondBrain)
+![GitHub license](https://img.shields.io/github/license/mo-spe/AI-SecondBrain)
 
 **代码统计**：
 
-- **文件数**：470+
+- **文件数**：262+
 - **代码行数**：35,738+
-- **贡献者**：[数字]
-- **提交次数**：[数字]
+- **贡献者**：1
+- **提交次数**：多次提交
 
 ---
 
