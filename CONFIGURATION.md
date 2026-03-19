@@ -76,80 +76,80 @@ java -jar -Dspring.profiles.active=prod ai-second-brain.jar
 
 ### 数据库配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `MYSQL_HOST` | MySQL 主机地址 | localhost | 否 |
-| `MYSQL_PORT` | MySQL 端口 | 3306 | 否 |
-| `MYSQL_DATABASE` | 数据库名称 | second_brain | 否 |
-| `MYSQL_USER` | 数据库用户名 | root | 否 |
-| `MYSQL_PASSWORD` | 数据库密码 | (空) | **是** |
+| 变量名           | 说明           | 默认值       | 必填   |
+| ---------------- | -------------- | ------------ | ------ |
+| `MYSQL_HOST`     | MySQL 主机地址 | localhost    | 否     |
+| `MYSQL_PORT`     | MySQL 端口     | 3306         | 否     |
+| `MYSQL_DATABASE` | 数据库名称     | second_brain | 否     |
+| `MYSQL_USER`     | 数据库用户名   | root         | 否     |
+| `MYSQL_PASSWORD` | 数据库密码     | (空)         | **是** |
 
 ### Redis 配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `REDIS_HOST` | Redis 主机地址 | localhost | 否 |
-| `REDIS_PORT` | Redis 端口 | 6379 | 否 |
-| `REDIS_PASSWORD` | Redis 密码 | (空) | **是** |
+| 变量名           | 说明           | 默认值    | 必填   |
+| ---------------- | -------------- | --------- | ------ |
+| `REDIS_HOST`     | Redis 主机地址 | localhost | 否     |
+| `REDIS_PORT`     | Redis 端口     | 6379      | 否     |
+| `REDIS_PASSWORD` | Redis 密码     | (空)      | **是** |
 
 ### Kafka 配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `KAFKA_ENABLED` | 是否启用 Kafka | true | 否 |
-| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Kafka 服务器地址 | localhost:9092 | 否 |
+| 变量名                           | 说明             | 默认值         | 必填 |
+| -------------------------------- | ---------------- | -------------- | ---- |
+| `KAFKA_ENABLED`                  | 是否启用 Kafka   | true           | 否   |
+| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Kafka 服务器地址 | localhost:9092 | 否   |
 
 ### Elasticsearch 配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `ES_ENABLED` | 是否启用 ES | true | 否 |
-| `ES_USERNAME` | ES 用户名 | elastic | 否 |
-| `ES_PASSWORD` | ES 密码 | elastic123 | 否 |
+| 变量名        | 说明        | 默认值     | 必填 |
+| ------------- | ----------- | ---------- | ---- |
+| `ES_ENABLED`  | 是否启用 ES | true       | 否   |
+| `ES_USERNAME` | ES 用户名   | elastic    | 否   |
+| `ES_PASSWORD` | ES 密码     | elastic123 | 否   |
 
 ### AI 服务配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `AI_PROVIDER` | AI 提供商 | qwen | 否 |
-| `QWEN_API_KEY` | 通义千问 API 密钥 | (空) | **是** |
-| `QWEN_BASE_URL` | 通义千问 API 地址 | https://dashscope.aliyuncs.com/compatible-mode/v1 | 否 |
-| `QWEN_MODEL` | 通义千问模型 | qwen-plus | 否 |
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | (空) | 可选 |
-| `OPENAI_API_KEY` | OpenAI API 密钥 | (空) | 可选 |
+| 变量名             | 说明              | 默认值                                            | 必填   |
+| ------------------ | ----------------- | ------------------------------------------------- | ------ |
+| `AI_PROVIDER`      | AI 提供商         | qwen                                              | 否     |
+| `QWEN_API_KEY`     | 通义千问 API 密钥 | (空)                                              | **是** |
+| `QWEN_BASE_URL`    | 通义千问 API 地址 | https://dashscope.aliyuncs.com/compatible-mode/v1 | 否     |
+| `QWEN_MODEL`       | 通义千问模型      | qwen-plus                                         | 否     |
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | (空)                                              | 可选   |
+| `OPENAI_API_KEY`   | OpenAI API 密钥   | (空)                                              | 可选   |
 
 ### JWT 配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `JWT_SECRET` | JWT 密钥 | (长密钥) | **生产环境必须修改** |
-| `JWT_EXPIRATION` | JWT 过期时间（毫秒） | 86400000 | 否 |
+| 变量名           | 说明                 | 默认值   | 必填                 |
+| ---------------- | -------------------- | -------- | -------------------- |
+| `JWT_SECRET`     | JWT 密钥             | (长密钥) | **生产环境必须修改** |
+| `JWT_EXPIRATION` | JWT 过期时间（毫秒） | 86400000 | 否                   |
 
 ### DeerFlow 配置
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `DEERFLOW_API_URL` | DeerFlow API 地址 | http://localhost:8000 | 否 |
-| `DEERFLOW_API_TIMEOUT` | API 超时时间（秒） | 300 | 否 |
+| 变量名                 | 说明               | 默认值                | 必填 |
+| ---------------------- | ------------------ | --------------------- | ---- |
+| `DEERFLOW_API_URL`     | DeerFlow API 地址  | http://localhost:8000 | 否   |
+| `DEERFLOW_API_TIMEOUT` | API 超时时间（秒） | 300                   | 否   |
 
 ### 阿里云 OSS 配置（可选）
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `ALIYUN_OSS_ENDPOINT` | OSS 端点 | oss-cn-hangzhou.aliyuncs.com | 否 |
-| `ALIYUN_OSS_ACCESS_KEY_ID` | AccessKey ID | (空) | 使用 OSS 时必填 |
-| `ALIYUN_OSS_ACCESS_KEY_SECRET` | AccessKey Secret | (空) | 使用 OSS 时必填 |
-| `ALIYUN_OSS_BUCKET_NAME` | Bucket 名称 | thesecondbrain | 否 |
+| 变量名                         | 说明             | 默认值                       | 必填            |
+| ------------------------------ | ---------------- | ---------------------------- | --------------- |
+| `ALIYUN_OSS_ENDPOINT`          | OSS 端点         | oss-cn-hangzhou.aliyuncs.com | 否              |
+| `ALIYUN_OSS_ACCESS_KEY_ID`     | AccessKey ID     | (空)                         | 使用 OSS 时必填 |
+| `ALIYUN_OSS_ACCESS_KEY_SECRET` | AccessKey Secret | (空)                         | 使用 OSS 时必填 |
+| `ALIYUN_OSS_BUCKET_NAME`       | Bucket 名称      | thesecondbrain               | 否              |
 
 ### 邮件服务配置（可选）
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|--------|------|--------|------|
-| `MAIL_ENABLED` | 是否启用邮件服务 | false | 否 |
-| `MAIL_HOST` | SMTP 服务器 | smtp.qq.com | 使用邮件时必填 |
-| `MAIL_PORT` | SMTP 端口 | 587 | 使用邮件时必填 |
-| `MAIL_USERNAME` | SMTP 用户名 | (空) | 使用邮件时必填 |
-| `MAIL_PASSWORD` | SMTP 密码 | (空) | 使用邮件时必填 |
+| 变量名          | 说明             | 默认值      | 必填           |
+| --------------- | ---------------- | ----------- | -------------- |
+| `MAIL_ENABLED`  | 是否启用邮件服务 | false       | 否             |
+| `MAIL_HOST`     | SMTP 服务器      | smtp.qq.com | 使用邮件时必填 |
+| `MAIL_PORT`     | SMTP 端口        | 587         | 使用邮件时必填 |
+| `MAIL_USERNAME` | SMTP 用户名      | (空)        | 使用邮件时必填 |
+| `MAIL_PASSWORD` | SMTP 密码        | (空)        | 使用邮件时必填 |
 
 ## 🚀 使用方式
 
@@ -279,6 +279,7 @@ Spring Boot 配置加载优先级（从高到低）：
 14. 默认属性
 
 **本项目使用**：
+
 - `application.yml` - 基础配置（优先级 11/12）
 - `application-local.yml` - 本地配置（优先级 9/10）
 - `application-prod.yml` - 生产配置（优先级 9/10）
@@ -324,7 +325,7 @@ redis:
 # ✅ 推荐
 jwt:
   secret: ${JWT_SECRET:}
-  
+
 # ❌ 不推荐
 jwt:
   secret: my-secret-key
@@ -345,6 +346,7 @@ java -Dspring.profiles.active=prod -jar app.jar
 ### 问题 1：无法连接数据库
 
 **检查**：
+
 ```bash
 # 1. 检查环境变量
 echo $MYSQL_HOST
@@ -360,6 +362,7 @@ telnet $MYSQL_HOST $MYSQL_PORT
 ### 问题 2：Redis 连接失败
 
 **检查**：
+
 ```bash
 # 1. 检查 Redis 是否运行
 docker-compose ps redis
@@ -374,6 +377,7 @@ redis-cli -h $REDIS_HOST -a $REDIS_PASSWORD ping
 ### 问题 3：配置未生效
 
 **检查**：
+
 ```bash
 # 1. 查看当前使用的 profile
 java -jar app.jar --debug
@@ -394,4 +398,4 @@ printenv | grep MYSQL
 
 ---
 
-*最后更新：2026-03-19*
+_最后更新：2026-03-19_
