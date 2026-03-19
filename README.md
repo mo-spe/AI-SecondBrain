@@ -415,7 +415,7 @@ ES_JAVA_OPTS=-Xms256m -Xmx256m
 ### 运行后端测试
 
 ```bash
-cd src
+cd backend
 mvn test
 ```
 
