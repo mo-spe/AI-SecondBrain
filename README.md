@@ -194,8 +194,8 @@ docker-compose ps
 
 ```
 AI-SecondBrain/
-├── 📁 src/                      # 后端源代码
-│   ├── main/java/
+├── 📁 backend/                  # 后端源代码
+│   ├── src/main/java/
 │   │   └── com/secondbrain/
 │   │       ├── controller/      # REST API 控制器
 │   │       ├── service/         # 业务逻辑层
@@ -204,7 +204,7 @@ AI-SecondBrain/
 │   │       ├── dto/             # 数据传输对象
 │   │       ├── config/          # 配置类
 │   │       └── util/            # 工具类
-│   └── resources/
+│   └── src/main/resources/
 │       ├── sql/                 # SQL 脚本
 │       └── application*.yml     # 配置文件
 │
@@ -238,7 +238,14 @@ AI-SecondBrain/
 ├── .env.example                 # 环境变量模板
 ├── .gitignore                   # Git 忽略配置
 ├── pom.xml                      # Maven 配置
-└── README.md                    # 项目说明
+├── complete_database_schema_verified.sql  # 数据库初始化脚本
+├── start.bat                    # Windows 启动脚本
+├── start.sh                     # Linux/macOS 启动脚本
+├── README.md                    # 项目主文档
+├── DEVELOPMENT_GUIDE.md         # 开发环境搭建指南
+├── CONFIGURATION.md             # 配置文件说明
+├── CONTRIBUTING.md              # 贡献指南
+└── LICENSE                      # MIT 开源协议
 ```
 
 ---
