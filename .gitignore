@@ -112,6 +112,9 @@ deerflow/api_server.py
 deerflow/start_server.bat
 deerflow/test_api.py
 
+# 答辩文档（不提交到仓库）
+DEFENSE_PPT.md
+
 # 竞赛资料（不提交）
 cansaiziliao/
 
