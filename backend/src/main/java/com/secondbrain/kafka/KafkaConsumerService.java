@@ -126,6 +126,8 @@ public class KafkaConsumerService {
                     
                     // 异步触发向量生成
                     try {
+                        //TODO
+                        //可以优化，可以在保存知识点过程中缓存到redis，减少数据库查询
                         KnowledgeNode savedNode = knowledgeNodeMapper.selectById(node.getId());
                         knowledgeVectorService.generateAndSaveVector(savedNode);
                         log.info("异步触发向量生成成功，nodeId：{}", node.getId());

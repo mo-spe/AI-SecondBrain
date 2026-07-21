@@ -4,6 +4,7 @@ import com.secondbrain.common.Result;
 import com.secondbrain.dto.NoteCaptureRequest;
 import com.secondbrain.service.DocumentCaptureService;
 import com.secondbrain.service.NoteCaptureService;
+import com.secondbrain.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,7 +80,7 @@ public class CaptureController {
         String token = httpRequest.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {
             try {
-                com.secondbrain.util.JwtUtil jwtUtil = new com.secondbrain.util.JwtUtil();
+                JwtUtil jwtUtil = new JwtUtil();
                 return jwtUtil.getUserIdFromToken(token.substring(7));
             } catch (Exception e) {
                 log.error("从token解析userId失败", e);

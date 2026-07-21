@@ -2,6 +2,7 @@ package com.secondbrain.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.secondbrain.dto.KnowledgeReference;
 import com.secondbrain.elasticsearch.KnowledgeDocument;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
@@ -285,10 +286,18 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Override
     public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK) {
-        log.info("语义搜索，queryText：{}，userId：{}，topK：{}", queryText, userId, topK);
+        // 默认不传 API Key，使用平台 API Key
+        return semanticSearch(queryText, userId, topK, null);
+    }
+
+    @Override
+    public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK, String userApiKey) {
+        log.info("语义搜索，queryText：{}，userId：{}，topK：{}，使用用户 API Key：{}", 
+            queryText, userId, topK, userApiKey != null && !userApiKey.isEmpty());
         
         try {
-            List<com.secondbrain.dto.KnowledgeReference> references = vectorSearchService.searchSimilar(queryText, userId, topK);
+            // ✅ 传递用户 API Key 到 VectorSearchService
+            List<KnowledgeReference> references = vectorSearchService.searchSimilar(queryText, userId, topK, userApiKey);
             return references.stream()
                     .map(ref -> {
                         KnowledgeNode node = knowledgeNodeMapper.selectById(ref.getKnowledgeId());

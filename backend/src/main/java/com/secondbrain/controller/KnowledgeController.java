@@ -3,23 +3,33 @@ package com.secondbrain.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.Result;
 import com.secondbrain.dto.UpdateKnowledgeRequest;
+import com.secondbrain.entity.User;
 import com.secondbrain.service.KnowledgeService;
+import com.secondbrain.service.UserService;
 import com.secondbrain.vo.KnowledgeNodeVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/knowledge")
 @Tag(name = "知识管理", description = "知识节点管理相关接口")
 public class KnowledgeController {
 
-    private final KnowledgeService knowledgeService;
+    private static final Logger log = LoggerFactory.getLogger(KnowledgeController.class);
 
-    public KnowledgeController(KnowledgeService knowledgeService) {
+    private final KnowledgeService knowledgeService;
+    private final UserService userService;
+
+    public KnowledgeController(KnowledgeService knowledgeService, UserService userService) {
         this.knowledgeService = knowledgeService;
+        this.userService = userService;
     }
 
     @GetMapping("/list")
@@ -96,7 +106,7 @@ public class KnowledgeController {
         if (userId == null) {
             return Result.error(401, "请先登录");
         }
-        java.util.List<KnowledgeNodeVO> results = knowledgeService.search(keyword, userId);
+        List<KnowledgeNodeVO> results = knowledgeService.search(keyword, userId);
         return Result.success(results);
     }
 
@@ -115,7 +125,7 @@ public class KnowledgeController {
 
     @GetMapping("/search/semantic")
     @Operation(summary = "语义搜索知识点", description = "使用向量相似度进行语义搜索")
-    public Result<java.util.List<KnowledgeNodeVO>> semanticSearch(
+    public Result<List<KnowledgeNodeVO>> semanticSearch(
             @Parameter(description = "搜索文本") @RequestParam String queryText,
             @Parameter(description = "返回结果数量") @RequestParam(defaultValue = "10") Integer topK,
             HttpServletRequest httpRequest) {
@@ -123,7 +133,22 @@ public class KnowledgeController {
         if (userId == null) {
             return Result.error(401, "请先登录");
         }
-        java.util.List<KnowledgeNodeVO> results = knowledgeService.semanticSearch(queryText, userId, topK);
+        
+        // 获取用户 API Key
+        String userApiKey = null;
+        try {
+            User user = userService.getUserById(userId);
+            if (user != null) {
+                userApiKey = user.getApiKey();
+                log.info("语义搜索使用 API Key 来源：userId={}, API Key={}", 
+                    userId, userApiKey != null && !userApiKey.isEmpty() ? "用户 API Key" : "未配置");
+            }
+        } catch (Exception e) {
+            log.warn("获取用户 API Key 失败：userId={}, error={}", userId, e.getMessage());
+        }
+        
+        // 传递用户 API Key 进行语义搜索
+        java.util.List<KnowledgeNodeVO> results = knowledgeService.semanticSearch(queryText, userId, topK, userApiKey);
         return Result.success(results);
     }
 

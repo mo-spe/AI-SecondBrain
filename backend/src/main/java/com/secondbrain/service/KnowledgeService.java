@@ -27,6 +27,8 @@ public interface KnowledgeService {
 
     List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK);
 
+    List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK, String userApiKey);
+
     void syncToElasticsearch(Long userId);
 
     long countByUserId(Long userId);

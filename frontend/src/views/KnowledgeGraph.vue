@@ -209,20 +209,26 @@ const renderGraph = (graph) => {
       formatter: function (params) {
         if (params.dataType === "node") {
           return `
-            <div style="padding: 8px;">
-              <div style="font-weight: bold; margin-bottom: 5px;">${params.name}</div>
-              <div>重要程度：${params.data.importance || 0}</div>
-              <div>掌握程度：${getMasteryLevelText(params.data.masteryLevel)}</div>
+            <div style="padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${params.name}</div>
+              <div style="font-size: 12px; margin-bottom: 4px;">📊 重要程度：${"⭐".repeat(params.data.importance || 0)}</div>
+              <div style="font-size: 12px;">🎯 掌握程度：${getMasteryLevelText(params.data.masteryLevel)}</div>
             </div>
           `;
         } else {
           return `
-            <div style="padding: 8px;">
-              <div style="font-weight: bold; margin-bottom: 5px;">${params.data.label}</div>
-              <div>强度：${params.data.strength}</div>
+            <div style="padding: 12px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; color: white;">
+              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${params.data.label}</div>
+              <div style="font-size: 12px;">💪 强度：${(params.data.strength * 100).toFixed(1)}%</div>
             </div>
           `;
         }
+      },
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      borderColor: "#eee",
+      borderWidth: 2,
+      textStyle: {
+        color: "#333",
       },
     },
     series: [
@@ -237,15 +243,20 @@ const renderGraph = (graph) => {
           itemStyle: {
             color: node.color,
             borderColor: "#fff",
-            borderWidth: 2,
+            borderWidth: 3,
+            shadowBlur: 10,
+            shadowColor: node.color,
           },
           importance: node.importance,
           masteryLevel: node.masteryLevel,
           label: {
             show: true,
             position: "bottom",
-            fontSize: 12,
+            fontSize: 13,
+            fontWeight: "bold",
             color: "#2c3e50",
+            textBorderColor: "#fff",
+            textBorderWidth: 2,
           },
         })),
         links: graph.edges.map((edge) => ({
@@ -254,13 +265,22 @@ const renderGraph = (graph) => {
           label: {
             show: true,
             formatter: edge.label,
-            fontSize: 10,
+            fontSize: 11,
+            fontWeight: "bold",
             color: "#606266",
+            textBorderColor: "#fff",
+            textBorderWidth: 1,
           },
           lineStyle: {
-            width: edge.strength,
-            color: "#909399",
-            curveness: 0.2,
+            width: edge.strength * 2 + 1,
+            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+              { offset: 0, color: "rgba(102, 126, 234, 0.8)" },
+              { offset: 0.5, color: "rgba(118, 75, 162, 0.8)" },
+              { offset: 1, color: "rgba(240, 147, 251, 0.8)" },
+            ]),
+            curveness: 0.3,
+            shadowBlur: 5,
+            shadowColor: "rgba(102, 126, 234, 0.5)",
           },
           strength: edge.strength,
         })),
@@ -271,17 +291,34 @@ const renderGraph = (graph) => {
           formatter: "{b}",
         },
         force: {
-          repulsion: 500,
-          edgeLength: [100, 300],
-          gravity: 0.05,
+          repulsion: 800,
+          edgeLength: [150, 400],
+          gravity: 0.03,
           friction: 0.6,
-          layoutAnimation: false,
+          layoutAnimation: true,
         },
         emphasis: {
           focus: "adjacency",
           lineStyle: {
-            width: 4,
-            color: "#409EFF",
+            width: 6,
+            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+              { offset: 0, color: "#667eea" },
+              { offset: 1, color: "#f093fb" },
+            ]),
+            shadowBlur: 10,
+            shadowColor: "#667eea",
+          },
+          itemStyle: {
+            shadowBlur: 20,
+            shadowColor: "#667eea",
+          },
+        },
+        blur: {
+          itemStyle: {
+            opacity: 0.3,
+          },
+          lineStyle: {
+            opacity: 0.1,
           },
         },
       },
@@ -411,8 +448,76 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background:
+    radial-gradient(
+      ellipse at 20% 30%,
+      rgba(102, 126, 234, 0.4) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 20%,
+      rgba(118, 75, 162, 0.4) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 40% 80%,
+      rgba(240, 147, 251, 0.3) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 60% 60%,
+      rgba(102, 126, 234, 0.2) 0%,
+      transparent 40%
+    ),
+    linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
   z-index: 0;
+}
+
+.background-gradient::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(
+      2px 2px at 20px 30px,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    ),
+    radial-gradient(
+      2px 2px at 40px 70px,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    ),
+    radial-gradient(
+      1px 1px at 90px 40px,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    ),
+    radial-gradient(
+      2px 2px at 130px 80px,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    ),
+    radial-gradient(
+      1px 1px at 160px 120px,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+  background-size: 200px 200px;
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .main-content {
@@ -428,15 +533,17 @@ onUnmounted(() => {
 }
 
 .welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 30px;
   display: flex;
   align-items: center;
   gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   animation: fadeInDown 0.6s ease-out;
 }
 
@@ -452,7 +559,7 @@ onUnmounted(() => {
 }
 
 .welcome-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 50%;
   width: 80px;
   height: 80px;
@@ -461,15 +568,47 @@ onUnmounted(() => {
   justify-content: center;
   color: white;
   animation: pulse 2s infinite;
+  box-shadow:
+    0 4px 20px rgba(102, 126, 234, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-icon::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
 }
 
 @keyframes pulse {
   0%,
   100% {
     transform: scale(1);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
   }
   50% {
     transform: scale(1.05);
+    box-shadow: 0 6px 30px rgba(102, 126, 234, 0.7);
   }
 }
 
@@ -495,13 +634,17 @@ onUnmounted(() => {
 }
 
 .toolbar-card {
-  background: white;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
   padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .toolbar-left {
@@ -519,27 +662,34 @@ onUnmounted(() => {
 }
 
 .graph-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   overflow: hidden;
 }
 
 .graph-header {
   padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .graph-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #2c3e50;
+  color: white;
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .legend {
@@ -552,14 +702,19 @@ onUnmounted(() => {
   align-items: center;
   gap: 5px;
   font-size: 13px;
-  color: #606266;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .legend-color {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   display: inline-block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .graph-body {
@@ -569,9 +724,11 @@ onUnmounted(() => {
 .graph-container {
   width: 100%;
   height: 600px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #fafafa;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .recommendation-section {
