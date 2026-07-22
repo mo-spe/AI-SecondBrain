@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 数据导出控制器
+ * 提供知识点多种格式导出接口
+ */
 @RestController
 @RequestMapping("/export")
 @Tag(name = "数据导出", description = "数据导出相关接口")
@@ -35,7 +39,7 @@ public class ExportController {
             if (token != null && token.startsWith("Bearer ")) {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }
@@ -44,6 +48,13 @@ public class ExportController {
         return userId;
     }
 
+    /**
+     * 导出为Markdown
+     *
+     * @param ids 知识节点ID列表
+     * @param httpRequest HTTP请求
+     * @param response HTTP响应
+     */
     @PostMapping("/markdown")
     @Operation(summary = "导出为Markdown", description = "将知识点导出为Markdown格式")
     public void exportToMarkdown(@RequestBody(required = false) List<Long> ids, HttpServletRequest httpRequest, HttpServletResponse response) {
@@ -54,14 +65,16 @@ public class ExportController {
             return;
         }
         
-        try {
-            exportService.exportToMarkdown(userId, ids, response);
-        } catch (Exception e) {
-            log.error("Markdown导出失败，userId: {}, ids: {}", userId, ids, e);
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
+        exportService.exportToMarkdown(userId, ids, response);
     }
 
+    /**
+     * 导出为PDF
+     *
+     * @param ids 知识节点ID列表
+     * @param httpRequest HTTP请求
+     * @param response HTTP响应
+     */
     @PostMapping("/pdf")
     @Operation(summary = "导出为PDF", description = "将知识点导出为PDF格式")
     public void exportToPDF(@RequestBody(required = false) List<Long> ids, HttpServletRequest httpRequest, HttpServletResponse response) {
@@ -72,14 +85,16 @@ public class ExportController {
             return;
         }
         
-        try {
-            exportService.exportToPDF(userId, ids, response);
-        } catch (Exception e) {
-            log.error("PDF导出失败，userId: {}, ids: {}", userId, ids, e);
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
+        exportService.exportToPDF(userId, ids, response);
     }
 
+    /**
+     * 导出为Word
+     *
+     * @param ids 知识节点ID列表
+     * @param httpRequest HTTP请求
+     * @param response HTTP响应
+     */
     @PostMapping("/word")
     @Operation(summary = "导出为Word", description = "将知识点导出为Word格式")
     public void exportToWord(@RequestBody(required = false) List<Long> ids, HttpServletRequest httpRequest, HttpServletResponse response) {
@@ -90,14 +105,16 @@ public class ExportController {
             return;
         }
         
-        try {
-            exportService.exportToWord(userId, ids, response);
-        } catch (Exception e) {
-            log.error("Word导出失败，userId: {}, ids: {}", userId, ids, e);
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
+        exportService.exportToWord(userId, ids, response);
     }
 
+    /**
+     * 导出为JSON
+     *
+     * @param ids 知识节点ID列表
+     * @param httpRequest HTTP请求
+     * @param response HTTP响应
+     */
     @PostMapping("/json")
     @Operation(summary = "导出为JSON", description = "将知识点导出为JSON格式")
     public void exportToJSON(@RequestBody(required = false) List<Long> ids, HttpServletRequest httpRequest, HttpServletResponse response) {
@@ -108,14 +125,16 @@ public class ExportController {
             return;
         }
         
-        try {
-            exportService.exportToJSON(userId, ids, response);
-        } catch (Exception e) {
-            log.error("JSON导出失败，userId: {}, ids: {}", userId, ids, e);
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
+        exportService.exportToJSON(userId, ids, response);
     }
 
+    /**
+     * 导出为CSV
+     *
+     * @param ids 知识节点ID列表
+     * @param httpRequest HTTP请求
+     * @param response HTTP响应
+     */
     @PostMapping("/csv")
     @Operation(summary = "导出为CSV", description = "将知识点导出为CSV格式")
     public void exportToCSV(@RequestBody(required = false) List<Long> ids, HttpServletRequest httpRequest, HttpServletResponse response) {
@@ -126,11 +145,6 @@ public class ExportController {
             return;
         }
         
-        try {
-            exportService.exportToCSV(userId, ids, response);
-        } catch (Exception e) {
-            log.error("CSV导出失败，userId: {}, ids: {}", userId, ids, e);
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
+        exportService.exportToCSV(userId, ids, response);
     }
 }

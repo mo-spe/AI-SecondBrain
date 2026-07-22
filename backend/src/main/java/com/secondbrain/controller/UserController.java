@@ -12,10 +12,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 用户管理控制器
+ * 提供用户信息查询、更新、密码修改、头像上传等接口
+ */
 @RestController
 @RequestMapping("/user")
 @Tag(name = "用户管理", description = "用户信息管理相关接口")
@@ -33,6 +36,12 @@ public class UserController {
         this.jwtUtil = jwtUtil;
     }
 
+    /**
+     * 获取用户信息
+     *
+     * @param httpRequest HTTP请求
+     * @return 当前登录用户的详细信息
+     */
     @GetMapping("/info")
     @Operation(summary = "获取用户信息", description = "获取当前登录用户的详细信息")
     public Result<User> getUserInfo(HttpServletRequest httpRequest) {
@@ -43,7 +52,7 @@ public class UserController {
             if (token != null && token.startsWith("Bearer ")) {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }
@@ -61,6 +70,13 @@ public class UserController {
         return Result.success(user);
     }
 
+    /**
+     * 更新用户信息
+     *
+     * @param updateUserDTO 用户更新信息
+     * @param httpRequest HTTP请求
+     * @return 更新结果
+     */
     @PutMapping("/update")
     @Operation(summary = "更新用户信息", description = "更新当前登录用户的基本信息")
     public Result<String> updateUser(@RequestBody UpdateUserDTO updateUserDTO, HttpServletRequest httpRequest) {
@@ -71,7 +87,7 @@ public class UserController {
             if (token != null && token.startsWith("Bearer ")) {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }
@@ -82,16 +98,18 @@ public class UserController {
             return Result.error("用户未登录");
         }
         
-        try {
-            userService.updateUser(userId, updateUserDTO.getUsername(), updateUserDTO.getEmail(), updateUserDTO.getPhone(), updateUserDTO.getBio(), updateUserDTO.getApiKey());
-            log.info("更新用户信息成功，userId: {}", userId);
-            return Result.success("更新成功");
-        } catch (Exception e) {
-            log.error("更新用户信息失败", e);
-            return Result.error("更新失败：" + e.getMessage());
-        }
+        userService.updateUser(userId, updateUserDTO.getUsername(), updateUserDTO.getEmail(), updateUserDTO.getPhone(), updateUserDTO.getBio(), updateUserDTO.getApiKey());
+        log.info("更新用户信息成功，userId: {}", userId);
+        return Result.success("更新成功");
     }
 
+    /**
+     * 修改密码
+     *
+     * @param updatePasswordDTO 密码修改信息
+     * @param httpRequest HTTP请求
+     * @return 密码修改结果
+     */
     @PutMapping("/password")
     @Operation(summary = "修改密码", description = "修改当前登录用户的密码")
     public Result<String> updatePassword(@RequestBody UpdatePasswordDTO updatePasswordDTO, HttpServletRequest httpRequest) {
@@ -102,7 +120,7 @@ public class UserController {
             if (token != null && token.startsWith("Bearer ")) {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }
@@ -113,16 +131,18 @@ public class UserController {
             return Result.error("用户未登录");
         }
         
-        try {
-            userService.updatePassword(userId, updatePasswordDTO.getOldPassword(), updatePasswordDTO.getNewPassword());
-            log.info("修改密码成功，userId: {}", userId);
-            return Result.success("密码修改成功");
-        } catch (Exception e) {
-            log.error("修改密码失败", e);
-            return Result.error("密码修改失败：" + e.getMessage());
-        }
+        userService.updatePassword(userId, updatePasswordDTO.getOldPassword(), updatePasswordDTO.getNewPassword());
+        log.info("修改密码成功，userId: {}", userId);
+        return Result.success("密码修改成功");
     }
 
+    /**
+     * 上传头像
+     *
+     * @param file 头像文件
+     * @param httpRequest HTTP请求
+     * @return 头像URL
+     */
     @PostMapping("/avatar")
     @Operation(summary = "上传头像", description = "上传用户头像")
     public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file, HttpServletRequest httpRequest) {
@@ -133,7 +153,7 @@ public class UserController {
             if (token != null && token.startsWith("Bearer ")) {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }
@@ -157,14 +177,9 @@ public class UserController {
             return Result.error("图片大小不能超过5MB");
         }
         
-        try {
-            String avatarUrl = fileService.uploadAvatar(file, userId);
-            userService.updateAvatar(userId, avatarUrl);
-            log.info("头像上传成功，userId: {}, avatarUrl: {}", userId, avatarUrl);
-            return Result.success(avatarUrl);
-        } catch (Exception e) {
-            log.error("头像上传失败", e);
-            return Result.error("头像上传失败：" + e.getMessage());
-        }
+        String avatarUrl = fileService.uploadAvatar(file, userId);
+        userService.updateAvatar(userId, avatarUrl);
+        log.info("头像上传成功，userId: {}, avatarUrl: {}", userId, avatarUrl);
+        return Result.success(avatarUrl);
     }
 }

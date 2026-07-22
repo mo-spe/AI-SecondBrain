@@ -8,77 +8,89 @@ import com.secondbrain.service.ReviewCardService;
 import com.secondbrain.util.JwtUtil;
 import com.secondbrain.vo.ReviewCardVO;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * 复习卡片控制器
+ * 提供复习卡片的生成、查询、提交、删除等接口
+ */
 @RestController
 @RequestMapping("/review")
 @CrossOrigin
 public class ReviewCardController {
 
+    private static final Logger log = LoggerFactory.getLogger(ReviewCardController.class);
+
     private final ReviewCardService reviewCardService;
     private final JwtUtil jwtUtil;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
 
-    @Autowired
     public ReviewCardController(ReviewCardService reviewCardService, JwtUtil jwtUtil, KnowledgeNodeMapper knowledgeNodeMapper) {
         this.reviewCardService = reviewCardService;
         this.jwtUtil = jwtUtil;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
     }
 
+    /**
+     * 生成复习卡片
+     *
+     * @param request 生成卡片请求
+     * @param httpRequest HTTP请求
+     * @return 生成的复习卡片
+     */
     @PostMapping("/generate")
     public Result<ReviewCardVO> generateReviewCard(@RequestBody GenerateCardRequest request, HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            String generationType = request.getGenerationType() != null ? request.getGenerationType() : "auto";
-            com.secondbrain.entity.ReviewCard card = reviewCardService.generateReviewCard(
-                    request.getNodeId(), request.getCardType(), generationType
-            );
-
-            if (card == null) {
-                return Result.error("生成复习卡片失败");
-            }
-
-            ReviewCardVO vo = convertToVO(card);
-            return Result.success(vo);
-        } catch (Exception e) {
-            return Result.error("生成复习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        String generationType = request.getGenerationType() != null ? request.getGenerationType() : "auto";
+        com.secondbrain.entity.ReviewCard card = reviewCardService.generateReviewCard(
+                request.getNodeId(), request.getCardType(), generationType
+        );
+
+        if (card == null) {
+            return Result.error("生成复习卡片失败");
+        }
+
+        ReviewCardVO vo = convertToVO(card);
+        return Result.success(vo);
     }
 
+    /**
+     * 获取今日复习卡片
+     *
+     * @param sortBy 排序方式
+     * @param httpRequest HTTP请求
+     * @return 今日复习卡片列表
+     */
     @GetMapping("/today")
     public Result<List<ReviewCardVO>> getTodayReviewCards(
             @RequestParam(required = false) String sortBy,
             HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getTodayReviewCards(userId);
-
-            List<ReviewCardVO> vos = cards.stream()
-                    .map(this::convertToVO)
-                    .toList();
-
-            if (sortBy != null) {
-                vos = sortReviewCards(vos, sortBy);
-            }
-
-            return Result.success(vos);
-        } catch (Exception e) {
-            return Result.error("获取今日复习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getTodayReviewCards(userId);
+
+        List<ReviewCardVO> vos = cards.stream()
+                .map(this::convertToVO)
+                .toList();
+
+        if (sortBy != null) {
+            vos = sortReviewCards(vos, sortBy);
+        }
+
+        return Result.success(vos);
     }
 
     private List<ReviewCardVO> sortReviewCards(List<ReviewCardVO> cards, String sortBy) {
@@ -96,175 +108,198 @@ public class ReviewCardController {
                 .toList();
     }
 
+    /**
+     * 提交复习结果
+     *
+     * @param request 提交复习结果请求
+     * @param httpRequest HTTP请求
+     * @return 复习结果
+     */
     @PostMapping("/submit")
     public Result<ReviewResultDTO> submitReviewResult(@RequestBody SubmitReviewRequest request, HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            ReviewResultDTO result = reviewCardService.submitReviewResult(
-                    request.getCardId(),
-                    request.getUserAnswer(),
-                    request.getDuration()
-            );
-
-            return Result.success(result);
-        } catch (Exception e) {
-            return Result.error("提交复习结果失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        ReviewResultDTO result = reviewCardService.submitReviewResult(
+                request.getCardId(),
+                request.getUserAnswer(),
+                request.getDuration()
+        );
+
+        return Result.success(result);
     }
 
+    /**
+     * 根据节点ID获取复习卡片
+     *
+     * @param nodeId 知识节点ID
+     * @param httpRequest HTTP请求
+     * @return 复习卡片列表
+     */
     @GetMapping("/node/{nodeId}")
     public Result<List<ReviewCardVO>> getReviewCardsByNodeId(@PathVariable Long nodeId, HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getReviewCardsByNodeId(nodeId);
-
-            List<ReviewCardVO> vos = cards.stream()
-                    .map(this::convertToVO)
-                    .toList();
-
-            return Result.success(vos);
-        } catch (Exception e) {
-            return Result.error("获取复习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getReviewCardsByNodeId(nodeId);
+
+        List<ReviewCardVO> vos = cards.stream()
+                .map(this::convertToVO)
+                .toList();
+
+        return Result.success(vos);
     }
 
+    /**
+     * 删除复习卡片
+     *
+     * @param id 卡片ID
+     * @param httpRequest HTTP请求
+     * @return 删除结果
+     */
     @DeleteMapping("/{id}")
     public Result<Void> deleteReviewCard(@PathVariable Long id, HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            reviewCardService.deleteReviewCard(id);
-
-            return Result.success();
-        } catch (Exception e) {
-            return Result.error("删除复习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        reviewCardService.deleteReviewCard(id);
+
+        return Result.success();
     }
 
+    /**
+     * 删除所有复习卡片
+     *
+     * @param httpRequest HTTP请求
+     * @return 删除结果
+     */
     @DeleteMapping("/all")
     public Result<Void> deleteAllReviewCards(HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            reviewCardService.deleteAllReviewCards(userId);
-
-            return Result.success();
-        } catch (Exception e) {
-            return Result.error("删除所有复习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        reviewCardService.deleteAllReviewCards(userId);
+
+        return Result.success();
     }
 
+    /**
+     * 为所有节点生成复习卡片
+     *
+     * @param httpRequest HTTP请求
+     * @return 生成结果
+     */
     @PostMapping("/generate-all")
     public Result<String> generateAllReviewCards(HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            
-            int generatedCount = reviewCardService.generateReviewCardsForAllNodes(userId);
-            
-            return Result.success("成功生成" + generatedCount + "张练习卡片");
-        } catch (Exception e) {
-            return Result.error("生成练习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        
+        int generatedCount = reviewCardService.generateReviewCardsForAllNodes(userId);
+        
+        return Result.success("成功生成" + generatedCount + "张练习卡片");
     }
 
+    /**
+     * 恢复复习卡片
+     *
+     * @param httpRequest HTTP请求
+     * @return 恢复的卡片数量
+     */
     @PostMapping("/restore")
     public Result<Integer> restoreReviewCards(HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            
-            int restoredCount = reviewCardService.restoreReviewCards(userId);
-            
-            return Result.success(restoredCount);
-        } catch (Exception e) {
-            return Result.error("恢复复习卡片失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        
+        int restoredCount = reviewCardService.restoreReviewCards(userId);
+        
+        return Result.success(restoredCount);
     }
 
+    /**
+     * 更新缺失答案的复习卡片
+     *
+     * @return 更新结果
+     */
     @PostMapping("/update-answers")
     public Result<String> updateMissingAnswers() {
-        try {
-            reviewCardService.updateMissingAnswers();
-            return Result.success("成功更新缺失答案的复习卡片");
-        } catch (Exception e) {
-            return Result.error("更新答案失败：" + e.getMessage());
-        }
+        reviewCardService.updateMissingAnswers();
+        return Result.success("成功更新缺失答案的复习卡片");
     }
 
+    /**
+     * 获取连续复习天数
+     *
+     * @param httpRequest HTTP请求
+     * @return 连续复习天数
+     */
     @GetMapping("/streak-days")
     public Result<Integer> getStreakDays(HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            
-            int streakDays = reviewCardService.calculateStreakDays(userId);
-            
-            return Result.success(streakDays);
-        } catch (Exception e) {
-            return Result.error("获取连续天数失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        
+        int streakDays = reviewCardService.calculateStreakDays(userId);
+        
+        return Result.success(streakDays);
     }
 
+    /**
+     * 提交质量反馈
+     *
+     * @param request 质量反馈请求
+     * @param httpRequest HTTP请求
+     * @return 提交结果
+     */
     @PostMapping("/quality-feedback")
     public Result<String> submitQualityFeedback(@RequestBody QualityFeedbackRequest request, HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            
-            reviewCardService.recordQualityFeedback(
-                    request.getCardId(),
-                    request.getRating(),
-                    request.getComment()
-            );
-            
-            return Result.success("感谢您的反馈！");
-        } catch (Exception e) {
-            return Result.error("提交质量反馈失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        
+        reviewCardService.recordQualityFeedback(
+                request.getCardId(),
+                request.getRating(),
+                request.getComment()
+        );
+        
+        return Result.success("感谢您的反馈！");
     }
 
+    /**
+     * 获取用户准确率
+     *
+     * @param httpRequest HTTP请求
+     * @return 用户准确率
+     */
     @GetMapping("/accuracy")
     public Result<Integer> getUserAccuracy(HttpServletRequest httpRequest) {
-        try {
-            String token = httpRequest.getHeader("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            
-            int accuracy = reviewCardService.getUserAccuracy(userId);
-            
-            return Result.success(accuracy);
-        } catch (Exception e) {
-            return Result.error("获取准确率失败：" + e.getMessage());
+        String token = httpRequest.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        
+        int accuracy = reviewCardService.getUserAccuracy(userId);
+        
+        return Result.success(accuracy);
     }
 
     private ReviewCardVO convertToVO(com.secondbrain.entity.ReviewCard card) {
@@ -295,6 +330,9 @@ public class ReviewCardController {
         return vo;
     }
 
+    /**
+     * 生成卡片请求
+     */
     public static class GenerateCardRequest {
         private Long nodeId;
         private String cardType;
@@ -325,6 +363,9 @@ public class ReviewCardController {
         }
     }
 
+    /**
+     * 提交复习结果请求
+     */
     public static class SubmitReviewRequest {
         private Long cardId;
         private String userAnswer;
@@ -355,6 +396,9 @@ public class ReviewCardController {
         }
     }
 
+    /**
+     * 质量反馈请求
+     */
     public static class QualityFeedbackRequest {
         private Long cardId;
         private Integer rating;

@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +24,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 数据统计控制器
+ * 提供学习数据统计和图表数据查询接口
+ */
 @RestController
 @RequestMapping("/statistics")
 @Tag(name = "数据统计", description = "数据统计相关接口")
@@ -44,6 +47,12 @@ public class StatisticsController {
         this.jwtUtil = jwtUtil;
     }
 
+    /**
+     * 获取统计数据
+     *
+     * @param httpRequest HTTP请求
+     * @return 对话、知识点、复习等统计数据
+     */
     @GetMapping
     @Operation(summary = "获取统计数据", description = "获取对话、知识点、复习等统计数据")
     public Result<Map<String, Object>> getStatistics(HttpServletRequest httpRequest) {
@@ -58,7 +67,7 @@ public class StatisticsController {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
                     log.info("从token解析userId成功: {}", userId);
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }
@@ -77,7 +86,7 @@ public class StatisticsController {
             long chatCount = chatService.countByUserId(userId);
             statistics.put("chatCount", chatCount);
             log.info("对话总数: {}", chatCount);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("获取对话总数失败", e);
             statistics.put("chatCount", 0);
         }
@@ -86,7 +95,7 @@ public class StatisticsController {
             long knowledgeCount = knowledgeService.countByUserId(userId);
             statistics.put("knowledgeCount", knowledgeCount);
             log.info("知识点总数: {}", knowledgeCount);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("获取知识点总数失败", e);
             statistics.put("knowledgeCount", 0);
         }
@@ -95,7 +104,7 @@ public class StatisticsController {
             long pendingReviewCount = reviewCardService.countPendingByUserId(userId);
             statistics.put("pendingReviewCount", pendingReviewCount);
             log.info("待复习数量: {}", pendingReviewCount);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("获取待复习数量失败", e);
             statistics.put("pendingReviewCount", 0);
         }
@@ -104,7 +113,7 @@ public class StatisticsController {
             long completedReviewCount = reviewCardService.countCompletedByUserId(userId);
             statistics.put("completedReviewCount", completedReviewCount);
             log.info("已完成复习数量: {}", completedReviewCount);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("获取已完成复习数量失败", e);
             statistics.put("completedReviewCount", 0);
         }
@@ -113,6 +122,13 @@ public class StatisticsController {
         return Result.success(statistics);
     }
 
+    /**
+     * 获取图表数据
+     *
+     * @param period 时间周期：week-本周，month-本月，year-全年
+     * @param httpRequest HTTP请求
+     * @return 学习趋势图表数据
+     */
     @GetMapping("/chart")
     @Operation(summary = "获取图表数据", description = "获取学习趋势图表数据")
     public Result<Map<String, Object>> getChartData(
@@ -126,7 +142,7 @@ public class StatisticsController {
             if (token != null && token.startsWith("Bearer ")) {
                 try {
                     userId = jwtUtil.getUserIdFromToken(token.substring(7));
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.error("从token解析userId失败", e);
                 }
             }

@@ -16,13 +16,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * RAG知识问答控制器
+ * 提供基于知识库的智能问答接口
+ */
 @RestController
 @RequestMapping("/rag")
 @Tag(name = "RAG知识问答", description = "基于知识库的智能问答")
 @Slf4j
 public class RagController {
-
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RagController.class);
 
     private final RagService ragService;
     private final KnowledgeVectorService knowledgeVectorService;
@@ -36,6 +38,13 @@ public class RagController {
         this.userService = userService;
     }
 
+    /**
+     * 知识问答
+     *
+     * @param request 问答请求
+     * @param httpRequest HTTP请求
+     * @return 问答响应结果
+     */
     @PostMapping("/answer")
     @Operation(summary = "知识问答", description = "基于知识库回答用户问题")
     public Result<RagResponse> answer(
@@ -50,7 +59,7 @@ public class RagController {
             if (user != null) {
                 userApiKey = user.getApiKey();
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.warn("获取用户API Key失败：{}", e.getMessage());
         }
         
@@ -59,6 +68,12 @@ public class RagController {
         return Result.success(response);
     }
 
+    /**
+     * 生成向量
+     *
+     * @param httpRequest HTTP请求
+     * @return 向量生成任务提交结果
+     */
     @PostMapping("/generate-vectors")
     @Operation(summary = "生成向量", description = "为用户的所有知识节点生成向量")
     public Result<String> generateVectors(HttpServletRequest httpRequest) {

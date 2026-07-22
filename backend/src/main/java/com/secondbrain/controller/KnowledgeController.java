@@ -17,6 +17,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 知识管理控制器
+ * 提供知识节点的增删改查、搜索、同步等接口
+ */
 @RestController
 @RequestMapping("/knowledge")
 @Tag(name = "知识管理", description = "知识节点管理相关接口")
@@ -32,6 +36,17 @@ public class KnowledgeController {
         this.userService = userService;
     }
 
+    /**
+     * 知识列表
+     *
+     * @param current 当前页
+     * @param size 每页大小
+     * @param keyword 搜索关键词
+     * @param importance 重要程度
+     * @param masteryLevel 掌握程度
+     * @param httpRequest HTTP请求
+     * @return 知识分页列表
+     */
     @GetMapping("/list")
     @Operation(summary = "知识列表", description = "分页查询知识列表")
     public Result<Page<KnowledgeNodeVO>> list(
@@ -46,6 +61,13 @@ public class KnowledgeController {
         return Result.success(page);
     }
 
+    /**
+     * 知识详情
+     *
+     * @param id 知识节点ID
+     * @param httpRequest HTTP请求
+     * @return 知识详情
+     */
     @GetMapping("/{id}")
     @Operation(summary = "知识详情", description = "根据ID查询知识详情")
     public Result<KnowledgeNodeVO> getById(@PathVariable Long id, HttpServletRequest httpRequest) {
@@ -54,6 +76,13 @@ public class KnowledgeController {
         return Result.success(vo);
     }
 
+    /**
+     * 创建知识
+     *
+     * @param request 创建知识请求
+     * @param httpRequest HTTP请求
+     * @return 创建后的知识节点
+     */
     @PostMapping
     @Operation(summary = "创建知识", description = "创建新的知识点")
     public Result<KnowledgeNodeVO> create(@RequestBody UpdateKnowledgeRequest request, HttpServletRequest httpRequest) {
@@ -62,6 +91,13 @@ public class KnowledgeController {
         return Result.success(vo);
     }
 
+    /**
+     * 删除知识
+     *
+     * @param id 知识节点ID
+     * @param httpRequest HTTP请求
+     * @return 删除结果
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除知识", description = "根据ID删除知识")
     public Result<Void> deleteById(@PathVariable Long id, HttpServletRequest httpRequest) {
@@ -70,6 +106,14 @@ public class KnowledgeController {
         return Result.success("删除成功", null);
     }
 
+    /**
+     * 更新重要程度
+     *
+     * @param id 知识节点ID
+     * @param importance 重要程度
+     * @param httpRequest HTTP请求
+     * @return 更新结果
+     */
     @PutMapping("/{id}/importance")
     @Operation(summary = "更新重要程度", description = "更新知识点的重要程度")
     public Result<Void> updateImportance(
@@ -81,6 +125,14 @@ public class KnowledgeController {
         return Result.success("更新成功", null);
     }
 
+    /**
+     * 更新知识点
+     *
+     * @param id 知识节点ID
+     * @param request 更新知识请求
+     * @param httpRequest HTTP请求
+     * @return 更新结果
+     */
     @PutMapping("/{id}")
     @Operation(summary = "更新知识点", description = "更新知识点的内容")
     public Result<Void> updateKnowledge(
@@ -97,6 +149,13 @@ public class KnowledgeController {
         return Result.success("更新成功", null);
     }
 
+    /**
+     * 搜索知识点
+     *
+     * @param keyword 搜索关键词
+     * @param httpRequest HTTP请求
+     * @return 搜索结果列表
+     */
     @GetMapping("/search")
     @Operation(summary = "搜索知识点", description = "使用Elasticsearch搜索知识点")
     public Result<java.util.List<KnowledgeNodeVO>> search(
@@ -110,6 +169,13 @@ public class KnowledgeController {
         return Result.success(results);
     }
 
+    /**
+     * 多字段搜索知识点
+     *
+     * @param keyword 搜索关键词
+     * @param httpRequest HTTP请求
+     * @return 搜索结果列表
+     */
     @GetMapping("/search/multi")
     @Operation(summary = "多字段搜索知识点", description = "使用Elasticsearch在标题、摘要、内容中搜索")
     public Result<java.util.List<KnowledgeNodeVO>> multiFieldSearch(
@@ -123,6 +189,14 @@ public class KnowledgeController {
         return Result.success(results);
     }
 
+    /**
+     * 语义搜索知识点
+     *
+     * @param queryText 搜索文本
+     * @param topK 返回结果数量
+     * @param httpRequest HTTP请求
+     * @return 语义搜索结果列表
+     */
     @GetMapping("/search/semantic")
     @Operation(summary = "语义搜索知识点", description = "使用向量相似度进行语义搜索")
     public Result<List<KnowledgeNodeVO>> semanticSearch(
@@ -143,7 +217,7 @@ public class KnowledgeController {
                 log.info("语义搜索使用 API Key 来源：userId={}, API Key={}", 
                     userId, userApiKey != null && !userApiKey.isEmpty() ? "用户 API Key" : "未配置");
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.warn("获取用户 API Key 失败：userId={}, error={}", userId, e.getMessage());
         }
         
@@ -152,6 +226,12 @@ public class KnowledgeController {
         return Result.success(results);
     }
 
+    /**
+     * 同步到Elasticsearch
+     *
+     * @param httpRequest HTTP请求
+     * @return 同步结果
+     */
     @PostMapping("/sync-to-elasticsearch")
     @Operation(summary = "同步到Elasticsearch", description = "将所有知识点同步到Elasticsearch")
     public Result<Void> syncToElasticsearch(HttpServletRequest httpRequest) {
