@@ -11,205 +11,416 @@
       box-sizing: border-box;
     }
 
+    :root {
+      --bg-primary: #0B1120;
+      --bg-surface: #131C31;
+      --bg-elevated: #1C2942;
+      --accent: #10B981;
+      --accent-hover: #059669;
+      --accent-soft: rgba(16, 185, 129, 0.12);
+      --text-primary: #E2E8F0;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --border: #1E293B;
+      --border-focus: #10B981;
+      --success: #10B981;
+      --error: #EF4444;
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-width: 400px;
-      min-height: 500px;
+      width: 380px;
+      min-height: 440px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.5;
     }
 
-    .container {
-      padding: 20px;
-    }
-
+    /* Header — 非对称布局，左图标右文字 */
     .header {
-      text-align: center;
-      margin-bottom: 20px;
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .logo {
-      font-size: 24px;
-      font-weight: bold;
-      color: white;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.8);
-    }
-
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    }
-
-    .input-group {
-      margin-bottom: 16px;
-    }
-
-    .input-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #e0e0e0;
+    .header-icon {
+      width: 36px;
+      height: 36px;
       border-radius: 8px;
-      font-size: 14px;
-      transition: border-color 0.3s ease;
+      background: linear-gradient(135deg, #10B981 0%, #0EA5E9 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
     }
 
-    .input-group input:focus {
+    .header-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    /* Content */
+    .content {
+      padding: 20px 24px;
+    }
+
+    /* Section — 替代旧的 card */
+    .section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* Input */
+    .input-group {
+      margin-bottom: 14px;
+    }
+
+    .input-group:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
       outline: none;
-      border-color: #667eea;
     }
 
+    .input-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .input-field::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Button */
     .btn {
       width: 100%;
-      padding: 12px;
+      padding: 11px 16px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: background 0.15s ease, transform 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: var(--accent);
+      color: #FFFFFF;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .btn-secondary {
-      background: #f5f5f5;
-      color: #333;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
     }
 
     .btn-secondary:hover {
-      background: #e8e8e8;
+      background: #243354;
     }
 
+    /* Button group */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-group .btn {
+      flex: 1;
+    }
+
+    /* Status */
     .status {
-      text-align: center;
-      margin-top: 16px;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .status.success {
-      background: #d4edda;
-      color: #065f46;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
     .status.error {
-      background: #fee2e2;
-      color: #991b1b;
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
-    .hidden {
-      display: none;
-    }
-
+    /* Divider — 替代旧的 "或" 分隔 */
     .divider {
-      text-align: center;
-      margin: 20px 0;
-      color: #999;
-      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
     }
 
     .divider::before,
     .divider::after {
       content: '';
-      display: inline-block;
-      width: 45%;
-      border-bottom: 1px solid #ddd;
-      vertical-align: middle;
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
 
-    .info-text {
-      text-align: center;
-      color: #666;
-      font-size: 13px;
-      margin-top: 12px;
-    }
-
+    /* Loading spinner */
     .loading {
       display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #f3f3f3;
-      border-top-color: #667eea;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #FFFFFF;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-right: 8px;
+      animation: spin 0.6s linear infinite;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Logged in user */
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10B981 0%, #0EA5E9 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 600;
+      color: #FFFFFF;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .user-status {
+      font-size: 11px;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 1px;
+    }
+
+    .user-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .step-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      padding-top: 3px;
+    }
+
+    /* Link */
+    .link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 14px;
+    }
+
+    /* Utility */
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">🧠 AI SecondBrain</div>
-      <div class="subtitle">个人知识管理助手</div>
+  <div class="header">
+    <div class="header-icon">🧠</div>
+    <div class="header-text">
+      <div class="brand-name">AI SecondBrain</div>
+      <div class="brand-subtitle">个人知识管理助手</div>
     </div>
+  </div>
 
-    <div id="loginSection" class="card">
+  <div class="content">
+    <!-- 登录区 -->
+    <div id="loginSection" class="section">
+      <div class="section-title">登录账户</div>
       <div class="input-group">
-        <label for="username">用户名</label>
-        <input type="text" id="username" placeholder="请输入用户名" />
+        <label class="input-label" for="username">用户名</label>
+        <input type="text" id="username" class="input-field" placeholder="请输入用户名" />
       </div>
       <div class="input-group">
-        <label for="password">密码</label>
-        <input type="password" id="password" placeholder="请输入密码" />
+        <label class="input-label" for="password">密码</label>
+        <input type="password" id="password" class="input-field" placeholder="请输入密码" />
       </div>
       <button class="btn btn-primary" id="loginBtn">登录</button>
-      <div class="info-text">
-        首次使用？请先访问 <a href="http://localhost:3000" target="_blank">知识库</a> 注册账号
+      <div class="footer-text">
+        还没有账户？<a href="http://localhost:5173" class="link" target="_blank">立即注册</a>
       </div>
     </div>
 
-    <div id="loggedInSection" class="card hidden">
-      <div class="status success">
-        ✅ 已登录
+    <!-- 已登录区 -->
+    <div id="loggedInSection" class="section hidden">
+      <div class="section-title">账户信息</div>
+      <div class="user-info">
+        <div class="user-avatar">U</div>
+        <div class="user-details">
+          <div class="user-name" id="currentUser">已登录用户</div>
+          <div class="user-status">已连接</div>
+        </div>
       </div>
-      <div class="info-text">
-        当前用户: <span id="currentUser"></span>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="goToDashboardBtn">前往知识库</button>
+        <button class="btn btn-secondary" id="logoutBtn">退出</button>
       </div>
-      <button class="btn btn-secondary" id="logoutBtn">退出登录</button>
-      <button class="btn btn-primary" id="goToDashboardBtn" style="margin-top: 12px;">
-        📊 前往知识库
-      </button>
     </div>
 
-    <div class="divider">
-      <span>或</span>
-    </div>
+    <div class="divider">使用指南</div>
 
-    <div class="card">
-      <div class="info-text">
-        💡 使用说明：<br>
-        1. 在 ChatGPT/DeepSeek/Kimi 上进行对话<br>
-        2. 点击页面右上角的"采集到知识库"按钮<br>
-        3. AI 会自动提取知识点并保存到您的知识库
+    <!-- 使用说明 -->
+    <div class="section">
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-text">登录你的 AI SecondBrain 账户</div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-text">在 ChatGPT / DeepSeek / Kimi 等平台进行对话</div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-text">点击页面右上角的「采集」按钮保存对话</div>
+        </div>
       </div>
     </div>
   </div>

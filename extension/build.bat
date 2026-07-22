@@ -20,9 +20,11 @@ echo [2/5] 复制插件文件...
 xcopy manifest.json %BUILD_DIR%\ /Y
 xcopy background.js %BUILD_DIR%\ /Y
 xcopy content.js %BUILD_DIR%\ /Y
-xcopy popup.html %BUILD_DIR%\ /Y
-xcopy popup.js %BUILD_DIR%\ /Y
-xcopy icons %BUILD_DIR%\icons\ /E /I /Y
+xcopy content.css %BUILD_DIR%\ /Y
+mkdir %BUILD_DIR%\popup
+xcopy popup\popup.html %BUILD_DIR%\popup\ /Y
+xcopy popup\popup.js %BUILD_DIR%\popup\ /Y
+xcopy icons\*.png %BUILD_DIR%\icons\ /Y
 
 echo [3/5] 创建版本信息...
 echo {"version": "%VERSION%", "buildDate": "%DATE% %TIME%"} > %BUILD_DIR%\version.json

@@ -11,6 +11,13 @@ spring:
   application:
     name: ai-second-brain
 
+# 这里host在本地测试时可以连接我的本机数据库
+  # IP：10.65.59.104
+  #端口：3306
+  #账号：dev
+  #密码：123456
+# 选择连接自己的数据库，需要建表，完整建表语句在sql目录下
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:second_brain}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true

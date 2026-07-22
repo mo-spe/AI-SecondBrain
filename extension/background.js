@@ -1,65 +1,66 @@
-// 本地开发环境配置
-// 如果要切换到生产环境，请修改此地址为：https://aisecondbrain.cn/api
-let API_BASE_URL = "http://localhost:8080/api";
-let DEBUG = true;  // 开发环境开启调试模式
+const API_BASE_URL = "http://localhost:8080/api";
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getToken") {
-    handleGetToken(sendResponse);
-    return true;
-  }
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "apiRequest") {
+        handleApiRequest(message, sendResponse);
+        return true;
+    } else if (message.action === "getToken") {
+        handleGetToken(sendResponse);
+        return true;
+    }
 });
 
-async function handleGetToken(sendResponse) {
-  try {
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.storage &&
-      chrome.storage.local
-    ) {
-      chrome.storage.local.get(["authToken"], (result) => {
-        if (chrome.runtime.lastError) {
-          sendResponse({
+async function handleApiRequest(message, sendResponse) {
+    try {
+        const url = API_BASE_URL + message.path;
+        console.log("API Request:", url, message.method, message.body);
+
+        const options = {
+            method: message.method || "GET",
+            headers: {
+                "Content-Type": "application/json",
+                ...(message.headers || {})
+            },
+            body: message.body ? JSON.stringify(message.body) : null
+        };
+
+        const response = await fetch(url, options);
+        console.log("API Response status:", response.status);
+
+        const result = await response.json();
+        console.log("API Response body:", result);
+
+        sendResponse({
+            success: response.ok && result.code === 200,
+            status: response.status,
+            data: result
+        });
+    } catch (error) {
+        console.error("API Request failed:", error);
+        sendResponse({
             success: false,
-            error: chrome.runtime.lastError.message,
-          });
-        } else {
-          if (result.authToken) {
-            sendResponse({
-              success: true,
-              token: result.authToken,
-            });
-          } else {
-            sendResponse({
-              success: true,
-              token: null,
-            });
-          }
-        }
-      });
-    } else {
-      sendResponse({
-        success: false,
-        error: "Chrome Storage API 不可用",
-      });
+            error: error.message
+        });
     }
-  } catch (error) {
-    sendResponse({
-      success: false,
-      error: error.message,
+}
+
+function handleGetToken(sendResponse) {
+    chrome.storage.local.get(["authToken"], (result) => {
+        sendResponse({
+            success: true,
+            token: result.authToken || null
+        });
     });
-  }
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("AI SecondBrain 插件已安装");
-  console.log("Background service worker loaded");
+    console.log("AI SecondBrain Collector installed");
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log("AI SecondBrain 插件已启动");
+    console.log("AI SecondBrain Collector started");
 });
 
 chrome.runtime.onSuspend.addListener(() => {
-  console.log("AI SecondBrain 插件即将挂起");
+    console.log("AI SecondBrain Collector suspended");
 });
