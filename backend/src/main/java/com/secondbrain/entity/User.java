@@ -4,141 +4,84 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 用户实体类.
+ * <p>存储用户基础信息、认证凭证及个人资料</p>
+ */
+@Getter
+@Setter
 @TableName("user")
 public class User {
-    
+
+    /**
+     * 用户ID
+     */
     @TableId(type = IdType.AUTO)
     private Long id;
-    
+
+    /**
+     * 用户名
+     */
     private String username;
-    
+
+    /**
+     * 密码（BCrypt哈希）
+     */
     private String password;
-    
+
+    /**
+     * 邮箱
+     */
     private String email;
-    
+
+    /**
+     * 手机号
+     */
     private String phone;
-    
+
+    /**
+     * 个人简介
+     */
     private String bio;
-    
+
+    /**
+     * 头像URL
+     */
     private String avatar;
-    
+
+    /**
+     * API Key（用于调用外部AI服务）
+     */
     private String apiKey;
-    
+
+    /**
+     * 注册时间
+     */
     private LocalDateTime registerTime;
-    
+
+    /**
+     * 最后登录时间
+     */
     private LocalDateTime lastLoginTime;
-    
+
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
-    
+
+    /**
+     * 更新时间
+     */
     private LocalDateTime updateTime;
-    
+
+    /**
+     * 删除标记（0-未删除，1-已删除）
+     */
     @TableField("deleted")
     private Integer deleted;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getBio() {
-        return bio;
-    }
-
-    public void setBio(String bio) {
-        this.bio = bio;
-    }
-
-    public String getAvatar() {
-        return avatar;
-    }
-
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public LocalDateTime getRegisterTime() {
-        return registerTime;
-    }
-
-    public void setRegisterTime(LocalDateTime registerTime) {
-        this.registerTime = registerTime;
-    }
-
-    public LocalDateTime getLastLoginTime() {
-        return lastLoginTime;
-    }
-
-    public void setLastLoginTime(LocalDateTime lastLoginTime) {
-        this.lastLoginTime = lastLoginTime;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
-
-    public Integer getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Integer deleted) {
-        this.deleted = deleted;
-    }
 }

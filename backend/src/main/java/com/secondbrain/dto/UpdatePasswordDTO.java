@@ -1,29 +1,22 @@
 package com.secondbrain.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Getter;
+import lombok.Setter;
 
-@Schema(description = "修改密码请求")
+/**
+ * 修改密码请求DTO.
+ */
+@Getter
+@Setter
 public class UpdatePasswordDTO {
-    
-    @Schema(description = "原密码")
+
+    /**
+     * 原密码
+     */
     private String oldPassword;
-    
-    @Schema(description = "新密码")
+
+    /**
+     * 新密码
+     */
     private String newPassword;
-
-    public String getOldPassword() {
-        return oldPassword;
-    }
-
-    public void setOldPassword(String oldPassword) {
-        this.oldPassword = oldPassword;
-    }
-
-    public String getNewPassword() {
-        return newPassword;
-    }
-
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
 }

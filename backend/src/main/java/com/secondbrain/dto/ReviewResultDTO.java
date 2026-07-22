@@ -1,11 +1,34 @@
 package com.secondbrain.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
+/**
+ * 复习结果DTO.
+ */
+@Getter
+@Setter
 public class ReviewResultDTO {
+
+    /**
+     * 是否正确
+     */
     private boolean correct;
+
+    /**
+     * 正确答案
+     */
     private String correctAnswer;
+
+    /**
+     * 解析说明
+     */
     private String explanation;
+
+    /**
+     * 提示消息
+     */
     private String message;
 
     public ReviewResultDTO(boolean correct, String correctAnswer, String explanation, String message) {
@@ -18,33 +41,5 @@ public class ReviewResultDTO {
     @JsonProperty("isCorrect")
     public boolean isCorrect() {
         return correct;
-    }
-
-    public void setCorrect(boolean correct) {
-        this.correct = correct;
-    }
-
-    public String getCorrectAnswer() {
-        return correctAnswer;
-    }
-
-    public void setCorrectAnswer(String correctAnswer) {
-        this.correctAnswer = correctAnswer;
-    }
-
-    public String getExplanation() {
-        return explanation;
-    }
-
-    public void setExplanation(String explanation) {
-        this.explanation = explanation;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
     }
 }

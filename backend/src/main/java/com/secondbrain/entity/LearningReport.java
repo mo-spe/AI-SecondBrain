@@ -1,82 +1,55 @@
 package com.secondbrain.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 学习报告实体类.
+ * <p>存储AI生成的学习报告内容</p>
+ */
+@Getter
+@Setter
 @TableName("learning_report")
 public class LearningReport {
 
+    /**
+     * 报告ID
+     */
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 用户ID
+     */
     private Long userId;
 
+    /**
+     * 报告主题
+     */
     private String topic;
 
+    /**
+     * 报告内容
+     */
     private String content;
 
+    /**
+     * 学习天数
+     */
     private Integer days;
 
+    /**
+     * 创建时间（自动填充）
+     */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    /**
+     * 删除标记（逻辑删除）
+     */
     @TableLogic
     private Integer deleted;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getTopic() {
-        return topic;
-    }
-
-    public void setTopic(String topic) {
-        this.topic = topic;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public Integer getDays() {
-        return days;
-    }
-
-    public void setDays(Integer days) {
-        this.days = days;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public Integer getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Integer deleted) {
-        this.deleted = deleted;
-    }
 }

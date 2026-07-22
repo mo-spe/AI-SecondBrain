@@ -1,78 +1,54 @@
 package com.secondbrain.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 
+/**
+ * 研究历史请求DTO.
+ */
+@Getter
+@Setter
 public class ResearchHistoryRequest {
+
+    /**
+     * 研究类型
+     */
     private String type;
+
+    /**
+     * 研究主题
+     */
     private String topic;
+
+    /**
+     * 研究内容
+     */
     private String content;
+
+    /**
+     * 当前水平
+     */
     private String currentLevel;
+
+    /**
+     * 目标水平
+     */
     private String targetLevel;
+
+    /**
+     * 研究深度
+     */
     private String depth;
+
+    /**
+     * 用户已有知识列表
+     */
     private List<String> userKnowledge;
+
+    /**
+     * 涉及知识点数量
+     */
     private Integer knowledgeCount;
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getTopic() {
-        return topic;
-    }
-
-    public void setTopic(String topic) {
-        this.topic = topic;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public String getCurrentLevel() {
-        return currentLevel;
-    }
-
-    public void setCurrentLevel(String currentLevel) {
-        this.currentLevel = currentLevel;
-    }
-
-    public String getTargetLevel() {
-        return targetLevel;
-    }
-
-    public void setTargetLevel(String targetLevel) {
-        this.targetLevel = targetLevel;
-    }
-
-    public String getDepth() {
-        return depth;
-    }
-
-    public void setDepth(String depth) {
-        this.depth = depth;
-    }
-
-    public List<String> getUserKnowledge() {
-        return userKnowledge;
-    }
-
-    public void setUserKnowledge(List<String> userKnowledge) {
-        this.userKnowledge = userKnowledge;
-    }
-
-    public Integer getKnowledgeCount() {
-        return knowledgeCount;
-    }
-
-    public void setKnowledgeCount(Integer knowledgeCount) {
-        this.knowledgeCount = knowledgeCount;
-    }
 }

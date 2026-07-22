@@ -1,153 +1,91 @@
 package com.secondbrain.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 知识节点实体类.
+ * <p>存储知识点的标题、内容、掌握程度等核心信息</p>
+ */
+@Getter
+@Setter
 @TableName("knowledge_node")
 public class KnowledgeNode {
 
+    /**
+     * 知识点ID
+     */
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 用户ID
+     */
     private Long userId;
 
+    /**
+     * 知识点标题
+     */
     private String title;
 
+    /**
+     * 内容（Markdown格式）
+     */
     private String contentMd;
 
+    /**
+     * 摘要
+     */
     private String summary;
 
+    /**
+     * 向量ID
+     */
     private String vectorId;
 
+    /**
+     * 重要程度（1-5，5最高）
+     */
     private Integer importance;
 
+    /**
+     * 掌握程度（0-5，0未掌握，5已掌握）
+     */
     private Integer masteryLevel;
 
+    /**
+     * 复习次数
+     */
     private Integer reviewCount;
 
+    /**
+     * 创建时间（自动填充）
+     */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间（自动填充）
+     */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
+    /**
+     * 最后复习时间
+     */
     private LocalDateTime lastReviewTime;
 
+    /**
+     * 下次复习时间（基于艾宾浩斯曲线计算）
+     */
     private LocalDateTime nextReviewTime;
 
+    /**
+     * 删除标记（逻辑删除）
+     */
     @TableLogic
     private Integer deleted;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getContentMd() {
-        return contentMd;
-    }
-
-    public void setContentMd(String contentMd) {
-        this.contentMd = contentMd;
-    }
-
-    public String getSummary() {
-        return summary;
-    }
-
-    public void setSummary(String summary) {
-        this.summary = summary;
-    }
-
-    public String getVectorId() {
-        return vectorId;
-    }
-
-    public void setVectorId(String vectorId) {
-        this.vectorId = vectorId;
-    }
-
-    public Integer getImportance() {
-        return importance;
-    }
-
-    public void setImportance(Integer importance) {
-        this.importance = importance;
-    }
-
-    public Integer getMasteryLevel() {
-        return masteryLevel;
-    }
-
-    public void setMasteryLevel(Integer masteryLevel) {
-        this.masteryLevel = masteryLevel;
-    }
-
-    public Integer getReviewCount() {
-        return reviewCount;
-    }
-
-    public void setReviewCount(Integer reviewCount) {
-        this.reviewCount = reviewCount;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
-
-    public LocalDateTime getLastReviewTime() {
-        return lastReviewTime;
-    }
-
-    public void setLastReviewTime(LocalDateTime lastReviewTime) {
-        this.lastReviewTime = lastReviewTime;
-    }
-
-    public LocalDateTime getNextReviewTime() {
-        return nextReviewTime;
-    }
-
-    public void setNextReviewTime(LocalDateTime nextReviewTime) {
-        this.nextReviewTime = nextReviewTime;
-    }
-
-    public Integer getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Integer deleted) {
-        this.deleted = deleted;
-    }
 }

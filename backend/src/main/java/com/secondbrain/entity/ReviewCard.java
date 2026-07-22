@@ -1,222 +1,126 @@
 package com.secondbrain.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+/**
+ * 复习卡片实体类.
+ * <p>存储基于知识点生成的复习题目，支持选择题、填空题、简答题等类型</p>
+ */
+@Getter
+@Setter
 @TableName("review_card")
 public class ReviewCard {
 
+    /**
+     * 卡片ID
+     */
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 关联知识点ID
+     */
     private Long nodeId;
 
+    /**
+     * 用户ID
+     */
     private Long userId;
 
+    /**
+     * 题目内容
+     */
     private String question;
 
+    /**
+     * 正确答案
+     */
     private String answer;
 
+    /**
+     * 卡片类型（choice-选择题，fill-填空题，essay-简答题，judge-判断题）
+     */
     private String cardType;
 
+    /**
+     * 难度等级（1-5，5最高）
+     */
     private Integer difficulty;
 
+    /**
+     * 复习次数
+     */
     private Integer reviewCount;
 
+    /**
+     * 正确次数
+     */
     private Integer correctCount;
 
+    /**
+     * 错误次数
+     */
     private Integer incorrectCount;
 
+    /**
+     * 掌握程度（0-5）
+     */
     private Integer masteryLevel;
 
+    /**
+     * 记忆强度（0-1，1最强）
+     */
     private Double memoryStrength;
 
+    /**
+     * 最后复习时间
+     */
     private LocalDateTime lastReviewTime;
 
+    /**
+     * 下次复习时间
+     */
     private LocalDateTime nextReviewTime;
 
+    /**
+     * 状态（0-待复习，1-已掌握，2-已暂停）
+     */
     private Integer status;
 
+    /**
+     * 是否AI生成（true/false）
+     */
     private String aiGenerated;
 
+    /**
+     * 生成类型
+     */
     private String generationType;
 
+    /**
+     * 是否已恢复（0-未恢复，1-已恢复）
+     */
     private Integer isRestored;
 
+    /**
+     * 创建时间（自动填充）
+     */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    /**
+     * 更新时间（自动填充）
+     */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
+    /**
+     * 删除标记（逻辑删除）
+     */
     @TableLogic
     private Integer deleted;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getNodeId() {
-        return nodeId;
-    }
-
-    public void setNodeId(Long nodeId) {
-        this.nodeId = nodeId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getQuestion() {
-        return question;
-    }
-
-    public void setQuestion(String question) {
-        this.question = question;
-    }
-
-    public String getAnswer() {
-        return answer;
-    }
-
-    public void setAnswer(String answer) {
-        this.answer = answer;
-    }
-
-    public String getCardType() {
-        return cardType;
-    }
-
-    public void setCardType(String cardType) {
-        this.cardType = cardType;
-    }
-
-    public Integer getDifficulty() {
-        return difficulty;
-    }
-
-    public void setDifficulty(Integer difficulty) {
-        this.difficulty = difficulty;
-    }
-
-    public Integer getReviewCount() {
-        return reviewCount;
-    }
-
-    public void setReviewCount(Integer reviewCount) {
-        this.reviewCount = reviewCount;
-    }
-
-    public Integer getCorrectCount() {
-        return correctCount;
-    }
-
-    public void setCorrectCount(Integer correctCount) {
-        this.correctCount = correctCount;
-    }
-
-    public Integer getIncorrectCount() {
-        return incorrectCount;
-    }
-
-    public void setIncorrectCount(Integer incorrectCount) {
-        this.incorrectCount = incorrectCount;
-    }
-
-    public Integer getMasteryLevel() {
-        return masteryLevel;
-    }
-
-    public void setMasteryLevel(Integer masteryLevel) {
-        this.masteryLevel = masteryLevel;
-    }
-
-    public Double getMemoryStrength() {
-        return memoryStrength;
-    }
-
-    public void setMemoryStrength(Double memoryStrength) {
-        this.memoryStrength = memoryStrength;
-    }
-
-    public LocalDateTime getLastReviewTime() {
-        return lastReviewTime;
-    }
-
-    public void setLastReviewTime(LocalDateTime lastReviewTime) {
-        this.lastReviewTime = lastReviewTime;
-    }
-
-    public LocalDateTime getNextReviewTime() {
-        return nextReviewTime;
-    }
-
-    public void setNextReviewTime(LocalDateTime nextReviewTime) {
-        this.nextReviewTime = nextReviewTime;
-    }
-
-    public Integer getStatus() {
-        return status;
-    }
-
-    public void setStatus(Integer status) {
-        this.status = status;
-    }
-
-    public String getAiGenerated() {
-        return aiGenerated;
-    }
-
-    public void setAiGenerated(String aiGenerated) {
-        this.aiGenerated = aiGenerated;
-    }
-
-    public String getGenerationType() {
-        return generationType;
-    }
-
-    public void setGenerationType(String generationType) {
-        this.generationType = generationType;
-    }
-
-    public Integer getIsRestored() {
-        return isRestored;
-    }
-
-    public void setIsRestored(Integer isRestored) {
-        this.isRestored = isRestored;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
-
-    public Integer getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Integer deleted) {
-        this.deleted = deleted;
-    }
 }

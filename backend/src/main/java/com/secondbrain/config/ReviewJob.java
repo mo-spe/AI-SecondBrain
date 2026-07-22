@@ -10,29 +10,36 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.quartz.QuartzJobBean;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * 复习任务定时作业，负责自动生成复习卡片、发送每日复习提醒和生成每周复习报告。
+ */
+@Component
 public class ReviewJob extends QuartzJobBean {
 
     private static final Logger log = LoggerFactory.getLogger(ReviewJob.class);
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    @Autowired
-    private ReviewCardService reviewCardService;
+    private final ReviewCardService reviewCardService;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
+    private final ReviewCardMapper reviewCardMapper;
+    private final NotificationService notificationService;
 
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
-
-    @Autowired
-    private ReviewCardMapper reviewCardMapper;
-
-    @Autowired
-    private NotificationService notificationService;
+    public ReviewJob(ReviewCardService reviewCardService,
+                     KnowledgeNodeMapper knowledgeNodeMapper,
+                     ReviewCardMapper reviewCardMapper,
+                     NotificationService notificationService) {
+        this.reviewCardService = reviewCardService;
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+        this.reviewCardMapper = reviewCardMapper;
+        this.notificationService = notificationService;
+    }
 
     @Override
     protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
