@@ -1,48 +1,44 @@
 package com.secondbrain.kafka;
 
-import com.alibaba.fastjson2.JSON;
 import com.secondbrain.dto.AsyncTaskRequest;
-import com.secondbrain.entity.AsyncTask;
-import com.secondbrain.mapper.AsyncTaskMapper;
 import com.secondbrain.service.AsyncTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
+/**
+ * 异步任务消费者服务
+ * 监听Kafka异步任务队列并执行任务处理
+ */
 @Service
-@ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true", matchIfMissing = false)
 public class AsyncTaskConsumerService {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncTaskConsumerService.class);
 
-    private static final String ASYNC_TASK_TOPIC = "async-task-topic";
+    private final AsyncTaskService asyncTaskService;
 
-    @Autowired
-    private AsyncTaskService asyncTaskService;
+    public AsyncTaskConsumerService(AsyncTaskService asyncTaskService) {
+        this.asyncTaskService = asyncTaskService;
+    }
 
-    @KafkaListener(topics = ASYNC_TASK_TOPIC, groupId = "async-task-group")
-    public void handleAsyncTask(String message) {
+    /**
+     * 消费异步任务消息
+     *
+     * @param taskRequest 异步任务请求
+     */
+    @KafkaListener(topics = "async-tasks", groupId = "async-task-group")
+    public void consumeAsyncTask(AsyncTaskRequest taskRequest) {
+        log.info("收到异步任务，taskId：{}，type：{}", taskRequest.getTaskId(), taskRequest.getTaskType());
+        
         try {
-            log.info("收到异步任务消息：{}", message);
-
-            AsyncTaskRequest request = JSON.parseObject(message, AsyncTaskRequest.class);
-            
-            AsyncTask task = asyncTaskService.getTaskByNumber(request.getTaskId());
-            if (task == null) {
-                log.warn("任务不存在，taskNumber：{}", request.getTaskId());
-                return;
+            com.secondbrain.entity.AsyncTask task = asyncTaskService.getTaskByNumber(taskRequest.getTaskId());
+            if (task != null) {
+                asyncTaskService.processTask(task);
             }
-
-            asyncTaskService.processTask(task);
-
+            log.info("异步任务执行成功，taskId：{}", taskRequest.getTaskId());
         } catch (Exception e) {
-            log.error("处理异步任务失败", e);
+            log.error("异步任务执行失败，taskId：{}", taskRequest.getTaskId(), e);
         }
     }
 }

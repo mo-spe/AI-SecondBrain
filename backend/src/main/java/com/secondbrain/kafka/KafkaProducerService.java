@@ -1,57 +1,57 @@
 package com.secondbrain.kafka;
 
-import com.alibaba.fastjson2.JSON;
-import com.secondbrain.dto.AsyncTaskRequest;
 import com.secondbrain.entity.RawChatRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+/**
+ * Kafka生产者服务
+ * 负责向Kafka发送聊天采集等消息
+ */
 @Service
-@ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true", matchIfMissing = false)
 public class KafkaProducerService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducerService.class);
 
-    @Autowired(required = false)
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    private static final String CHAT_COLLECT_TOPIC = "chat-collect-topic";
-    private static final String ASYNC_TASK_TOPIC = "async-task-topic";
-
-    public void sendChatCollect(RawChatRecord chatRecord) {
-        if (kafkaTemplate == null) {
-            log.warn("Kafka未启用，跳过消息发送");
-            return;
-        }
-        
-        try {
-            String message = JSON.toJSONString(chatRecord);
-            kafkaTemplate.send(CHAT_COLLECT_TOPIC, message);
-            log.info("对话采集消息已发送到Kafka，topic：{}，消息：{}", CHAT_COLLECT_TOPIC, message);
-        } catch (Exception e) {
-            log.error("发送对话采集消息到Kafka失败", e);
-            throw new RuntimeException("发送消息失败", e);
-        }
+    public KafkaProducerService(KafkaTemplate<String, Object> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendAsyncTask(AsyncTaskRequest request) {
-        if (kafkaTemplate == null) {
-            log.warn("Kafka未启用，跳过消息发送");
-            return;
-        }
-        
-        try {
-            String message = JSON.toJSONString(request);
-            kafkaTemplate.send(ASYNC_TASK_TOPIC, message);
-            log.info("异步任务消息已发送到Kafka，topic：{}，taskType：{}，userId：{}", 
-                ASYNC_TASK_TOPIC, request.getTaskType(), request.getUserId());
-        } catch (Exception e) {
-            log.error("发送异步任务消息到Kafka失败", e);
-            throw new RuntimeException("发送消息失败", e);
-        }
+    /**
+     * 发送聊天采集记录到Kafka
+     *
+     * @param record 原始聊天记录
+     */
+    public void sendChatCollect(RawChatRecord record) {
+        log.info("发送聊天采集记录到 Kafka，userId：{}，sourceUrl：{}", record.getUserId(), record.getSourceUrl());
+        kafkaTemplate.send("chat-collect", record);
+        log.info("聊天采集记录发送成功");
+    }
+
+    /**
+     * 发送消息到指定主题.
+     *
+     * @param topic   主题名称
+     * @param message 消息内容
+     */
+    public void sendMessage(String topic, Object message) {
+        log.info("发送消息到 Kafka 主题：{}", topic);
+        kafkaTemplate.send(topic, message);
+        log.info("消息发送成功");
+    }
+
+    /**
+     * 发送异步任务到Kafka.
+     *
+     * @param request 异步任务请求
+     */
+    public void sendAsyncTask(com.secondbrain.dto.AsyncTaskRequest request) {
+        log.info("发送异步任务到 Kafka，taskId：{}，type：{}", request.getTaskId(), request.getTaskType());
+        kafkaTemplate.send("async-tasks", request);
+        log.info("异步任务发送成功");
     }
 }
