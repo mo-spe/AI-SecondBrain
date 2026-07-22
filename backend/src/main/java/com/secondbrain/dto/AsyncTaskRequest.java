@@ -1,62 +1,37 @@
 package com.secondbrain.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Getter;
+import lombok.Setter;
 
-@Schema(description = "异步任务请求")
+/**
+ * 异步任务请求DTO.
+ */
+@Getter
+@Setter
 public class AsyncTaskRequest {
 
-    @Schema(description = "任务类型", required = true)
+    /**
+     * 任务类型
+     */
     private String taskType;
 
-    @Schema(description = "用户ID", required = true)
+    /**
+     * 用户ID
+     */
     private Long userId;
 
-    @Schema(description = "任务参数")
+    /**
+     * 任务参数
+     */
     private Object parameters;
 
-    @Schema(description = "任务ID")
+    /**
+     * 任务ID
+     */
     private String taskId;
 
-    @Schema(description = "回调URL")
+    /**
+     * 回调URL
+     */
     private String callbackUrl;
-
-    public String getTaskType() {
-        return taskType;
-    }
-
-    public void setTaskType(String taskType) {
-        this.taskType = taskType;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Object getParameters() {
-        return parameters;
-    }
-
-    public void setParameters(Object parameters) {
-        this.parameters = parameters;
-    }
-
-    public String getTaskId() {
-        return taskId;
-    }
-
-    public void setTaskId(String taskId) {
-        this.taskId = taskId;
-    }
-
-    public String getCallbackUrl() {
-        return callbackUrl;
-    }
-
-    public void setCallbackUrl(String callbackUrl) {
-        this.callbackUrl = callbackUrl;
-    }
 }

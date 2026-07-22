@@ -1,44 +1,34 @@
 package com.secondbrain.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.Map;
+
+/**
+ * DeerFlow研究响应DTO.
+ */
+@Getter
+@Setter
 public class DeerFlowResearchResponse {
-    
+
+    /**
+     * 是否成功
+     */
     private Boolean success;
-    
+
+    /**
+     * 返回数据
+     */
     private String data;
-    
+
+    /**
+     * 错误信息
+     */
     private String error;
-    
-    private java.util.Map<String, Object> metadata;
 
-    public Boolean getSuccess() {
-        return success;
-    }
-
-    public void setSuccess(Boolean success) {
-        this.success = success;
-    }
-
-    public String getData() {
-        return data;
-    }
-
-    public void setData(String data) {
-        this.data = data;
-    }
-
-    public String getError() {
-        return error;
-    }
-
-    public void setError(String error) {
-        this.error = error;
-    }
-
-    public java.util.Map<String, Object> getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(java.util.Map<String, Object> metadata) {
-        this.metadata = metadata;
-    }
+    /**
+     * 元数据
+     */
+    private Map<String, Object> metadata;
 }
