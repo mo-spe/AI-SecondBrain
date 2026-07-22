@@ -1,0 +1,310 @@
+/* ============================================================
+   UI/UX Pro Max — Shared Styles & Keyframes
+   Extracted from SFC scoped blocks to eliminate duplication
+   ============================================================ */
+
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25%      { transform: translate(20px, -30px) scale(1.1); }
+  50%      { transform: translate(-20px, 20px) scale(0.9); }
+  75%      { transform: translate(30px, 10px) scale(1.05); }
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+@keyframes rotating {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes successPulse {
+  0%   { transform: scale(0.8); opacity: 0.5; }
+  50%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+@keyframes shine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* ============================================================
+   SHARED BACKGROUND GRADIENT (was in 12 files)
+   ============================================================ */
+
+.background-gradient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-primary);
+  z-index: 0;
+}
+
+/* ============================================================
+   SHARED WELCOME CARD (was in 11 files)
+   ============================================================ */
+
+.welcome-card {
+  background: var(--bg-white-alpha-10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+  border: 1px solid var(--border-white-translucent);
+  box-shadow: var(--shadow-md);
+  animation: fadeInDown 0.6s ease-out;
+}
+
+.welcome-icon {
+  background: var(--bg-white-alpha-20);
+  border-radius: var(--radius-full);
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+.welcome-content {
+  flex: 1;
+}
+
+.welcome-title {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  color: white;
+  margin: 0 0 8px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-subtitle {
+  font-size: var(--font-size-lg);
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+/* ============================================================
+   SHARED CARD PATTERNS
+   ============================================================ */
+
+.card-glass {
+  background: var(--bg-card-translucent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.card-glass:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-primary-hover);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--border-lighter);
+}
+
+.card-header h3 {
+  font-size: var(--font-size-xl);
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.card-header h3 .el-icon {
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   SHARED LIST ITEM
+   ============================================================ */
+
+.list-item {
+  background: var(--bg-list-item);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  cursor: pointer;
+  transition: background var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.list-item:hover {
+  background: var(--bg-hover);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+}
+
+/* ============================================================
+   SHARED STAT ICON WRAPPER (Dashboard)
+   ============================================================ */
+
+.stat-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon-wrapper.primary { background: var(--gradient-primary); color: white; }
+.stat-icon-wrapper.success { background: var(--gradient-success); color: white; }
+.stat-icon-wrapper.warning { background: var(--gradient-warning); color: white; }
+.stat-icon-wrapper.danger  { background: var(--gradient-danger);  color: white; }
+
+.stat-value {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   SHARED INPUT WRAPPER (Login / Register)
+   ============================================================ */
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  border: 2px solid transparent;
+}
+
+.input-wrapper:focus-within {
+  background: white;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring-lg);
+}
+
+.input-icon {
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary);
+  margin-right: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+.text-primary           { color: var(--text-primary); }
+.text-regular           { color: var(--text-regular); }
+.text-secondary         { color: var(--text-secondary); }
+.text-muted             { color: var(--text-muted); }
+
+.fade-in-down           { animation: fadeInDown 0.6s ease-out; }
+.fade-in-up             { animation: fadeInUp 0.6s ease-out; }
+
+.spinner                { animation: rotating 1.5s linear infinite; }
+.success-animate        { animation: successPulse 0.4s ease-out; }
+.error-shake            { animation: shake 0.4s ease-in-out; }
+
+/* ============================================================
+   GLOBAL FOCUS-VISIBLE STYLES
+   ============================================================ */
+
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* ============================================================
+   GPU ACCELERATION HINTS
+   ============================================================ */
+
+.page-wrapper,
+.background-gradient,
+.welcome-card,
+.stat-card,
+.content-card,
+.chart-card {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ============================================================
+   GLOBAL MEDIA QUERIES
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .el-button       { border-width: 2px; }
+  .el-input__inner { border-width: 2px; }
+  .el-card         { border-width: 2px; }
+}
+
+@media print {
+  .no-print  { display: none !important; }
+  .el-card   { box-shadow: none; border: 1px solid #ddd; }
+  .el-button { display: none; }
+}

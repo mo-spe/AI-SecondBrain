@@ -1,6 +1,30 @@
 {
   "version": 1,
   "skills": {
+    "backlog-manager": {
+      "source": "yunshu0909/yunshu_skillshub",
+      "sourceType": "github",
+      "skillPath": "backlog-manager/SKILL.md",
+      "computedHash": "5c5d8665276889295e9299d8776e48ebd93316a4670b65fbec81e7b4fe418c9f"
+    },
+    "code-review": {
+      "source": "RTGS2017/NagaAgent",
+      "sourceType": "github",
+      "skillPath": "skills/code-review/SKILL.md",
+      "computedHash": "0989db064b3f8e30308f95558c754b5ee306fac5af03a6c2236976972be9e34a"
+    },
+    "java-coding-standards": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/java-coding-standards/SKILL.md",
+      "computedHash": "04fe50546ecf4cdffc86306d0393b0e2076685085dadb1d4a0627467cce03b0a"
+    },
+    "personal-frontend-coding-standard": {
+      "source": "bage2014/study",
+      "sourceType": "github",
+      "skillPath": "study-ai-skills/skills/personal-frontend-coding-standard/SKILL.md",
+      "computedHash": "ea041019d1c9dc23e35c0b660a86817375db7a1d63b47cb32af14e658b6dcff7"
+    },
     "taste-skill": {
       "source": "gaoqiongxie/skills-ai",
       "sourceType": "github",

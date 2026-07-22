@@ -96,11 +96,11 @@ ai:
   provider: ${AI_PROVIDER:qwen}
   deepseek:
     api-key: ${DEEPSEEK_API_KEY:}
-    base-url: https://api.deepseek.com/v1
+    base-url: https://api.deepseek.com
     model: deepseek-chat
   openai:
     api-key: ${OPENAI_API_KEY:}
-    base-url: https://api.openai.com/v1
+    base-url: https://api.openai.com
     model: gpt-3.5-turbo
     embedding:
       api-key: ${OPENAI_API_KEY:}
@@ -108,7 +108,7 @@ ai:
       model: ${OPENAI_EMBEDDING_MODEL:text-embedding-ada-002}
   qwen:
     api-key: ${QWEN_API_KEY:}
-    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    base-url: https://dashscope.aliyuncs.com/compatible-mode
     model: ${QWEN_MODEL:qwen-plus}
     embedding:
       api-key: ${QWEN_API_KEY:}
