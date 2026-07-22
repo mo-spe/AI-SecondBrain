@@ -1,5 +1,5 @@
 <template>
-  <div class="search-container">
+  <div class="search-container" aria-label="知识搜索页面">
     <div class="background-gradient"></div>
 
     <div class="main-content">
@@ -332,16 +332,6 @@ const viewDetail = (item) => {
   overflow-x: hidden;
 }
 
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 0;
-}
-
 .main-content {
   position: relative;
   z-index: 1;
@@ -354,92 +344,17 @@ const viewDetail = (item) => {
   margin-bottom: 20px;
 }
 
-.welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInDown 0.6s ease-out;
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: white;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.welcome-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-}
-
 .search-section {
   margin-bottom: 20px;
 }
 
 .search-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-card-translucent);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 30px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   animation: fadeInUp 0.6s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .search-type-selector {
@@ -457,9 +372,9 @@ const viewDetail = (item) => {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-  border-radius: 8px;
-  color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
   font-size: 14px;
 }
 
@@ -468,11 +383,11 @@ const viewDetail = (item) => {
 }
 
 .results-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-card-translucent);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -482,7 +397,7 @@ const viewDetail = (item) => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-lighter);
 }
 
 .results-title {
@@ -491,7 +406,7 @@ const viewDetail = (item) => {
   gap: 10px;
   font-size: 20px;
   font-weight: bold;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .results-actions {
@@ -512,11 +427,11 @@ const viewDetail = (item) => {
 
 .result-item {
   background: white;
-  border: 2px solid #f0f0f0;
-  border-radius: 12px;
+  border: 2px solid var(--border-lighter);
+  border-radius: var(--radius-md);
   padding: 20px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
   position: relative;
   overflow: hidden;
 }
@@ -528,13 +443,13 @@ const viewDetail = (item) => {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
+  background: var(--gradient-primary-horizontal);
   transform: scaleX(0);
   transition: transform 0.3s;
 }
 
 .result-item:hover {
-  border-color: #667eea;
+  border-color: var(--color-primary);
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
   transform: translateY(-4px);
 }
@@ -553,7 +468,7 @@ const viewDetail = (item) => {
 .result-title {
   font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: var(--text-primary);
   flex: 1;
   line-height: 1.4;
 }
@@ -563,10 +478,10 @@ const viewDetail = (item) => {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  border-radius: var(--radius-md);
   font-size: 12px;
-  color: #667eea;
+  color: var(--color-primary);
   font-weight: bold;
   white-space: nowrap;
   margin-left: 10px;
@@ -574,7 +489,7 @@ const viewDetail = (item) => {
 
 .result-summary {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-regular);
   line-height: 1.6;
   margin-bottom: 16px;
   display: -webkit-box;
@@ -594,7 +509,7 @@ const viewDetail = (item) => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .meta-item .el-rate {
@@ -606,11 +521,11 @@ const viewDetail = (item) => {
 }
 
 .empty-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-card-translucent);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 40px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -626,9 +541,9 @@ const viewDetail = (item) => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
-  border-radius: 8px;
-  color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
   font-size: 14px;
 }
 
@@ -642,13 +557,13 @@ const viewDetail = (item) => {
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-lighter);
 }
 
 .detail-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .detail-body {
@@ -658,15 +573,15 @@ const viewDetail = (item) => {
 }
 
 .detail-section {
-  background: #f9f9f9;
+  background: var(--bg-list-item);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .detail-section h3 {
   margin: 0 0 12px 0;
   font-size: 16px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .summary-text,
@@ -674,7 +589,7 @@ const viewDetail = (item) => {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.8;
-  color: #606266;
+  color: var(--text-regular);
   max-height: 300px;
   overflow-y: auto;
 }
@@ -688,8 +603,8 @@ const viewDetail = (item) => {
 .stat-item {
   background: white;
   padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -700,7 +615,7 @@ const viewDetail = (item) => {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 :deep(.detail-dialog .el-dialog__body) {
@@ -709,39 +624,39 @@ const viewDetail = (item) => {
 
 :deep(.el-input__wrapper) {
   box-shadow: none;
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
+  border: 2px solid var(--border-light);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 :deep(.el-input__wrapper:hover) {
-  border-color: #667eea;
+  border-color: var(--color-primary);
 }
 
 :deep(.el-input__wrapper.is-focus) {
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 :deep(.el-radio-button__inner) {
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
+  border: 2px solid var(--border-light);
+  transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
 }
 
 :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: var(--gradient-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-primary);
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border: none;
-  transition: all 0.3s;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
 :deep(.el-button--primary:hover) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-icon);
 }
 
 :deep(.el-scrollbar__view) {

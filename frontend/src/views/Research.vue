@@ -1,307 +1,307 @@
 <template>
-  <div class="research-container">
-    <div class="background-gradient"></div>
-
+  <div class="research-page">
     <div class="main-content">
-      <div class="header-section">
-        <div class="welcome-card">
-          <div class="welcome-icon">
-            <el-icon :size="50"><TrendCharts /></el-icon>
+      <div class="page-header">
+        <div class="header-banner">
+          <div class="banner-icon">
+            <el-icon size="32" color="white"><TrendCharts /></el-icon>
           </div>
-          <div class="welcome-content">
-            <h1 class="welcome-title">AI学习研究</h1>
-            <p class="welcome-subtitle">
-              基于DeerFlow多Agent系统的深度学习研究
-            </p>
+          <div class="banner-content">
+            <h1 class="banner-title">AI-Learning-Research-研报中心</h1>
+            <p class="banner-subtitle">基于DeepFlow Agent的AI分析和规划</p>
           </div>
         </div>
       </div>
 
-      <div class="research-section">
-        <div class="research-card">
-          <div class="research-tabs-wrapper">
-            <el-tabs v-model="activeTab" class="research-tabs">
-              <el-tab-pane label="学习路径" name="path">
-                <div class="tab-content">
-                  <div class="path-section">
-                    <el-form :model="pathForm" class="research-form">
-                      <el-form-item label="学习主题">
-                        <el-input
-                          v-model="pathForm.topic"
-                          placeholder="例如：Redis、Python、机器学习"
-                          maxlength="100"
-                          show-word-limit
-                          size="large"
-                        >
-                          <template #prefix>
-                            <el-icon><Reading /></el-icon>
-                          </template>
-                        </el-input>
-                      </el-form-item>
+      <div class="content-wrapper">
+        <div class="cards-grid">
+          <div class="research-card">
+            <div class="card-icon purple">
+              <el-icon size="24" color="white"><Compass /></el-icon>
+            </div>
+            <div class="card-header">
+              <h3 class="card-title">学习路径规划</h3>
+            </div>
+            <div class="card-body">
+              <el-form :model="pathForm" class="card-form">
+                <el-form-item label="学习主题">
+                  <el-input
+                    v-model="pathForm.topic"
+                    placeholder="例如：Redis、Python、机器学习"
+                    size="small"
+                    maxlength="100"
+                    show-word-limit
+                  />
+                </el-form-item>
+                <el-form-item label="当前水平">
+                  <el-select
+                    v-model="pathForm.currentLevel"
+                    size="small"
+                    style="width: 100%"
+                  >
+                    <el-option label="初学者" value="beginner" />
+                    <el-option label="中级" value="intermediate" />
+                    <el-option label="高级" value="advanced" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="目标水平">
+                  <el-select
+                    v-model="pathForm.targetLevel"
+                    size="small"
+                    style="width: 100%"
+                  >
+                    <el-option label="初学者" value="beginner" />
+                    <el-option label="中级" value="intermediate" />
+                    <el-option label="高级" value="advanced" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="generateLearningPath"
+                    :loading="generatingPath"
+                    style="width: 100%"
+                  >
+                    <el-icon size="14"><MagicStick /></el-icon>
+                    <span>生成学习路径</span>
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </div>
 
-                      <el-form-item label="当前水平">
-                        <el-select
-                          v-model="pathForm.currentLevel"
-                          size="large"
-                          style="width: 100%"
-                        >
-                          <el-option label="初学者" value="beginner" />
-                          <el-option label="中级" value="intermediate" />
-                          <el-option label="高级" value="advanced" />
-                        </el-select>
-                      </el-form-item>
+          <div class="research-card">
+            <div class="card-icon blue">
+              <el-icon size="24" color="white"><Search /></el-icon>
+            </div>
+            <div class="card-header">
+              <h3 class="card-title">知识盲区分析</h3>
+            </div>
+            <div class="card-body">
+              <el-form :model="gapsForm" class="card-form">
+                <el-form-item label="目标主题">
+                  <el-input
+                    v-model="gapsForm.topic"
+                    placeholder="例如：微服务架构、前端开发"
+                    size="small"
+                    maxlength="100"
+                    show-word-limit
+                  />
+                </el-form-item>
+                <el-form-item label="已掌握的知识点">
+                  <el-select
+                    v-model="gapsForm.userKnowledge"
+                    multiple
+                    filterable
+                    allow-create
+                    placeholder="输入或选择已掌握的知识点"
+                    size="small"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="item in commonKnowledge"
+                      :key="item"
+                      :label="item"
+                      :value="item"
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-form-item>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="researchKnowledgeGaps"
+                    :loading="analyzingGaps"
+                    style="width: 100%"
+                  >
+                    <el-icon size="14"><Search /></el-icon>
+                    <span>分析知识盲区</span>
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </div>
 
-                      <el-form-item label="目标水平">
-                        <el-select
-                          v-model="pathForm.targetLevel"
-                          size="large"
-                          style="width: 100%"
-                        >
-                          <el-option label="初学者" value="beginner" />
-                          <el-option label="中级" value="intermediate" />
-                          <el-option label="高级" value="advanced" />
-                        </el-select>
-                      </el-form-item>
+          <div class="research-card">
+            <div class="card-icon orange">
+              <el-icon size="24" color="white"><Document /></el-icon>
+            </div>
+            <div class="card-header">
+              <h3 class="card-title">学习报告生成</h3>
+            </div>
+            <div class="card-body">
+              <el-form :model="reportForm" class="card-form">
+                <el-form-item label="报告主题">
+                  <el-input
+                    v-model="reportForm.topic"
+                    placeholder="例如：Python编程学习、机器学习"
+                    size="small"
+                    maxlength="100"
+                    show-word-limit
+                  />
+                </el-form-item>
+                <el-form-item label="分析深度">
+                  <el-select
+                    v-model="reportForm.depth"
+                    size="small"
+                    style="width: 100%"
+                  >
+                    <el-option label="浅度分析" value="shallow" />
+                    <el-option label="中度分析" value="medium" />
+                    <el-option label="深度分析" value="deep" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="generateReport"
+                    :loading="generatingReport"
+                    style="width: 100%"
+                  >
+                    <el-icon size="14"><Document /></el-icon>
+                    <span>生成学习报告</span>
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </div>
+        </div>
 
-                      <el-form-item>
-                        <el-button
-                          type="primary"
-                          size="large"
-                          @click="generateLearningPath"
-                          :loading="generatingPath"
-                          style="width: 100%"
-                        >
-                          <el-icon><MagicStick /></el-icon>
-                          生成学习路径
-                        </el-button>
-                      </el-form-item>
-                    </el-form>
-                  </div>
-                </div>
-              </el-tab-pane>
-
-              <el-tab-pane label="知识盲区" name="gaps">
-                <div class="tab-content">
-                  <div class="gaps-section">
-                    <el-form :model="gapsForm" class="research-form">
-                      <el-form-item label="目标主题">
-                        <el-input
-                          v-model="gapsForm.topic"
-                          placeholder="例如：微服务架构、前端开发"
-                          maxlength="100"
-                          show-word-limit
-                          size="large"
-                        >
-                          <template #prefix>
-                            <el-icon><Aim /></el-icon>
-                          </template>
-                        </el-input>
-                      </el-form-item>
-
-                      <el-form-item label="已掌握的知识点">
-                        <el-select
-                          v-model="gapsForm.userKnowledge"
-                          multiple
-                          filterable
-                          allow-create
-                          placeholder="输入或选择已掌握的知识点"
-                          size="large"
-                          style="width: 100%"
-                        >
-                          <el-option
-                            v-for="item in commonKnowledge"
-                            :key="item"
-                            :label="item"
-                            :value="item"
-                          />
-                        </el-select>
-                      </el-form-item>
-
-                      <el-form-item>
-                        <el-button
-                          type="primary"
-                          size="large"
-                          @click="researchKnowledgeGaps"
-                          :loading="analyzingGaps"
-                          style="width: 100%"
-                        >
-                          <el-icon><Search /></el-icon>
-                          分析知识盲区
-                        </el-button>
-                      </el-form-item>
-                    </el-form>
-                  </div>
-                </div>
-              </el-tab-pane>
-
-              <el-tab-pane label="历史记录" name="history">
-                <div class="tab-content">
-                  <div class="history-section">
-                    <div v-loading="loading" class="history-list">
-                      <div
-                        v-for="item in historyList"
-                        :key="item.id"
-                        class="history-item"
-                        @click="viewHistory(item)"
-                      >
-                        <div class="history-header">
-                          <div class="history-title">
-                            <el-tag
-                              :type="
-                                item.type === 'path' ? 'primary' : 'success'
-                              "
-                              size="small"
-                            >
-                              {{
-                                item.type === "path" ? "学习路径" : "知识盲区"
-                              }}
-                            </el-tag>
-                            <span>{{ item.topic }}</span>
-                          </div>
-                          <div class="history-time">
-                            <el-icon><Clock /></el-icon>
-                            <span>{{ formatDate(item.createTime) }}</span>
-                          </div>
-                        </div>
-                        <div class="history-meta">
-                          <div class="meta-item">
-                            <el-icon><Reading /></el-icon>
-                            <span>{{
-                              item.type === "path"
-                                ? `${item.currentLevel} → ${item.targetLevel}`
-                                : `${item.knowledgeCount}个知识点`
-                            }}</span>
-                          </div>
-                          <el-button
-                            type="danger"
-                            size="small"
-                            @click.stop="deleteHistory(item)"
-                          >
-                            <el-icon><Delete /></el-icon>
-                          </el-button>
-                        </div>
-                      </div>
-
-                      <el-empty
-                        v-if="!loading && historyList.length === 0"
-                        description="暂无历史记录"
-                      />
-                    </div>
-
-                    <div
-                      v-if="historyList.length > 0"
-                      class="pagination-wrapper"
-                    >
-                      <el-pagination
-                        v-model:current-page="pagination.current"
-                        v-model:page-size="pagination.size"
-                        :total="pagination.total"
-                        :page-sizes="[10, 20, 50]"
-                        layout="total, sizes, prev, pager, next, jumper"
-                        @size-change="handleSizeChange"
-                        @current-change="handleCurrentChange"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </el-tab-pane>
+        <div class="history-section">
+          <div class="section-header">
+            <div class="section-icon">
+              <el-icon size="20" color="#7c3aed"><Clock /></el-icon>
+            </div>
+            <h3 class="section-title">AI活动&历史</h3>
+          </div>
+          <div class="history-tabs">
+            <el-tabs v-model="activeTab" class="simple-tabs">
+              <el-tab-pane label="最近活动" name="recent" />
+              <el-tab-pane label="生成的路径" name="path" />
+              <el-tab-pane label="盲区报告" name="gaps" />
+              <el-tab-pane label="生成的报告" name="report" />
             </el-tabs>
           </div>
+          <div class="history-table-wrapper">
+            <el-table :data="filteredHistory" border stripe :loading="loading">
+              <el-table-column prop="topic" label="名称" min-width="200">
+                <template #default="scope">
+                  <div class="topic-cell">
+                    <el-tag
+                      :type="getHistoryTagType(scope.row.type)"
+                      size="small"
+                    >
+                      {{ getHistoryTypeName(scope.row.type) }}
+                    </el-tag>
+                    <span>{{ scope.row.topic }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态">
+                <template #default="scope">
+                  <el-tag
+                    :type="getStatusTagType(scope.row.status)"
+                    size="small"
+                  >
+                    {{ scope.row.status || '已完成' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createTime" label="日期" width="120">
+                <template #default="scope">
+                  {{ formatDate(scope.row.createTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="scope">
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="viewHistory(scope.row)"
+                  >
+                    <el-icon><Link /></el-icon>
+                    <span>查看</span>
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div v-if="!loading && filteredHistory.length === 0" class="empty-state">
+              <el-empty description="暂无记录" :image-size="60" />
+            </div>
+          </div>
         </div>
       </div>
-
-      <el-dialog
-        v-model="showPathDialog"
-        title="学习路径"
-        width="900px"
-        class="result-dialog"
-      >
-        <div class="view-mode-toggle">
-          <el-radio-group v-model="viewMode" size="small">
-            <el-radio-button label="simple">简洁模式</el-radio-button>
-            <el-radio-button label="full">完整模式</el-radio-button>
-          </el-radio-group>
-        </div>
-
-        <div v-if="learningPathResult" class="result-content">
-          <div v-if="viewMode === 'simple'" class="simple-content">
-            <div v-html="renderSimpleContent(learningPathResult)"></div>
-          </div>
-          <div
-            v-else
-            class="markdown-content"
-            v-html="renderMarkdown(learningPathResult)"
-          ></div>
-        </div>
-
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="showPathDialog = false" size="large">
-              <el-icon><Close /></el-icon>
-              关闭
-            </el-button>
-            <el-button type="primary" @click="exportPath" size="large">
-              <el-icon><Download /></el-icon>
-              导出路径
-            </el-button>
-          </div>
-        </template>
-      </el-dialog>
-
-      <el-dialog
-        v-model="showGapsDialog"
-        title="知识盲区分析"
-        width="900px"
-        class="result-dialog"
-      >
-        <div class="view-mode-toggle">
-          <el-radio-group v-model="gapsViewMode" size="small">
-            <el-radio-button label="simple">简洁模式</el-radio-button>
-            <el-radio-button label="full">完整模式</el-radio-button>
-          </el-radio-group>
-        </div>
-
-        <div v-if="gapsAnalysisResult" class="result-content">
-          <div v-if="gapsViewMode === 'simple'" class="simple-content">
-            <div v-html="renderSimpleContent(gapsAnalysisResult)"></div>
-          </div>
-          <div
-            v-else
-            class="markdown-content"
-            v-html="renderMarkdown(gapsAnalysisResult)"
-          ></div>
-        </div>
-
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="showGapsDialog = false" size="large">
-              <el-icon><Close /></el-icon>
-              关闭
-            </el-button>
-            <el-button type="primary" @click="exportGaps" size="large">
-              <el-icon><Download /></el-icon>
-              导出分析
-            </el-button>
-          </div>
-        </template>
-      </el-dialog>
     </div>
+
+    <el-dialog
+      v-model="showPathDialog"
+      title="学习路径"
+      width="900px"
+      class="result-dialog"
+    >
+      <div v-if="learningPathResult" class="result-content">
+        <div
+          class="markdown-content"
+          v-html="renderMarkdown(learningPathResult)"
+        ></div>
+      </div>
+      <template #footer>
+        <el-button @click="showPathDialog = false">关闭</el-button>
+        <el-button type="primary" @click="exportPath">导出路径</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="showGapsDialog"
+      title="知识盲区分析"
+      width="900px"
+      class="result-dialog"
+    >
+      <div v-if="gapsAnalysisResult" class="result-content">
+        <div
+          class="markdown-content"
+          v-html="renderMarkdown(gapsAnalysisResult)"
+        ></div>
+      </div>
+      <template #footer>
+        <el-button @click="showGapsDialog = false">关闭</el-button>
+        <el-button type="primary" @click="exportGaps">导出分析</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="showReportDialog"
+      title="学习报告"
+      width="900px"
+      class="result-dialog"
+    >
+      <div v-if="currentReport" class="result-content">
+        <div
+          class="markdown-content"
+          v-html="renderMarkdown(currentReport.content)"
+        ></div>
+      </div>
+      <template #footer>
+        <el-button @click="showReportDialog = false">关闭</el-button>
+        <el-button type="primary" @click="exportReport">导出报告</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   TrendCharts,
-  Reading,
-  Aim,
-  MagicStick,
+  Compass,
   Search,
-  Close,
-  Download,
+  Document,
+  MagicStick,
   Clock,
-  Delete,
+  Link,
 } from "@element-plus/icons-vue";
 import { deerFlowAPI } from "@/api/deerflow";
 import request from "@/utils/request";
@@ -318,9 +318,7 @@ marked.setOptions({
 
 const userStore = useUserStore();
 
-const activeTab = ref("path");
-const viewMode = ref("simple");
-const gapsViewMode = ref("simple");
+const activeTab = ref("recent");
 const pathForm = ref({
   topic: "",
   currentLevel: "beginner",
@@ -330,88 +328,83 @@ const gapsForm = ref({
   topic: "",
   userKnowledge: [],
 });
+const reportForm = ref({
+  topic: "",
+  depth: "medium",
+});
 
 const generatingPath = ref(false);
 const analyzingGaps = ref(false);
+const generatingReport = ref(false);
 const loading = ref(false);
+
 const showPathDialog = ref(false);
 const showGapsDialog = ref(false);
+const showReportDialog = ref(false);
+
 const learningPathResult = ref("");
 const gapsAnalysisResult = ref("");
+const currentReport = ref(null);
 const historyList = ref([]);
-const currentPathTask = ref(null);
-const currentGapsTask = ref(null);
-const pathTaskPolling = ref(null);
-const gapsTaskPolling = ref(null);
 
-const pagination = ref({
-  current: 1,
-  size: 10,
-  total: 0,
+const commonKnowledge = ref([
+  "Java 基础",
+  "Python 基础",
+  "Spring Boot",
+  "MySQL 数据库",
+  "Redis",
+  "RESTful API",
+  "Git 版本控制",
+  "Linux 基础",
+  "Docker",
+  "前端开发",
+  "Vue.js",
+  "React",
+  "Node.js",
+  "微服务架构",
+  "消息队列",
+  "分布式系统",
+  "算法与数据结构",
+]);
+
+const filteredHistory = computed(() => {
+  if (activeTab.value === "recent") return historyList.value;
+  return historyList.value.filter((item) => item.type === activeTab.value);
 });
 
-const commonKnowledge = ref([]);
+onMounted(async () => {
+  if (userStore.isLoggedIn()) {
+    loadHistoryList();
+    loadUserKnowledge();
+  }
+});
 
-// 加载用户的知识点列表
 const loadUserKnowledge = async () => {
   try {
-    // 获取所有知识点（不分页，第一页 100 条）
     const response = await request.get("/knowledge/list", {
-      params: {
-        current: 1,
-        size: 100,
-      },
+      params: { current: 1, size: 100 },
     });
-
     const nodes = response?.records || [];
-
-    if (nodes && nodes.length > 0) {
-      // 提取知识点标题作为选项
+    if (nodes.length > 0) {
       commonKnowledge.value = nodes.map((node) => node.title);
-    } else {
-      // 如果没有知识点，提供一些默认选项
-      commonKnowledge.value = [
-        "Java 基础",
-        "Python 基础",
-        "Spring Boot",
-        "MySQL 数据库",
-        "Redis",
-        "RESTful API",
-        "Git 版本控制",
-        "Linux 基础",
-        "Docker",
-        "前端开发",
-        "Vue.js",
-        "React",
-        "Node.js",
-        "微服务架构",
-        "消息队列",
-        "分布式系统",
-        "算法与数据结构",
-      ];
     }
   } catch (error) {
-    console.error("加载用户知识点失败：", error);
-    // 加载失败时使用默认选项
-    commonKnowledge.value = [
-      "Java 基础",
-      "Python 基础",
-      "Spring Boot",
-      "MySQL 数据库",
-      "Redis",
-      "RESTful API",
-      "Git 版本控制",
-      "Linux 基础",
-      "Docker",
-      "前端开发",
-      "Vue.js",
-      "React",
-      "Node.js",
-      "微服务架构",
-      "消息队列",
-      "分布式系统",
-      "算法与数据结构",
-    ];
+    console.error("加载知识点失败：", error);
+  }
+};
+
+const loadHistoryList = async () => {
+  try {
+    loading.value = true;
+    const data = await deerFlowAPI.getResearchHistoryList({
+      current: 1,
+      size: 100,
+    });
+    historyList.value = data.records || [];
+  } catch (error) {
+    ElMessage.error("加载历史记录失败：" + error.message);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -420,91 +413,28 @@ const generateLearningPath = async () => {
     ElMessage.warning("请输入学习主题");
     return;
   }
-
-  console.log("用户登录状态：", userStore.isLoggedIn());
-  console.log(
-    "用户token：",
-    userStore.token ? userStore.token.substring(0, 20) + "..." : "null",
-  );
-  console.log("用户信息：", userStore.userInfo);
-
   generatingPath.value = true;
-
   try {
     const task = await deerFlowAPI.generateLearningPath(pathForm.value);
-    currentPathTask.value = task;
-
-    console.log("任务响应：", task);
-
     if (task.status === "COMPLETED") {
       learningPathResult.value = task.result;
       showPathDialog.value = true;
       ElMessage.success("学习路径生成完成！");
-
-      if (userStore.isLoggedIn()) {
-        await saveHistory({
-          type: "path",
-          topic: pathForm.value.topic,
-          currentLevel: pathForm.value.currentLevel,
-          targetLevel: pathForm.value.targetLevel,
-          content: learningPathResult.value,
-        });
-      }
+      saveHistory({
+        type: "path",
+        topic: pathForm.value.topic,
+        currentLevel: pathForm.value.currentLevel,
+        targetLevel: pathForm.value.targetLevel,
+        content: learningPathResult.value,
+      });
     } else {
-      ElMessage.success("学习路径生成任务已创建，正在后台生成...");
-      startPathTaskPolling(task.taskId);
+      ElMessage.success("学习路径生成任务已创建");
     }
   } catch (error) {
-    console.error("生成学习路径失败：", error);
     ElMessage.error("生成学习路径失败：" + (error.message || "未知错误"));
   } finally {
     generatingPath.value = false;
   }
-};
-
-const startPathTaskPolling = (taskId) => {
-  if (pathTaskPolling.value) {
-    clearInterval(pathTaskPolling.value);
-  }
-
-  pathTaskPolling.value = setInterval(async () => {
-    try {
-      const response = await request({
-        url: `/deerflow/async-task/status/${taskId}`,
-        method: "get",
-      });
-
-      if (response.status === "COMPLETED") {
-        clearInterval(pathTaskPolling.value);
-        pathTaskPolling.value = null;
-
-        learningPathResult.value = response.result;
-        showPathDialog.value = true;
-
-        ElMessage.success("学习路径生成完成！");
-
-        if (userStore.isLoggedIn()) {
-          await saveHistory({
-            type: "path",
-            topic: pathForm.value.topic,
-            currentLevel: pathForm.value.currentLevel,
-            targetLevel: pathForm.value.targetLevel,
-            content: learningPathResult.value,
-          });
-        }
-      } else if (response.status === "FAILED") {
-        clearInterval(pathTaskPolling.value);
-        pathTaskPolling.value = null;
-        currentPathTask.value = null;
-
-        ElMessage.error(
-          "学习路径生成失败：" + (response.errorMessage || "未知错误"),
-        );
-      }
-    } catch (error) {
-      console.error("查询任务状态失败：", error);
-    }
-  }, 3000);
 };
 
 const researchKnowledgeGaps = async () => {
@@ -512,35 +442,25 @@ const researchKnowledgeGaps = async () => {
     ElMessage.warning("请输入目标主题");
     return;
   }
-
   if (gapsForm.value.userKnowledge.length === 0) {
     ElMessage.warning("请至少选择一个已掌握的知识点");
     return;
   }
-
   analyzingGaps.value = true;
-
   try {
     const task = await deerFlowAPI.researchKnowledgeGap(gapsForm.value);
-    currentGapsTask.value = task;
-
     if (task.status === "COMPLETED") {
       gapsAnalysisResult.value = task.result;
       showGapsDialog.value = true;
       ElMessage.success("知识盲区分析完成！");
-
-      if (userStore.isLoggedIn()) {
-        await saveHistory({
-          type: "gaps",
-          topic: gapsForm.value.topic,
-          userKnowledge: gapsForm.value.userKnowledge,
-          knowledgeCount: gapsForm.value.userKnowledge.length,
-          content: gapsAnalysisResult.value,
-        });
-      }
+      saveHistory({
+        type: "gaps",
+        topic: gapsForm.value.topic,
+        userKnowledge: gapsForm.value.userKnowledge,
+        content: gapsAnalysisResult.value,
+      });
     } else {
-      ElMessage.success("知识盲区分析任务已创建，正在后台分析...");
-      startGapsTaskPolling(task.taskId);
+      ElMessage.success("知识盲区分析任务已创建");
     }
   } catch (error) {
     ElMessage.error("分析知识盲区失败：" + (error.message || "未知错误"));
@@ -549,398 +469,350 @@ const researchKnowledgeGaps = async () => {
   }
 };
 
-const startGapsTaskPolling = (taskId) => {
-  if (gapsTaskPolling.value) {
-    clearInterval(gapsTaskPolling.value);
+const generateReport = async () => {
+  if (!reportForm.value.topic) {
+    ElMessage.warning("请输入报告主题");
+    return;
   }
-
-  gapsTaskPolling.value = setInterval(async () => {
-    try {
-      const response = await request({
-        url: `/deerflow/async-task/status/${taskId}`,
-        method: "get",
+  generatingReport.value = true;
+  try {
+    const task = await deerFlowAPI.generateLearningReport(reportForm.value);
+    if (task.status === "COMPLETED") {
+      currentReport.value = {
+        topic: reportForm.value.topic,
+        content: task.result,
+        depth: reportForm.value.depth,
+      };
+      showReportDialog.value = true;
+      ElMessage.success("学习报告生成完成！");
+      saveHistory({
+        type: "report",
+        topic: reportForm.value.topic,
+        depth: reportForm.value.depth,
+        content: task.result,
       });
-
-      if (response.status === "COMPLETED") {
-        clearInterval(gapsTaskPolling.value);
-        gapsTaskPolling.value = null;
-
-        gapsAnalysisResult.value = response.result;
-        showGapsDialog.value = true;
-
-        ElMessage.success("知识盲区分析完成！");
-
-        if (userStore.isLoggedIn()) {
-          await saveHistory({
-            type: "gaps",
-            topic: gapsForm.value.topic,
-            userKnowledge: gapsForm.value.userKnowledge,
-            knowledgeCount: gapsForm.value.userKnowledge.length,
-            content: gapsAnalysisResult.value,
-          });
-        }
-      } else if (response.status === "FAILED") {
-        clearInterval(gapsTaskPolling.value);
-        gapsTaskPolling.value = null;
-        currentGapsTask.value = null;
-
-        ElMessage.error(
-          "知识盲区分析失败：" + (response.errorMessage || "未知错误"),
-        );
-      }
-    } catch (error) {
-      console.error("查询任务状态失败：", error);
+    } else {
+      ElMessage.success("学习报告生成任务已创建");
     }
-  }, 3000);
+  } catch (error) {
+    ElMessage.error("生成学习报告失败：" + (error.message || "未知错误"));
+  } finally {
+    generatingReport.value = false;
+  }
 };
 
 const saveHistory = async (historyData) => {
-  console.log("saveHistory函数被调用，参数：", historyData);
-  console.log("用户登录状态：", userStore.isLoggedIn());
-
-  if (!userStore.isLoggedIn()) {
-    console.log("用户未登录，返回");
-    return;
-  }
-
-  console.log("准备调用API保存历史记录...");
+  if (!userStore.isLoggedIn()) return;
   try {
-    console.log("调用deerFlowAPI.saveResearchHistory，参数：", historyData);
-    const result = await deerFlowAPI.saveResearchHistory(historyData);
-    console.log("API调用成功，结果：", result);
+    await deerFlowAPI.saveResearchHistory(historyData);
     await loadHistoryList();
-    console.log("历史记录列表已重新加载");
   } catch (error) {
     console.error("保存历史记录失败：", error);
-    console.error("错误详情：", error.message, error.stack);
-  }
-};
-
-const loadHistoryList = async () => {
-  try {
-    loading.value = true;
-    const data = await deerFlowAPI.getResearchHistoryList({
-      current: pagination.value.current,
-      size: pagination.value.size,
-    });
-
-    historyList.value = (data.records || []).filter(
-      (item) => item.type === "path" || item.type === "gaps",
-    );
-    pagination.value.total = historyList.value.length;
-  } catch (error) {
-    ElMessage.error("加载历史记录失败：" + error.message);
-  } finally {
-    loading.value = false;
   }
 };
 
 const viewHistory = (item) => {
-  console.log("查看历史记录，原始内容类型：", typeof item.content);
-  console.log(
-    "查看历史记录，内容长度：",
-    item.content ? item.content.length : 0,
-  );
-  console.log(
-    "查看历史记录，内容前100字符：",
-    item.content ? item.content.substring(0, 100) : "empty",
-  );
-
   let content = item.content;
-
   try {
-    const parsedContent = JSON.parse(content);
-    if (typeof parsedContent === "string") {
-      content = parsedContent;
-    } else if (typeof parsedContent === "object") {
-      content = JSON.stringify(parsedContent, null, 2);
-    }
-  } catch (e) {
-    console.log("内容不是JSON格式，直接使用原始内容");
-  }
-
-  console.log("处理后内容类型：", typeof content);
-  console.log("处理后内容前100字符：", content.substring(0, 100));
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "string") content = parsed;
+    else if (typeof parsed === "object") content = JSON.stringify(parsed, null, 2);
+  } catch (e) {}
 
   if (item.type === "path") {
     learningPathResult.value = content;
     showPathDialog.value = true;
-  } else {
+  } else if (item.type === "gaps") {
     gapsAnalysisResult.value = content;
     showGapsDialog.value = true;
+  } else {
+    currentReport.value = { topic: item.topic, content };
+    showReportDialog.value = true;
   }
 };
 
-const deleteHistory = async (item) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除这条${item.type === "path" ? "学习路径" : "知识盲区分析"}记录吗？`,
-      "确认删除",
-      {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      },
-    );
-
-    await deerFlowAPI.deleteResearchHistory(item.id);
-    ElMessage.success("删除成功");
-    loadHistoryList();
-  } catch (error) {
-    if (error !== "cancel") {
-      ElMessage.error("删除失败：" + error.message);
-    }
-  }
+const getHistoryTagType = (type) => {
+  const typeMap = { path: "primary", gaps: "success", report: "warning" };
+  return typeMap[type] || "info";
 };
 
-const handleSizeChange = (size) => {
-  pagination.value.size = size;
-  pagination.value.current = 1;
-  loadHistoryList();
+const getHistoryTypeName = (type) => {
+  const nameMap = { path: "学习路径", gaps: "知识盲区", report: "学习报告" };
+  return nameMap[type] || type;
 };
 
-const handleCurrentChange = (current) => {
-  pagination.value.current = current;
-  loadHistoryList();
+const getStatusTagType = (status) => {
+  const statusMap = { "已完成": "success", "已提交": "warning", "进行中": "primary" };
+  return statusMap[status] || "info";
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleString("zh-CN");
-};
-
-const exportPath = () => {
-  if (!learningPathResult.value) return;
-
-  const blob = new Blob([learningPathResult.value], {
-    type: "text/markdown",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${pathForm.value.topic}_学习路径.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  ElMessage.success("学习路径导出成功");
-};
-
-const exportGaps = () => {
-  if (!gapsAnalysisResult.value) return;
-
-  const blob = new Blob([gapsAnalysisResult.value], {
-    type: "text/markdown",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${gapsForm.value.topic}_知识盲区分析.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  ElMessage.success("知识盲区分析导出成功");
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const renderMarkdown = (content) => {
   if (!content) return "";
-  const html = marked(content);
+  let parsedContent = content;
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "string") parsedContent = parsed;
+    else if (typeof parsed === "object") parsedContent = JSON.stringify(parsed, null, 2);
+  } catch (e) {}
+  const html = marked(parsedContent);
   return DOMPurify.sanitize(html);
 };
 
-const renderSimpleContent = (content) => {
-  if (!content) return "";
-
-  const html = marked(content);
-  const sanitized = DOMPurify.sanitize(html);
-
-  const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = sanitized;
-
-  const simpleHtml = document.createElement("div");
-
-  Array.from(tempDiv.children).forEach((child) => {
-    if (
-      child.tagName === "H1" ||
-      child.tagName === "H2" ||
-      child.tagName === "H3"
-    ) {
-      simpleHtml.appendChild(child.cloneNode(true));
-    } else if (child.tagName === "UL" || child.tagName === "OL") {
-      const simpleList = child.cloneNode(false);
-      Array.from(child.children)
-        .slice(0, 5)
-        .forEach((li) => {
-          simpleList.appendChild(li.cloneNode(true));
-        });
-      if (simpleList.children.length > 0) {
-        simpleHtml.appendChild(simpleList);
-      }
-    } else if (child.tagName === "P") {
-      const text = child.textContent.trim();
-      if (text.length > 0 && text.length < 200) {
-        simpleHtml.appendChild(child.cloneNode(true));
-      }
-    } else if (child.tagName === "BLOCKQUOTE") {
-      simpleHtml.appendChild(child.cloneNode(true));
-    }
-  });
-
-  return simpleHtml.innerHTML;
+const exportPath = () => {
+  if (!learningPathResult.value) return;
+  downloadFile(`${pathForm.value.topic}_学习路径.md`, learningPathResult.value);
 };
 
-onMounted(() => {
-  if (userStore.isLoggedIn()) {
-    loadHistoryList();
-    loadUserKnowledge();
-  }
-});
+const exportGaps = () => {
+  if (!gapsAnalysisResult.value) return;
+  downloadFile(`${gapsForm.value.topic}_知识盲区分析.md`, gapsAnalysisResult.value);
+};
 
-onUnmounted(() => {
-  if (pathTaskPolling.value) {
-    clearInterval(pathTaskPolling.value);
-  }
-  if (gapsTaskPolling.value) {
-    clearInterval(gapsTaskPolling.value);
-  }
-});
+const exportReport = () => {
+  if (!currentReport.value) return;
+  downloadFile(`${currentReport.value.topic}_学习报告.md`, currentReport.value.content);
+};
+
+const downloadFile = (filename, content) => {
+  const blob = new Blob([content], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  ElMessage.success("导出成功");
+};
 </script>
 
 <style scoped>
-.research-container {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-}
-
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 0;
+.research-page {
+  min-height: 100%;
+  background: var(--bg-page);
 }
 
 .main-content {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: var(--spacing-xl) 0;
 }
 
-.header-section {
-  margin-bottom: 20px;
+.page-header {
+  margin-bottom: var(--spacing-xl);
 }
 
-.welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
+.header-banner {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #9333ea 100%);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
   display: flex;
   align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInDown 0.6s ease-out;
+  gap: var(--spacing-xl);
+  box-shadow: var(--shadow-lg);
 }
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
+.banner-icon {
+  width: 64px;
+  height: 64px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
+  flex-shrink: 0;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.welcome-content {
+.banner-content {
   flex: 1;
 }
 
-.welcome-title {
-  font-size: 32px;
-  font-weight: bold;
+.banner-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
   color: white;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
-.welcome-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
+.banner-subtitle {
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.8);
   margin: 0;
 }
 
-.research-section {
-  margin-bottom: 20px;
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-xl);
 }
 
 .research-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 30px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInUp 0.6s ease-out;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-lighter);
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
 }
 
-.research-tabs-wrapper {
-  width: 100%;
+.card-icon.purple {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
 }
 
-.research-tabs {
-  width: 100%;
+.card-icon.blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
 }
 
-.tab-content {
-  padding: 20px 0;
+.card-icon.orange {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
 }
 
-.research-form {
-  max-width: 600px;
-  margin: 0 auto;
+.card-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.card-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.card-form :deep(.el-form-item) {
+  margin-bottom: var(--spacing-md);
+}
+
+.card-form :deep(.el-form-item__label) {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.card-form :deep(.el-input__wrapper) {
+  box-shadow: none;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.card-form :deep(.el-select .el-input__wrapper) {
+  box-shadow: none;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.card-form :deep(.el-button--primary) {
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-md);
+}
+
+.history-section {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-lighter);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-lighter);
+}
+
+.section-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(124, 58, 237, 0.1);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.history-tabs {
+  margin-bottom: var(--spacing-lg);
+}
+
+.simple-tabs {
+  --el-tabs-header-padding: 0;
+}
+
+.simple-tabs :deep(.el-tabs__item) {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.simple-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--color-primary);
+}
+
+.simple-tabs :deep(.el-tabs__active-bar) {
+  background: var(--color-primary);
+}
+
+.history-table-wrapper {
+  overflow-x: auto;
+}
+
+.topic-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.topic-cell span {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.empty-state {
+  padding: var(--spacing-2xl);
 }
 
 .result-content {
@@ -950,43 +822,36 @@ onUnmounted(() => {
 
 .markdown-content {
   line-height: 1.7;
-  color: #2c3e50;
-  font-size: 14px;
-  padding: 16px;
-  background: #ffffff;
-  border-radius: 6px;
+  color: var(--text-regular);
+  font-size: var(--font-size-base);
+  padding: var(--spacing-lg);
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
 }
 
 .markdown-content :deep(h1) {
   font-size: 22px;
   font-weight: 700;
   margin: 16px 0 12px 0;
-  color: #1a1a1a;
+  color: var(--text-primary);
   padding-bottom: 6px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .markdown-content :deep(h2) {
   font-size: 18px;
   font-weight: 600;
   margin: 14px 0 10px 0;
-  color: #2c3e50;
+  color: var(--text-primary);
   padding-bottom: 4px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .markdown-content :deep(h3) {
-  font-size: 16px;
+  font-size: var(--font-size-lg);
   font-weight: 600;
   margin: 12px 0 8px 0;
-  color: #34495e;
-}
-
-.markdown-content :deep(h4) {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 10px 0 6px 0;
-  color: #34495e;
+  color: var(--text-regular);
 }
 
 .markdown-content :deep(p) {
@@ -1005,50 +870,12 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
-.markdown-content :deep(ul ul),
-.markdown-content :deep(ol ol),
-.markdown-content :deep(ul ol),
-.markdown-content :deep(ol ul) {
-  margin: 6px 0;
-}
-
-.markdown-content :deep(strong) {
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.markdown-content :deep(em) {
-  font-style: italic;
-}
-
-.markdown-content :deep(a) {
-  color: #3498db;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.markdown-content :deep(a:hover) {
-  color: #2980b9;
-  text-decoration: underline;
-}
-
-.markdown-content :deep(blockquote) {
-  border-left: 3px solid #3498db;
-  padding: 10px 12px;
-  margin: 12px 0;
-  background: #f8f9fa;
-  color: #6c757d;
-  border-radius: 0 4px 4px 0;
-  font-style: italic;
-}
-
 .markdown-content :deep(code) {
-  background: #f1f3f5;
+  background: var(--bg-input);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: "Consolas", "Monaco", "Courier New", monospace;
-  font-size: 13px;
-  color: #e83e8c;
+  font-size: var(--font-size-sm);
 }
 
 .markdown-content :deep(pre) {
@@ -1057,240 +884,57 @@ onUnmounted(() => {
   border-radius: 6px;
   overflow-x: auto;
   margin: 12px 0;
-  border: 1px solid #333;
 }
 
 .markdown-content :deep(pre code) {
   background: transparent;
   padding: 0;
   color: #f8f8f2;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 }
 
 .markdown-content :deep(table) {
   width: 100%;
   border-collapse: collapse;
   margin: 12px 0;
-  font-size: 13px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-size: var(--font-size-sm);
 }
 
 .markdown-content :deep(th),
 .markdown-content :deep(td) {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-light);
   padding: 8px 10px;
   text-align: left;
 }
 
 .markdown-content :deep(th) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   color: white;
   font-weight: 600;
-  text-transform: uppercase;
-  font-size: 12px;
 }
 
 .markdown-content :deep(tr:nth-child(even)) {
-  background: #f8f9fa;
+  background: var(--bg-input);
 }
 
-.markdown-content :deep(tr:hover) {
-  background: #e9ecef;
-}
-
-.markdown-content :deep(hr) {
-  border: none;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #3498db, transparent);
-  margin: 16px 0;
-}
-
-.markdown-content :deep(img) {
-  max-width: 100%;
-  height: auto;
-  border-radius: 6px;
-  margin: 10px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.markdown-content :deep(.task-list-item) {
-  list-style: none;
-  padding: 8px;
-  margin: 6px 0;
-  background: #f8f9fa;
-  border-left: 3px solid #3498db;
-  border-radius: 3px;
-}
-
-.markdown-content :deep(.highlight) {
-  background: linear-gradient(120deg, #ffeaa7 0%, #fdcb6e 100%);
-  padding: 2px 5px;
-  border-radius: 3px;
-  font-weight: 600;
-}
-
-.view-mode-toggle {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.simple-content {
-  padding: 16px;
-  background: #ffffff;
-  border-radius: 6px;
-  line-height: 1.6;
-}
-
-.simple-content :deep(h1) {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 12px 0 8px 0;
-  color: #1a1a1a;
-}
-
-.simple-content :deep(h2) {
-  font-size: 17px;
-  font-weight: 600;
-  margin: 10px 0 6px 0;
-  color: #2c3e50;
-}
-
-.simple-content :deep(h3) {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 8px 0 4px 0;
-  color: #34495e;
-}
-
-.simple-content :deep(p) {
-  margin: 6px 0;
-  color: #2c3e50;
-}
-
-.simple-content :deep(ul),
-.simple-content :deep(ol) {
-  padding-left: 18px;
-  margin: 6px 0;
-}
-
-.simple-content :deep(li) {
-  margin: 3px 0;
-  color: #2c3e50;
-}
-
-.simple-content :deep(blockquote) {
-  border-left: 3px solid #3498db;
-  padding: 8px 10px;
-  margin: 8px 0;
-  background: #f8f9fa;
-  color: #6c757d;
-  border-radius: 0 3px 3px 0;
-  font-style: italic;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.history-section {
-  padding: 20px 0;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.history-item {
-  background: #f5f7fa;
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border: 2px solid transparent;
-}
-
-.history-item:hover {
-  background: #fff;
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-  transform: translateY(-2px);
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.history-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.history-time {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 14px;
-  color: #7f8c8d;
-}
-
-.history-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 14px;
-  color: #7f8c8d;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 30px;
+@media (max-width: 1200px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-  .welcome-card {
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-banner {
     flex-direction: column;
     text-align: center;
   }
 
-  .welcome-title {
-    font-size: 24px;
-  }
-
-  .research-form {
-    max-width: 100%;
-  }
-
-  .history-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .history-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+  .banner-title {
+    font-size: var(--font-size-xl);
   }
 }
 </style>

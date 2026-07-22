@@ -1,27 +1,118 @@
 <template>
   <div class="register-container">
-    <!-- 动态背景 -->
-    <div class="animated-background">
-      <div class="circle circle-1"></div>
-      <div class="circle circle-2"></div>
-      <div class="circle circle-3"></div>
-      <div class="circle circle-4"></div>
-      <div class="circle circle-5"></div>
-    </div>
+    <div class="register-left">
+      <div class="left-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <BrainIcon :size="56" />
+          </div>
+          <span class="brand-text">AI-SecondBrain</span>
+        </div>
 
-    <div class="register-wrapper">
-      <el-card class="register-card">
-        <template #header>
-          <div class="card-header">
-            <div class="logo-wrapper">
-              <el-icon size="40" class="logo-icon"><Document /></el-icon>
-            </div>
-            <div class="title-wrapper">
-              <h1 class="app-title">AI-SecondBrain</h1>
-              <p class="app-subtitle">智能第二大脑</p>
+        <div class="characters-container">
+          <div 
+            ref="purpleRef"
+            class="character purple-character"
+            :style="purpleStyle"
+          >
+            <div class="character-eyes" :style="purpleEyesStyle">
+              <div 
+                class="eye-ball"
+                :class="{ blinking: isPurpleBlinking }"
+              >
+                <div 
+                  class="pupil"
+                  :style="getPupilStyle('purple')"
+                ></div>
+              </div>
+              <div 
+                class="eye-ball"
+                :class="{ blinking: isPurpleBlinking }"
+              >
+                <div 
+                  class="pupil"
+                  :style="getPupilStyle('purple')"
+                ></div>
+              </div>
             </div>
           </div>
-        </template>
+
+          <div 
+            ref="blackRef"
+            class="character black-character"
+            :style="blackStyle"
+          >
+            <div class="character-eyes" :style="blackEyesStyle">
+              <div 
+                class="eye-ball"
+                :class="{ blinking: isBlackBlinking }"
+              >
+                <div 
+                  class="pupil"
+                  :style="getPupilStyle('black')"
+                ></div>
+              </div>
+              <div 
+                class="eye-ball"
+                :class="{ blinking: isBlackBlinking }"
+              >
+                <div 
+                  class="pupil"
+                  :style="getPupilStyle('black')"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            ref="orangeRef"
+            class="character orange-character"
+            :style="orangeStyle"
+          >
+            <div class="character-pupils" :style="orangePupilsStyle">
+              <div class="pupil" :style="getPupilStyle('orange')"></div>
+              <div class="pupil" :style="getPupilStyle('orange')"></div>
+            </div>
+          </div>
+
+          <div 
+            ref="yellowRef"
+            class="character yellow-character"
+            :style="yellowStyle"
+          >
+            <div class="character-pupils" :style="yellowPupilsStyle">
+              <div class="pupil" :style="getPupilStyle('yellow')"></div>
+              <div class="pupil" :style="getPupilStyle('yellow')"></div>
+            </div>
+            <div class="character-mouth" :style="yellowMouthStyle"></div>
+          </div>
+        </div>
+
+        <div class="footer-links">
+          <a href="#" class="footer-link">Privacy Policy</a>
+          <a href="#" class="footer-link">Terms of Service</a>
+          <a href="#" class="footer-link">Contact</a>
+        </div>
+
+        <div class="decorative-grid"></div>
+        <div class="decorative-blur blur-1"></div>
+        <div class="decorative-blur blur-2"></div>
+      </div>
+    </div>
+
+    <div class="register-right">
+      <div class="right-content">
+        <div class="mobile-brand">
+          <div class="brand-icon">
+            <BrainIcon :size="20" color="#7c3aed" />
+          </div>
+          <span class="brand-text">AI-SecondBrain</span>
+        </div>
+
+        <div class="form-header">
+          <h1 class="form-title">Create account</h1>
+          <p class="form-subtitle">Start your learning journey</p>
+        </div>
 
         <el-form
           :model="registerForm"
@@ -31,59 +122,68 @@
           class="register-form"
         >
           <el-form-item prop="username">
+            <label class="form-label">Username</label>
             <div class="input-wrapper">
-              <el-icon class="input-icon"><User /></el-icon>
               <el-input
                 v-model="registerForm.username"
-                placeholder="请输入用户名（3-20 个字符）"
+                placeholder="Enter username (3-20 chars)"
                 clearable
                 class="custom-input"
+                @focus="isTyping = true"
+                @blur="isTyping = false"
               />
             </div>
           </el-form-item>
 
           <el-form-item prop="password">
-            <div class="input-wrapper">
-              <el-icon class="input-icon"><Lock /></el-icon>
+            <label class="form-label">Password</label>
+            <div class="input-wrapper password-input">
               <el-input
                 v-model="registerForm.password"
-                type="password"
-                placeholder="请输入密码（至少 6 位）"
-                show-password
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="Enter password (at least 6 chars)"
                 clearable
                 class="custom-input"
               />
+              <button 
+                type="button" 
+                class="password-toggle"
+                @click="showPassword = !showPassword"
+              >
+                <span v-if="showPassword" class="eye-icon" style="color: #7c3aed;">👁</span>
+                <span v-else class="eye-icon" style="color: #94a3b8;">👁‍🗨</span>
+              </button>
             </div>
           </el-form-item>
 
           <el-form-item prop="confirmPassword">
+            <label class="form-label">Confirm Password</label>
             <div class="input-wrapper">
-              <el-icon class="input-icon"><Lock /></el-icon>
               <el-input
                 v-model="registerForm.confirmPassword"
                 type="password"
-                placeholder="请再次输入密码"
-                show-password
+                placeholder="Re-enter password"
                 clearable
                 class="custom-input"
+                @keyup.enter="handleRegister"
               />
             </div>
           </el-form-item>
 
           <div class="agreement-wrapper">
-            <el-checkbox v-model="agreementAccepted" size="large">
+            <el-checkbox v-model="agreementAccepted">
               <span class="agreement-text">
-                我已阅读并同意
-                <el-link type="primary" :underline="false" class="agreement-link">
-                  《用户服务协议》
-                </el-link>
-                和
-                <el-link type="primary" :underline="false" class="agreement-link">
-                  《隐私政策》
-                </el-link>
+                I agree to the 
+                <a href="#" class="agreement-link">Terms of Service</a>
+                and
+                <a href="#" class="agreement-link">Privacy Policy</a>
               </span>
             </el-checkbox>
           </div>
+
+          <el-form-item v-if="error">
+            <div class="error-message">{{ error }}</div>
+          </el-form-item>
 
           <el-form-item>
             <el-button
@@ -91,77 +191,46 @@
               @click="handleRegister"
               :loading="loading"
               class="register-button"
-              size="large"
               :disabled="!agreementAccepted"
             >
-              <span v-if="!loading">立即注册</span>
-              <span v-else>注册中...</span>
+              {{ loading ? 'Creating account...' : 'Create account' }}
             </el-button>
           </el-form-item>
-
-          <div class="divider">
-            <span>或</span>
-          </div>
 
           <div class="social-register">
-            <el-button class="social-btn" circle>
-              <el-icon><Platform /></el-icon>
-            </el-button>
-            <el-button class="social-btn" circle>
-              <el-icon><ChatDotRound /></el-icon>
-            </el-button>
-            <el-button class="social-btn" circle>
-              <el-icon><ChatLineRound /></el-icon>
+            <el-button class="social-btn" type="primary" plain>
+              <span class="social-icon">🌐</span>
+              <span>Sign up with Google</span>
             </el-button>
           </div>
 
-          <el-form-item>
-            <div class="links">
-              <span class="login-text">已有账号？</span>
-              <router-link to="/login" class="login-link">立即登录</router-link>
-            </div>
-          </el-form-item>
-
-          <div class="benefits">
-            <div class="benefit-item">
-              <el-icon class="benefit-icon"><CircleCheck /></el-icon>
-              <span>智能知识点提取</span>
-            </div>
-            <div class="benefit-item">
-              <el-icon class="benefit-icon"><CircleCheck /></el-icon>
-              <span>艾宾浩斯记忆曲线</span>
-            </div>
-            <div class="benefit-item">
-              <el-icon class="benefit-icon"><CircleCheck /></el-icon>
-              <span>AI 智能问答</span>
-            </div>
+          <div class="sign-in-link">
+            Already have an account? 
+            <router-link to="/login" class="link">Log in</router-link>
           </div>
         </el-form>
-      </el-card>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { 
-  Document, 
-  User, 
-  Lock, 
-  Platform, 
-  ChatDotRound, 
-  ChatLineRound,
-  CircleCheck
+  Star 
 } from "@element-plus/icons-vue";
+import BrainIcon from "@/components/BrainIcon.vue";
 import { authAPI } from "@/api/auth";
 
 const router = useRouter();
 
+const registerFormRef = ref(null);
 const loading = ref(false);
 const agreementAccepted = ref(false);
-const registerFormRef = ref(null);
+const showPassword = ref(false);
+const error = ref("");
 const registerForm = ref({
   username: "",
   password: "",
@@ -170,9 +239,9 @@ const registerForm = ref({
 
 const validateConfirmPassword = (rule, value, callback) => {
   if (value === "") {
-    callback(new Error("请再次输入密码"));
+    callback(new Error("Please re-enter password"));
   } else if (value !== registerForm.value.password) {
-    callback(new Error("两次输入密码不一致"));
+    callback(new Error("Passwords do not match"));
   } else {
     callback();
   }
@@ -180,15 +249,20 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const rules = {
   username: [
-    { required: true, message: "请输入用户名", trigger: "blur" },
-    { min: 3, max: 20, message: "用户名长度在 3-20 个字符", trigger: "blur" },
+    { required: true, message: "Please enter username", trigger: "blur" },
+    { min: 3, max: 20, message: "Username must be 3-20 characters", trigger: "blur" },
+    {
+      pattern: /^[a-zA-Z0-9_]+$/,
+      message: "Username can only contain letters, numbers and underscores",
+      trigger: "blur"
+    },
   ],
   password: [
-    { required: true, message: "请输入密码", trigger: "blur" },
-    { min: 6, message: "密码长度不能少于 6 位", trigger: "blur" },
+    { required: true, message: "Please enter password", trigger: "blur" },
+    { min: 6, message: "Password must be at least 6 characters", trigger: "blur" },
     { 
       pattern: /^[a-zA-Z0-9_@#.]+$/, 
-      message: "密码只能包含字母、数字和特殊字符", 
+      message: "Password can only contain letters, numbers and special characters", 
       trigger: "blur" 
     },
   ],
@@ -197,11 +271,221 @@ const rules = {
   ],
 };
 
+const mouseX = ref(0);
+const mouseY = ref(0);
+const isPurpleBlinking = ref(false);
+const isBlackBlinking = ref(false);
+const isTyping = ref(false);
+const isLookingAtEachOther = ref(false);
+const isPurplePeeking = ref(false);
+
+const purpleRef = ref(null);
+const blackRef = ref(null);
+const orangeRef = ref(null);
+const yellowRef = ref(null);
+
+let purpleBlinkTimeout = null;
+let blackBlinkTimeout = null;
+let peekTimeout = null;
+let lookTimer = null;
+
+const getRandomBlinkInterval = () => Math.random() * 4000 + 3000;
+
+const schedulePurpleBlink = () => {
+  purpleBlinkTimeout = setTimeout(() => {
+    isPurpleBlinking.value = true;
+    setTimeout(() => {
+      isPurpleBlinking.value = false;
+      schedulePurpleBlink();
+    }, 150);
+  }, getRandomBlinkInterval());
+};
+
+const scheduleBlackBlink = () => {
+  blackBlinkTimeout = setTimeout(() => {
+    isBlackBlinking.value = true;
+    setTimeout(() => {
+      isBlackBlinking.value = false;
+      scheduleBlackBlink();
+    }, 150);
+  }, getRandomBlinkInterval());
+};
+
+const schedulePeek = () => {
+  peekTimeout = setTimeout(() => {
+    isPurplePeeking.value = true;
+    setTimeout(() => {
+      isPurplePeeking.value = false;
+    }, 800);
+  }, Math.random() * 3000 + 2000);
+};
+
+const calculatePosition = (elRef) => {
+  if (!elRef.value) return { faceX: 0, faceY: 0, bodySkew: 0 };
+  const rect = elRef.value.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 3;
+  const deltaX = mouseX.value - centerX;
+  const deltaY = mouseY.value - centerY;
+  const faceX = Math.max(-15, Math.min(15, deltaX / 20));
+  const faceY = Math.max(-10, Math.min(10, deltaY / 30));
+  const bodySkew = Math.max(-6, Math.min(6, -deltaX / 120));
+  return { faceX, faceY, bodySkew };
+};
+
+const purplePos = computed(() => calculatePosition(purpleRef));
+const blackPos = computed(() => calculatePosition(blackRef));
+const orangePos = computed(() => calculatePosition(orangeRef));
+const yellowPos = computed(() => calculatePosition(yellowRef));
+
+const purpleStyle = computed(() => {
+  const baseHeight = (isTyping.value || (registerForm.value.password.length > 0 && !showPassword.value)) ? 440 : 400;
+  let transform = "";
+  
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    transform = "skewX(0deg)";
+  } else if (isTyping.value || (registerForm.value.password.length > 0 && !showPassword.value)) {
+    transform = `skewX(${(purplePos.value.bodySkew || 0) - 12}deg) translateX(40px)`;
+  } else {
+    transform = `skewX(${purplePos.value.bodySkew || 0}deg)`;
+  }
+  
+  return {
+    height: `${baseHeight}px`,
+    transform,
+    transformOrigin: "bottom center",
+  };
+});
+
+const purpleEyesStyle = computed(() => {
+  let left, top;
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    left = "20px";
+    top = "35px";
+  } else if (isLookingAtEachOther.value) {
+    left = "55px";
+    top = "65px";
+  } else {
+    left = `${45 + purplePos.value.faceX}px`;
+    top = `${40 + purplePos.value.faceY}px`;
+  }
+  return { left, top };
+});
+
+const blackStyle = computed(() => {
+  let transform = "";
+  
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    transform = "skewX(0deg)";
+  } else if (isLookingAtEachOther.value) {
+    transform = `skewX(${(blackPos.value.bodySkew || 0) * 1.5 + 10}deg) translateX(20px)`;
+  } else if (isTyping.value || (registerForm.value.password.length > 0 && !showPassword.value)) {
+    transform = `skewX(${(blackPos.value.bodySkew || 0) * 1.5}deg)`;
+  } else {
+    transform = `skewX(${blackPos.value.bodySkew || 0}deg)`;
+  }
+  
+  return {
+    transform,
+    transformOrigin: "bottom center",
+  };
+});
+
+const blackEyesStyle = computed(() => {
+  let left, top;
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    left = "10px";
+    top = "28px";
+  } else if (isLookingAtEachOther.value) {
+    left = "32px";
+    top = "12px";
+  } else {
+    left = `${26 + blackPos.value.faceX}px`;
+    top = `${32 + blackPos.value.faceY}px`;
+  }
+  return { left, top };
+});
+
+const orangeStyle = computed(() => ({
+  transform: (registerForm.value.password.length > 0 && showPassword.value) 
+    ? "skewX(0deg)" 
+    : `skewX(${orangePos.value.bodySkew || 0}deg)`,
+  transformOrigin: "bottom center",
+}));
+
+const orangePupilsStyle = computed(() => {
+  let left, top;
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    left = "50px";
+    top = "85px";
+  } else {
+    left = `${82 + (orangePos.value.faceX || 0)}px`;
+    top = `${90 + (orangePos.value.faceY || 0)}px`;
+  }
+  return { left, top };
+});
+
+const yellowStyle = computed(() => ({
+  transform: (registerForm.value.password.length > 0 && showPassword.value) 
+    ? "skewX(0deg)" 
+    : `skewX(${yellowPos.value.bodySkew || 0}deg)`,
+  transformOrigin: "bottom center",
+}));
+
+const yellowPupilsStyle = computed(() => {
+  let left, top;
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    left = "20px";
+    top = "35px";
+  } else {
+    left = `${52 + (yellowPos.value.faceX || 0)}px`;
+    top = `${40 + (yellowPos.value.faceY || 0)}px`;
+  }
+  return { left, top };
+});
+
+const yellowMouthStyle = computed(() => ({
+  left: registerForm.value.password.length > 0 && showPassword.value 
+    ? "10px" 
+    : `${40 + (yellowPos.value.faceX || 0)}px`,
+  top: `${88 + (yellowPos.value.faceY || 0)}px`,
+}));
+
+const getPupilStyle = (character) => {
+  let forceX, forceY;
+  
+  if (registerForm.value.password.length > 0 && showPassword.value) {
+    if (character === "purple") {
+      forceX = isPurplePeeking.value ? 4 : -4;
+      forceY = isPurplePeeking.value ? 5 : -4;
+    } else {
+      forceX = -5;
+      forceY = -4;
+    }
+  } else if (isLookingAtEachOther.value) {
+    if (character === "purple") {
+      forceX = 3;
+      forceY = 4;
+    } else if (character === "black") {
+      forceX = 0;
+      forceY = -4;
+    }
+  }
+  
+  if (forceX !== undefined && forceY !== undefined) {
+    return {
+      transform: `translate(${forceX}px, ${forceY}px)`,
+    };
+  }
+  
+  return {};
+};
+
 const handleRegister = async () => {
   if (!registerFormRef.value) return;
 
   if (!agreementAccepted.value) {
-    ElMessage.warning("请先同意用户服务协议和隐私政策");
+    ElMessage.warning("Please agree to the Terms of Service and Privacy Policy");
     return;
   }
 
@@ -213,249 +497,416 @@ const handleRegister = async () => {
           username: registerForm.value.username,
           password: registerForm.value.password,
         });
-        ElMessage.success("注册成功，请登录");
+        ElMessage.success("Registration successful, please log in");
         router.push("/login");
       } catch (error) {
-        ElMessage.error("注册失败：" + error.message);
+        ElMessage.error("Registration failed: " + error.message);
       } finally {
         loading.value = false;
       }
     }
   });
 };
+
+onMounted(() => {
+  const handleMouseMove = (e) => {
+    mouseX.value = e.clientX;
+    mouseY.value = e.clientY;
+  };
+  
+  window.addEventListener("mousemove", handleMouseMove);
+  
+  schedulePurpleBlink();
+  scheduleBlackBlink();
+
+  onUnmounted(() => {
+    window.removeEventListener("mousemove", handleMouseMove);
+    if (purpleBlinkTimeout) clearTimeout(purpleBlinkTimeout);
+    if (blackBlinkTimeout) clearTimeout(blackBlinkTimeout);
+    if (peekTimeout) clearTimeout(peekTimeout);
+    if (lookTimer) clearTimeout(lookTimer);
+  });
+});
+
+import { watch } from "vue";
+
+watch(isTyping, (val) => {
+  if (val) {
+    isLookingAtEachOther.value = true;
+    lookTimer = setTimeout(() => {
+      isLookingAtEachOther.value = false;
+    }, 800);
+  } else {
+    isLookingAtEachOther.value = false;
+    if (lookTimer) clearTimeout(lookTimer);
+  }
+});
+
+watch([() => registerForm.value.password, showPassword, isPurplePeeking], ([password, show, peeking]) => {
+  if (password.length > 0 && show && !peeking) {
+    schedulePeek();
+  } else {
+    isPurplePeeking.value = false;
+    if (peekTimeout) clearTimeout(peekTimeout);
+  }
+});
 </script>
 
 <style scoped>
 .register-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: relative;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 
-/* 动态背景动画 */
-.animated-background {
-  position: absolute;
+.register-left {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #7c3aed 100%);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.left-content {
+  position: relative;
+  z-index: 2;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  z-index: 0;
-}
-
-.circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  animation: float 20s infinite ease-in-out;
-}
-
-.circle-1 {
-  width: 300px;
-  height: 300px;
-  top: -150px;
-  left: -150px;
-  animation-delay: 0s;
-}
-
-.circle-2 {
-  width: 200px;
-  height: 200px;
-  top: 20%;
-  right: -100px;
-  animation-delay: 3s;
-}
-
-.circle-3 {
-  width: 250px;
-  height: 250px;
-  bottom: 10%;
-  left: 20%;
-  animation-delay: 6s;
-}
-
-.circle-4 {
-  width: 180px;
-  height: 180px;
-  bottom: -90px;
-  right: 15%;
-  animation-delay: 9s;
-}
-
-.circle-5 {
-  width: 150px;
-  height: 150px;
-  top: 50%;
-  left: 50%;
-  animation-delay: 12s;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translate(0, 0) scale(1);
-  }
-  25% {
-    transform: translate(20px, -30px) scale(1.1);
-  }
-  50% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  75% {
-    transform: translate(30px, 10px) scale(1.05);
-  }
-}
-
-.register-wrapper {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 500px;
-  padding: 20px;
-}
-
-.register-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  overflow: hidden;
-}
-
-.card-header {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 20px 0;
+  justify-content: space-between;
+  padding: 48px;
 }
 
-.logo-wrapper {
+.brand {
   display: flex;
-  justify-content: center;
   align-items: center;
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  margin-bottom: 15px;
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-  animation: logoFloat 3s ease-in-out infinite;
+  gap: 8px;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
 }
 
-.logo-icon {
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.characters-container {
+  position: relative;
+  width: 550px;
+  height: 400px;
+  margin: 0 auto;
+}
+
+.character {
+  position: absolute;
+  bottom: 0;
+  transition: all 0.7s ease-in-out;
+}
+
+.purple-character {
+  left: 70px;
+  width: 180px;
+  background-color: #6C3FF5;
+  border-radius: 10px 10px 0 0;
+  z-index: 1;
+}
+
+.black-character {
+  left: 240px;
+  width: 120px;
+  height: 310px;
+  background-color: #2D2D2D;
+  border-radius: 8px 8px 0 0;
+  z-index: 2;
+}
+
+.orange-character {
+  left: 0px;
+  width: 240px;
+  height: 200px;
+  background-color: #FF9B6B;
+  border-radius: 120px 120px 0 0;
+  z-index: 3;
+}
+
+.yellow-character {
+  left: 310px;
+  width: 140px;
+  height: 230px;
+  background-color: #E8D754;
+  border-radius: 70px 70px 0 0;
+  z-index: 4;
+}
+
+.character-eyes {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+  transition: all 0.7s ease-in-out;
+}
+
+.eye-ball {
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: height 0.15s ease;
+}
+
+.black-character .eye-ball {
+  width: 16px;
+  height: 16px;
+}
+
+.eye-ball.blinking {
+  height: 2px;
+}
+
+.eye-ball.blinking .pupil {
+  display: none;
+}
+
+.pupil {
+  width: 7px;
+  height: 7px;
+  background-color: #2D2D2D;
+  border-radius: 50%;
+  transition: transform 0.1s ease-out;
+}
+
+.black-character .pupil {
+  width: 6px;
+  height: 6px;
+}
+
+.character-pupils {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+  transition: all 0.2s ease-out;
+}
+
+.orange-character .pupil,
+.yellow-character .pupil {
+  width: 12px;
+  height: 12px;
+  max-width: 12px;
+  max-height: 12px;
+}
+
+.character-mouth {
+  position: absolute;
+  width: 80px;
+  height: 4px;
+  background-color: #2D2D2D;
+  border-radius: 2px;
+  transition: all 0.2s ease-out;
+}
+
+.footer-links {
+  display: flex;
+  gap: 32px;
+}
+
+.footer-link {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer-link:hover {
   color: white;
 }
 
-@keyframes logoFloat {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+.decorative-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-.title-wrapper {
+.decorative-blur {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+}
+
+.blur-1 {
+  top: 25%;
+  right: 25%;
+  width: 256px;
+  height: 256px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.blur-2 {
+  bottom: 25%;
+  left: 25%;
+  width: 384px;
+  height: 384px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.register-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: #f8fafc;
+}
+
+.right-content {
+  width: 100%;
+  max-width: 420px;
+}
+
+.mobile-brand {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 48px;
+}
+
+.form-header {
   text-align: center;
+  margin-bottom: 40px;
 }
 
-.app-title {
-  font-size: 28px;
-  font-weight: bold;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
-  letter-spacing: 1px;
+.form-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
 }
 
-.app-subtitle {
+.form-subtitle {
   font-size: 14px;
-  color: #999;
-  margin: 5px 0 0 0;
-  letter-spacing: 2px;
+  color: #64748b;
+  margin: 0;
 }
 
 .register-form {
-  padding: 10px 20px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 8px;
 }
 
 .input-wrapper {
-  display: flex;
-  align-items: center;
-  background: #f5f7fa;
-  border-radius: 12px;
-  padding: 12px 16px;
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
+  position: relative;
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 8px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .input-wrapper:focus-within {
-  background: white;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.input-icon {
-  font-size: 20px;
-  color: #667eea;
-  margin-right: 12px;
-  flex-shrink: 0;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .custom-input :deep(.el-input__wrapper) {
-  box-shadow: none !important;
-  background: transparent !important;
-  padding: 0 !important;
+  box-shadow: none;
+  background: transparent;
+  padding: 12px 16px;
 }
 
 .custom-input :deep(.el-input__inner) {
   font-size: 15px;
-  color: #333;
+  color: #1e293b;
+}
+
+.password-input :deep(.el-input__wrapper) {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.eye-icon {
+  font-size: 18px;
 }
 
 .agreement-wrapper {
-  margin: 20px 0;
-  padding: 0 5px;
+  margin: -4px 0;
 }
 
 .agreement-text {
   font-size: 13px;
-  color: #666;
+  color: #64748b;
   line-height: 1.6;
 }
 
 .agreement-link {
   font-size: 13px;
-  color: #667eea;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  color: #7c3aed;
+  text-decoration: none;
+  transition: color 0.3s ease;
 }
 
 .agreement-link:hover {
-  color: #764ba2;
+  color: #5b21b6;
   text-decoration: underline;
+}
+
+.error-message {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 8px;
 }
 
 .register-button {
   width: 100%;
-  height: 50px;
+  height: 48px;
   font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-weight: 500;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
   border: none;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  margin-top: 10px;
+  border-radius: 8px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .register-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
 }
 
 .register-button:active:not(:disabled) {
@@ -467,129 +918,69 @@ const handleRegister = async () => {
   cursor: not-allowed;
 }
 
-.divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 25px 0;
-  color: #999;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.divider span {
-  padding: 0 15px;
-  font-size: 14px;
-  color: #999;
-}
-
 .social-register {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-bottom: 25px;
+  margin-top: 8px;
 }
 
 .social-btn {
-  width: 50px;
-  height: 50px;
-  border: 2px solid #e0e0e0;
+  width: 100%;
+  height: 48px;
+  font-size: 14px;
+  font-weight: 500;
   background: white;
-  color: #666;
-  font-size: 22px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #374151;
   transition: all 0.3s ease;
 }
 
 .social-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-  transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+  background: #f5f3ff;
+  border-color: #7c3aed;
 }
 
-.links {
+.social-icon {
+  font-size: 18px;
+}
+
+.sign-in-link {
   text-align: center;
-  padding: 15px 0 5px;
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 32px;
 }
 
-.login-text {
-  color: #666;
-  font-size: 14px;
-}
-
-.login-link {
-  color: #667eea;
-  font-size: 14px;
-  font-weight: 600;
+.sign-in-link .link {
+  color: #1e293b;
+  font-weight: 500;
   text-decoration: none;
-  margin-left: 5px;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease;
 }
 
-.login-link:hover {
-  color: #764ba2;
+.sign-in-link .link:hover {
+  color: #7c3aed;
   text-decoration: underline;
 }
 
-.benefits {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 25px;
-  padding: 20px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(102, 126, 234, 0.1);
-}
-
-.benefit-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.benefit-icon {
-  font-size: 28px;
-  color: #667eea;
-}
-
-.benefit-item span {
-  font-size: 12px;
-  color: #666;
-  text-align: center;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .register-wrapper {
-    padding: 15px;
+@media (max-width: 1024px) {
+  .register-container {
+    grid-template-columns: 1fr;
   }
-  
-  .app-title {
-    font-size: 24px;
-  }
-  
-  .app-subtitle {
-    font-size: 12px;
-  }
-  
-  .circle {
+
+  .register-left {
     display: none;
   }
-  
-  .benefits {
-    flex-direction: column;
-    gap: 15px;
+
+  .mobile-brand {
+    display: flex;
   }
-  
-  .benefit-item {
-    flex-direction: row;
-    justify-content: flex-start;
+
+  .register-right {
+    padding: 24px;
   }
 }
 </style>

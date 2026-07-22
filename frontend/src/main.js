@@ -5,6 +5,11 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import router from './router'
 import App from './App.vue'
+
+/* Design system — import order matters */
+import './styles/variables.css'
+import './styles/shared.css'
+import './styles/dark.css'
 import './styles/responsive.css'
 
 const app = createApp(App)

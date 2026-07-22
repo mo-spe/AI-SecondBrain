@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "taste-skill": {
+      "source": "gaoqiongxie/skills-ai",
+      "sourceType": "github",
+      "skillPath": "taste-skill/SKILL.md",
+      "computedHash": "6943ab2bc576a85252f4ad14c20662d5028b8a031a4889b108a7cafc17a1191e"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "ce0af583006d2fd4731663adc50c0a5df1121f0d49a5bb9c308eca4ee295c60a"
+    }
+  }
+}

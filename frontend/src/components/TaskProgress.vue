@@ -1,5 +1,5 @@
 <template>
-  <div class="task-progress-container">
+  <div class="task-progress-container" aria-label="任务进度">
     <el-card v-if="task" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -126,7 +126,7 @@ const formatTime = (time) => {
 .task-title {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .progress-content {
@@ -136,14 +136,14 @@ const formatTime = (time) => {
 .progress-text {
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-white);
 }
 
 .task-info {
   margin-top: 20px;
   padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
 }
 
 .info-item {
@@ -152,7 +152,7 @@ const formatTime = (time) => {
   gap: 8px;
   margin-bottom: 8px;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .info-item:last-child {
@@ -162,10 +162,10 @@ const formatTime = (time) => {
 .error-message {
   margin-top: 16px;
   padding: 12px;
-  background: #fef0f0;
-  border: 1px solid #fde2e2;
-  border-radius: 8px;
-  color: #f56c6c;
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -174,10 +174,10 @@ const formatTime = (time) => {
 .success-message {
   margin-top: 16px;
   padding: 12px;
-  background: #f0f9ff;
-  border: 1px solid #d1e9ff;
-  border-radius: 8px;
-  color: #409eff;
+  background: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-info);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -186,10 +186,10 @@ const formatTime = (time) => {
 .processing-hint {
   margin-top: 16px;
   padding: 12px;
-  background: #fff7e6;
-  border: 1px solid #ffe7ba;
-  border-radius: 8px;
-  color: #e6a23c;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -199,14 +199,6 @@ const formatTime = (time) => {
   animation: rotating 2s linear infinite;
 }
 
-@keyframes rotating {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* 移动端优化 */
 @media (max-width: 768px) {

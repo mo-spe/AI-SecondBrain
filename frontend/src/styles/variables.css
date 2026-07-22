@@ -1,0 +1,169 @@
+/* ============================================================
+   UI/UX Pro Max — Design Token System
+   Semantic CSS custom properties for AI-SecondBrain
+   ============================================================ */
+
+:root {
+  /* ============ FONT FAMILY ============ */
+  --font-family-base: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+
+  /* ============ BRAND COLORS (purple theme) ============ */
+  --color-primary: #7c3aed;
+  --color-primary-light: #a855f7;
+  --color-primary-dark: #5b21b6;
+  --color-primary-alpha-10: rgba(124, 58, 237, 0.1);
+  --color-primary-alpha-15: rgba(124, 58, 237, 0.15);
+  --color-primary-alpha-20: rgba(124, 58, 237, 0.2);
+  --color-secondary: #8b5cf6;
+  --color-secondary-light: #c084fc;
+  --color-secondary-dark: #6d28d9;
+
+  /* ============ SEMANTIC COLORS ============ */
+  --color-success: #67c23a;
+  --color-success-light: #85ce61;
+  --color-success-bg: #f0f9ff;
+  --color-success-border: #d1e9ff;
+  --color-warning: #e6a23c;
+  --color-warning-light: #f0c78a;
+  --color-warning-bg: #fff7e6;
+  --color-warning-border: #ffe7ba;
+  --color-danger: #f56c6c;
+  --color-danger-light: #f89898;
+  --color-danger-bg: #fef0f0;
+  --color-danger-border: #fde2e2;
+  --color-info: #409eff;
+  --color-info-light: #6bb5ff;
+  --color-info-bg: #f0f9ff;
+  --color-info-border: #d1e9ff;
+
+  /* ============ TEXT COLORS ============ */
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --text-placeholder: #a8abb2;
+  --text-muted: #757a82;
+  --text-white: #ffffff;
+  --text-white-secondary: rgba(255, 255, 255, 0.85);
+  --text-white-muted: rgba(255, 255, 255, 0.7);
+
+  /* ============ BACKGROUND COLORS ============ */
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-translucent: rgba(255, 255, 255, 0.95);
+  --bg-input: #f1f5f9;
+  --bg-hover: #f5f3ff;
+  --bg-list-item: #faf5ff;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+  --bg-white-alpha-10: rgba(255, 255, 255, 0.1);
+  --bg-white-alpha-15: rgba(255, 255, 255, 0.15);
+  --bg-white-alpha-20: rgba(255, 255, 255, 0.2);
+  --bg-sidebar: #ffffff;
+  --bg-sidebar-hover: #f5f3ff;
+
+  /* ============ BORDER COLORS ============ */
+  --border-base: #dcdfe6;
+  --border-light: #e0e0e0;
+  --border-lighter: #f0f0f0;
+  --border-white-translucent: rgba(255, 255, 255, 0.2);
+  --border-white-medium: rgba(255, 255, 255, 0.3);
+
+  /* ============ SHADOWS ============ */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px rgba(124, 58, 237, 0.1);
+  --shadow-lg: 0 8px 32px rgba(124, 58, 237, 0.12);
+  --shadow-primary: 0 4px 12px rgba(124, 58, 237, 0.2);
+  --shadow-primary-hover: 0 8px 24px rgba(124, 58, 237, 0.25);
+  --shadow-primary-xl: 0 12px 40px rgba(124, 58, 237, 0.3);
+  --shadow-navbar: 0 1px 3px rgba(124, 58, 237, 0.08);
+  --shadow-dropdown: 0 8px 24px rgba(124, 58, 237, 0.1);
+  --shadow-icon: 0 4px 16px rgba(124, 58, 237, 0.25);
+  --shadow-focus-ring: 0 0 0 2px rgba(124, 58, 237, 0.2);
+  --shadow-focus-ring-lg: 0 0 0 3px rgba(124, 58, 237, 0.15);
+
+  /* ============ GRADIENTS ============ */
+  --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  --gradient-primary-horizontal: linear-gradient(90deg, #7c3aed 0%, #a855f7 100%);
+  --gradient-success: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+  --gradient-warning: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
+  --gradient-danger: linear-gradient(135deg, #b91c1c 0%, #f87171 100%);
+  --gradient-text: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  --gradient-radial-top: radial-gradient(ellipse at top, rgba(124, 58, 237, 0.06) 0%, transparent 55%);
+
+  /* ============ BORDER RADII ============ */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 50%;
+
+  /* ============ TRANSITIONS ============ */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.6s ease-out;
+  --transition-page-enter: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-page-leave: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ============ SPACING ============ */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 30px;
+
+  /* ============ FONT SIZES ============ */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 28px;
+  --font-size-5xl: 32px;
+
+  /* ============ FONT WEIGHTS ============ */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* ============ NAVBAR ============ */
+  --navbar-height: 64px;
+  --navbar-height-mobile: 56px;
+
+  /* ============ LAYOUT ============ */
+  --max-content-width: 1400px;
+  --content-padding: 20px;
+
+  /* ============ AVATAR ============ */
+  --avatar-bg: rgba(255, 255, 255, 0.2);
+  --avatar-border: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================
+   Element Plus CSS Variable Overrides
+   Integrates our design tokens into all Element Plus components
+   ============================================================ */
+:root {
+  --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: var(--color-primary-light);
+  --el-color-primary-dark-2: var(--color-primary-dark);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
+  --el-color-info: var(--color-info);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-regular);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-placeholder);
+  --el-bg-color: var(--bg-card);
+  --el-bg-color-page: var(--bg-page);
+  --el-border-color-base: var(--border-base);
+  --el-border-color-light: var(--border-light);
+  --el-border-color-lighter: var(--border-lighter);
+}

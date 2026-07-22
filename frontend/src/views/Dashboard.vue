@@ -1,228 +1,294 @@
 <template>
   <div class="dashboard-container">
-    <div class="background-gradient"></div>
-
-    <div class="main-content">
-      <div class="header-section">
-        <div class="welcome-card">
-          <div class="welcome-icon">
-            <el-icon :size="50"><DataAnalysis /></el-icon>
+    <div class="dashboard-grid">
+      <aside class="sidebar-panel">
+        <div class="user-profile-card">
+          <div class="profile-header">
+            <el-icon size="20" color="#f59e0b"><Trophy /></el-icon>
+            <span class="welcome-text">こんにちは, {{ userStore.userInfo.username || "newuser" }}</span>
+            <p class="welcome-subtitle">欢迎回到 AI-SecondBrain</p>
           </div>
-          <div class="welcome-content">
-            <h1 class="welcome-title">数据统计</h1>
-            <p class="welcome-subtitle">您的学习数据总览</p>
+          <div class="avatar-section">
+            <el-avatar :size="100" :src="userAvatar">
+              <el-icon size="40"><User /></el-icon>
+            </el-avatar>
+            <div class="level-badge">
+              <span class="level-num">LV.5</span>
+              <span class="level-title">学习者</span>
+            </div>
           </div>
+          <div class="experience-bar">
+            <div class="exp-label">经验值 {{ experience.current }} / {{ experience.total }}</div>
+            <div class="exp-track">
+              <div class="exp-fill" :style="{ width: expPercent + '%' }"></div>
+            </div>
+          </div>
+          <div class="user-info-list">
+            <div class="info-item">
+              <el-icon size="14" color="#7c3aed"><Key /></el-icon>
+              <span class="info-label">用户ID</span>
+              <span class="info-value">{{ userStore.userInfo.id || 5 }}</span>
+            </div>
+            <div class="info-item">
+              <el-icon size="14" color="#3b82f6"><Message /></el-icon>
+              <span class="info-label">邮箱</span>
+              <span class="info-value">{{ userStore.userInfo.email || "newuser@example.com" }}</span>
+            </div>
+            <div class="info-item">
+              <el-icon size="14" color="#10b981"><Phone /></el-icon>
+              <span class="info-label">手机号</span>
+              <span class="info-value">{{ userStore.userInfo.phone || "15337153738" }}</span>
+            </div>
+            <div class="info-item">
+              <el-icon size="14" color="#8b5cf6"><Calendar /></el-icon>
+              <span class="info-label">注册时间</span>
+              <span class="info-value">{{ formatDate(userStore.userInfo.registerTime) || "2026-03-14 16:08:49" }}</span>
+            </div>
+            <div class="info-item">
+              <el-icon size="14" color="#06b6d4"><Clock /></el-icon>
+              <span class="info-label">最后登录</span>
+              <span class="info-value">{{ formatDate(userStore.userInfo.lastLoginTime) || "2026-05-20 10:30:12" }}</span>
+            </div>
+          </div>
+          <button class="edit-profile-btn">
+            <el-icon size="14"><Edit /></el-icon>
+            <span>编辑个人资料</span>
+          </button>
         </div>
-      </div>
+      </aside>
 
-      <div class="stats-section">
-        <div class="stat-grid">
-          <div class="stat-card chat">
-            <div class="stat-header">
-              <div class="stat-icon-wrapper chat">
-                <el-icon :size="32"><ChatDotRound /></el-icon>
-              </div>
-              <div class="stat-trend">
-                <el-icon class="trend-up"><TrendCharts /></el-icon>
-                <span>+12%</span>
-              </div>
-            </div>
-            <div class="stat-body">
-              <div class="stat-value">{{ statistics.chatCount || 0 }}</div>
-              <div class="stat-label">对话总数</div>
-            </div>
-            <div class="stat-footer">
-              <div class="stat-chart">
-                <div class="chart-bar" style="width: 80%"></div>
-              </div>
-            </div>
+      <main class="main-panel">
+        <div class="learning-overview-section">
+          <div class="section-header">
+            <el-icon size="20" color="#7c3aed"><Document /></el-icon>
+            <span class="section-title">学习概览</span>
+            <el-select v-model="timeRange" class="time-select" size="small">
+              <el-option label="本周" value="week" />
+              <el-option label="本月" value="month" />
+              <el-option label="本季度" value="quarter" />
+            </el-select>
           </div>
-
-          <div class="stat-card knowledge">
-            <div class="stat-header">
-              <div class="stat-icon-wrapper knowledge">
-                <el-icon :size="32"><Reading /></el-icon>
+          <div class="overview-grid">
+            <div class="overview-card review">
+              <div class="card-icon">
+                <el-icon size="24" color="#7c3aed"><DocumentCopy /></el-icon>
               </div>
-              <div class="stat-trend">
-                <el-icon class="trend-up"><TrendCharts /></el-icon>
-                <span>+8%</span>
-              </div>
+              <div class="card-value">{{ statistics.pendingReviewCount || 91 }}</div>
+              <div class="card-label">待复习</div>
+              <div class="card-sub">个卡片</div>
             </div>
-            <div class="stat-body">
-              <div class="stat-value">{{ statistics.knowledgeCount || 0 }}</div>
-              <div class="stat-label">知识点总数</div>
+            <div class="overview-card completed">
+              <div class="card-icon">
+                <el-icon size="24" color="#22c55e"><CircleCheck /></el-icon>
+              </div>
+              <div class="card-value">{{ statistics.completedReviewCount || 0 }}</div>
+              <div class="card-label">已完成</div>
+              <div class="card-sub">个卡片</div>
             </div>
-            <div class="stat-footer">
-              <div class="stat-chart">
-                <div class="chart-bar" style="width: 65%"></div>
+            <div class="overview-card accuracy">
+              <div class="card-icon">
+                <el-icon size="24" color="#f97316"><Aim /></el-icon>
               </div>
+              <div class="card-value">0%</div>
+              <div class="card-label">正确率</div>
+              <div class="card-sub">较昨日 ↑0%</div>
             </div>
-          </div>
-
-          <div class="stat-card review">
-            <div class="stat-header">
-              <div class="stat-icon-wrapper review">
-                <el-icon :size="32"><Bell /></el-icon>
+            <div class="overview-card streak">
+              <div class="card-icon">
+                <el-icon size="24" color="#3b82f6"><Medal /></el-icon>
               </div>
-              <div class="stat-trend">
-                <el-icon class="trend-down"><Bottom /></el-icon>
-                <span>-5%</span>
-              </div>
-            </div>
-            <div class="stat-body">
-              <div class="stat-value">
-                {{ statistics.pendingReviewCount || 0 }}
-              </div>
-              <div class="stat-label">待复习</div>
-            </div>
-            <div class="stat-footer">
-              <div class="stat-chart">
-                <div class="chart-bar" style="width: 45%"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="stat-card completed">
-            <div class="stat-header">
-              <div class="stat-icon-wrapper completed">
-                <el-icon :size="32"><CircleCheck /></el-icon>
-              </div>
-              <div class="stat-trend">
-                <el-icon class="trend-up"><TrendCharts /></el-icon>
-                <span>+15%</span>
-              </div>
-            </div>
-            <div class="stat-body">
-              <div class="stat-value">
-                {{ statistics.completedReviewCount || 0 }}
-              </div>
-              <div class="stat-label">已完成复习</div>
-            </div>
-            <div class="stat-footer">
-              <div class="stat-chart">
-                <div class="chart-bar" style="width: 90%"></div>
-              </div>
+              <div class="card-value">0</div>
+              <div class="card-label">连续天数</div>
+              <div class="card-sub">天</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="content-section">
-        <div class="content-grid">
-          <div class="content-card">
+        <div class="quick-actions-section">
+          <div class="section-header">
+            <el-icon size="20" color="#7c3aed"><Lightning /></el-icon>
+            <span class="section-title">快捷操作</span>
+          </div>
+          <div class="actions-grid">
+            <div class="action-card purple" @click="router.push('/review')">
+              <div class="action-icon">
+                <el-icon size="32" color="white"><Document /></el-icon>
+              </div>
+              <div class="action-title">开始复习</div>
+              <div class="action-desc">智能安排复习计划</div>
+            </div>
+            <div class="action-card blue" @click="router.push('/chat')">
+              <div class="action-icon">
+                <el-icon size="32" color="white"><Plus /></el-icon>
+              </div>
+              <div class="action-title">生成复习卡片</div>
+              <div class="action-desc">AI 智能生成卡片</div>
+            </div>
+            <div class="action-card green" @click="router.push('/knowledge')">
+              <div class="action-icon">
+                <el-icon size="32" color="white"><Grid /></el-icon>
+              </div>
+              <div class="action-title">知识点管理</div>
+              <div class="action-desc">构建知识体系</div>
+            </div>
+            <div class="action-card orange" @click="router.push('/report')">
+              <div class="action-icon">
+                <el-icon size="32" color="white"><TrendCharts /></el-icon>
+              </div>
+              <div class="action-title">学习统计</div>
+              <div class="action-desc">查看学习数据</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-section">
+          <div class="review-center-card">
             <div class="card-header">
-              <h3>
-                <el-icon><ChatDotRound /></el-icon>
-                最近对话
-              </h3>
-              <el-tag type="info">{{ recentChats.length }}条</el-tag>
+              <el-icon size="18" color="#7c3aed"><Clock /></el-icon>
+              <span class="card-title">复习中心</span>
+              <button class="view-all-btn">查看全部</button>
             </div>
-            <div class="card-body">
-              <div v-loading="chatsLoading" class="list-container">
-                <div
-                  v-for="chat in recentChats"
-                  :key="chat.id"
-                  class="list-item"
-                  @click="viewChatDetail(chat)"
-                >
-                  <div class="item-header">
-                    <el-tag :type="getPlatformType(chat.platform)" size="small">
-                      {{ chat.platform }}
-                    </el-tag>
-                    <span class="item-time">{{
-                      formatRelativeTime(chat.createTime)
-                    }}</span>
-                  </div>
-                  <div class="item-content">{{ chat.content }}</div>
+            <div class="review-progress">
+              <div class="progress-info">
+                <div class="progress-label">今日进度</div>
+                <div class="progress-text">13 / 20</div>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-track">
+                  <div class="progress-fill" :style="{ width: reviewProgressPercent + '%' }"></div>
                 </div>
-                <el-empty
-                  v-if="!chatsLoading && recentChats.length === 0"
-                  description="暂无对话数据"
-                  :image-size="100"
-                />
+              </div>
+              <div class="progress-ring">
+                <svg viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="#e2e8f0"
+                    stroke-width="8"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="#7c3aed"
+                    stroke-width="8"
+                    stroke-linecap="round"
+                    :stroke-dasharray="264"
+                    :stroke-dashoffset="264 * (1 - reviewProgressPercent / 100)"
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
+                <div class="ring-text">{{ reviewProgressPercent }}%</div>
               </div>
             </div>
+            <div class="review-stats">
+              <div class="review-stat-item">
+                <el-icon size="14" color="#7c3aed"><DocumentCopy /></el-icon>
+                <span class="stat-label">待复习卡片</span>
+                <span class="stat-value">{{ statistics.pendingReviewCount || 91 }} 个</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="#f59e0b"><Clock /></el-icon>
+                <span class="stat-label">预计用时</span>
+                <span class="stat-value">25 分钟</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="#10b981"><DataAnalysis /></el-icon>
+                <span class="stat-label">最佳复习时间</span>
+                <span class="stat-value">上午 9:00 - 11:00</span>
+              </div>
+            </div>
+            <button class="start-review-btn">
+              <el-icon size="16"><VideoPlay /></el-icon>
+              <span>开始复习</span>
+            </button>
           </div>
 
-          <div class="content-card">
+          <div class="knowledge-management-card">
             <div class="card-header">
-              <h3>
-                <el-icon><Reading /></el-icon>
-                最近知识点
-              </h3>
-              <el-tag type="info">{{ recentKnowledge.length }}条</el-tag>
+              <el-icon size="18" color="#7c3aed"><Trophy /></el-icon>
+              <span class="card-title">知识管理</span>
+              <button class="view-all-btn">查看全部</button>
             </div>
-            <div class="card-body">
-              <div v-loading="knowledgeLoading" class="list-container">
-                <div
-                  v-for="knowledge in recentKnowledge"
-                  :key="knowledge.id"
-                  class="list-item"
-                  @click="viewKnowledgeDetail(knowledge)"
-                >
-                  <div class="item-header">
-                    <el-rate
-                      v-model="knowledge.importance"
-                      disabled
-                      show-score
-                      text-color="#ff9900"
-                      :max="5"
-                      size="small"
-                    />
-                    <span class="item-time">{{
-                      formatRelativeTime(knowledge.createTime)
-                    }}</span>
-                  </div>
-                  <div class="item-title">{{ knowledge.title }}</div>
-                  <div class="item-summary">{{ knowledge.summary }}</div>
+            <div class="knowledge-list">
+              <div class="knowledge-item" v-for="item in knowledgeItems" :key="item.title">
+                <div class="item-icon" :style="{ background: item.color }">
+                  <el-icon :size="18" color="white"><component :is="item.icon" /></el-icon>
                 </div>
-                <el-empty
-                  v-if="!knowledgeLoading && recentKnowledge.length === 0"
-                  description="暂无知识点"
-                  :image-size="100"
-                />
+                <div class="item-info">
+                  <div class="item-title">{{ item.title }}</div>
+                  <div class="item-meta">{{ item.count }} 个知识点</div>
+                  <div class="item-progress-track">
+                    <div class="item-progress-fill" :style="{ width: item.progress + '%' }"></div>
+                  </div>
+                </div>
+                <div class="item-percent">{{ item.progress }}%</div>
               </div>
             </div>
+            <button class="add-knowledge-btn">
+              <el-icon size="14"><Plus /></el-icon>
+              <span>添加知识点</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      <div class="chart-section">
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>
-              <el-icon><TrendCharts /></el-icon>
-              学习趋势
-            </h3>
-            <el-radio-group v-model="chartPeriod" size="small">
-              <el-radio-button value="week">本周</el-radio-button>
-              <el-radio-button value="month">本月</el-radio-button>
-              <el-radio-button value="year">全年</el-radio-button>
-            </el-radio-group>
+        <div class="learning-suggestion-card">
+          <div class="suggestion-content">
+            <el-icon size="24" color="#7c3aed"><Monitor /></el-icon>
+            <div class="suggestion-text">
+              <span class="suggestion-title">学习建议</span>
+              <span class="suggestion-desc">根据您的学习情况，推荐您今天复习 Java 面向对象编程和 Spring Boot 自动配置相关内容</span>
+            </div>
           </div>
-          <div ref="chartRef" class="chart-container"></div>
+          <div class="suggestion-avatar">
+            <div class="ai-avatar">
+              <el-icon size="24" color="white"><DataLine /></el-icon>
+            </div>
+            <span class="ai-label">AI</span>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from "vue";
-import { ElMessage } from "element-plus";
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useUserStore } from "@/stores/user";
 import { statisticsAPI } from "@/api/statistics";
-import { chatAPI } from "@/api/chat";
-import { knowledgeAPI } from "@/api/knowledge";
-import * as echarts from "echarts";
 import {
-  DataAnalysis,
-  ChatDotRound,
-  Reading,
-  Bell,
+  User,
+  Key,
+  Message,
+  Phone,
+  Calendar,
+  Clock,
+  Edit,
+  Document,
+  DocumentCopy,
   CircleCheck,
+  Aim,
+  Medal,
+  Lightning,
+  Plus,
+  Grid,
   TrendCharts,
-  Bottom,
+  VideoPlay,
+  DataAnalysis,
+  Trophy,
+  Monitor,
+  DataLine,
+  MapLocation,
+  Cpu,
+  DataBoard,
 } from "@element-plus/icons-vue";
+
+const router = useRouter();
+const userStore = useUserStore();
 
 const statistics = ref({
   chatCount: 0,
@@ -231,652 +297,693 @@ const statistics = ref({
   completedReviewCount: 0,
 });
 
-const recentChats = ref([]);
-const recentKnowledge = ref([]);
-const chatsLoading = ref(false);
-const knowledgeLoading = ref(false);
-const chartPeriod = ref("week");
+const timeRange = ref("week");
+const experience = ref({ current: 1280, total: 2000 });
 
-const chartRef = ref(null);
-let chartInstance = null;
+const userAvatar = computed(() => {
+  return userStore.userInfo.avatar || "";
+});
+
+const expPercent = computed(() => {
+  return Math.round((experience.value.current / experience.value.total) * 100);
+});
+
+const reviewProgressPercent = computed(() => {
+  const total = 20;
+  const completed = 13;
+  return Math.round((completed / total) * 100);
+});
+
+const knowledgeItems = ref([
+  { title: "Java 核心技术", count: 85, progress: 78, color: "linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)", icon: DataLine },
+  { title: "Spring Boot", count: 67, progress: 65, color: "linear-gradient(135deg, #22c55e 0%, #4ade80 100%)", icon: Monitor },
+  { title: "数据结构与算法", count: 48, progress: 82, color: "linear-gradient(135deg, #f97316 0%, #fb923c 100%)", icon: DataBoard },
+  { title: "计算机网络", count: 32, progress: 45, color: "linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)", icon: MapLocation },
+  { title: "操作系统", count: 28, progress: 60, color: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)", icon: Cpu },
+  { title: "数据库系统", count: 39, progress: 70, color: "linear-gradient(135deg, #ef4444 0%, #f87171 100%)", icon: DataBoard },
+]);
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleString("zh-CN");
+};
 
 const loadStatistics = async () => {
   try {
     const data = await statisticsAPI.getStatistics();
-    console.log("统计数据API返回的数据:", data);
     statistics.value = data;
-    console.log("设置后的statistics.value:", statistics.value);
   } catch (error) {
     console.error("加载统计数据失败:", error);
-    ElMessage.error("加载统计数据失败：" + error.message);
   }
 };
-
-const loadChartData = async () => {
-  try {
-    const data = await statisticsAPI.getChartData(chartPeriod.value);
-    console.log("图表数据API返回的数据:", data);
-    return data;
-  } catch (error) {
-    console.error("加载图表数据失败:", error);
-    ElMessage.error("加载图表数据失败：" + error.message);
-    return null;
-  }
-};
-
-const loadRecentChats = async () => {
-  try {
-    chatsLoading.value = true;
-    const data = await chatAPI.getList({ current: 1, size: 5 });
-    recentChats.value = data.records || [];
-  } catch (error) {
-    ElMessage.error("加载对话数据失败：" + error.message);
-  } finally {
-    chatsLoading.value = false;
-  }
-};
-
-const loadRecentKnowledge = async () => {
-  try {
-    knowledgeLoading.value = true;
-    const data = await knowledgeAPI.getList({ current: 1, size: 5 });
-    recentKnowledge.value = data.records || [];
-  } catch (error) {
-    ElMessage.error("加载知识点数据失败：" + error.message);
-  } finally {
-    knowledgeLoading.value = false;
-  }
-};
-
-const getPlatformType = (platform) => {
-  const typeMap = {
-    ChatGPT: "primary",
-    DeepSeek: "success",
-    Kimi: "warning",
-    Other: "info",
-  };
-  return typeMap[platform] || "info";
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleString("zh-CN");
-};
-
-const formatRelativeTime = (dateStr) => {
-  if (!dateStr) return "-";
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now - date;
-
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes}分钟前`;
-  if (hours < 24) return `${hours}小时前`;
-  if (days < 7) return `${days}天前`;
-  return formatDate(dateStr);
-};
-
-const viewChatDetail = (chat) => {
-  ElMessage.info("查看对话详情功能开发中");
-};
-
-const viewKnowledgeDetail = (knowledge) => {
-  ElMessage.info("查看知识点详情功能开发中");
-};
-
-const initChart = async () => {
-  if (!chartRef.value) return;
-
-  chartInstance = echarts.init(chartRef.value);
-
-  const chartData = await loadChartData();
-  if (!chartData) {
-    console.error("图表数据为空，使用默认数据");
-    return;
-  }
-
-  const option = {
-    backgroundColor: "transparent",
-    tooltip: {
-      trigger: "axis",
-      axisPointer: {
-        type: "cross",
-      },
-    },
-    legend: {
-      data: ["对话数", "知识点数", "复习数"],
-      textStyle: {
-        color: "#606266",
-      },
-    },
-    grid: {
-      left: "3%",
-      right: "4%",
-      bottom: "3%",
-      containLabel: true,
-    },
-    xAxis: {
-      type: "category",
-      boundaryGap: false,
-      data: chartData.labels || [],
-      axisLabel: {
-        color: "#909399",
-      },
-      axisLine: {
-        lineStyle: {
-          color: "#e0e0e0",
-        },
-      },
-    },
-    yAxis: {
-      type: "value",
-      axisLabel: {
-        color: "#909399",
-      },
-      axisLine: {
-        lineStyle: {
-          color: "#e0e0e0",
-        },
-      },
-      splitLine: {
-        lineStyle: {
-          color: "#f0f0f0",
-        },
-      },
-    },
-    series: [
-      {
-        name: "对话数",
-        type: "line",
-        smooth: true,
-        data: chartData.chatData || [],
-        itemStyle: {
-          color: "#667eea",
-        },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(102, 126, 234, 0.3)" },
-            { offset: 1, color: "rgba(102, 126, 234, 0.05)" },
-          ]),
-        },
-      },
-      {
-        name: "知识点数",
-        type: "line",
-        smooth: true,
-        data: chartData.knowledgeData || [],
-        itemStyle: {
-          color: "#764ba2",
-        },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(118, 75, 162, 0.3)" },
-            { offset: 1, color: "rgba(118, 75, 162, 0.05)" },
-          ]),
-        },
-      },
-      {
-        name: "复习数",
-        type: "line",
-        smooth: true,
-        data: chartData.reviewData || [],
-        itemStyle: {
-          color: "#67c23a",
-        },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(103, 194, 58, 0.3)" },
-            { offset: 1, color: "rgba(103, 194, 58, 0.05)" },
-          ]),
-        },
-      },
-    ],
-  };
-
-  chartInstance.setOption(option);
-};
-
-watch(chartPeriod, () => {
-  if (chartInstance) {
-    initChart();
-  }
-});
 
 onMounted(() => {
   loadStatistics();
-  loadRecentChats();
-  loadRecentKnowledge();
-  setTimeout(() => {
-    initChart();
-  }, 100);
-});
-
-onUnmounted(() => {
-  if (chartInstance) {
-    chartInstance.dispose();
-  }
 });
 </script>
 
 <style scoped>
 .dashboard-container {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
+  min-height: 100%;
+  padding: 0;
 }
 
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 0;
-}
-
-.main-content {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.header-section {
-  margin-bottom: 20px;
-}
-
-.welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInDown 0.6s ease-out;
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: white;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.welcome-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-}
-
-.stats-section {
-  margin-bottom: 20px;
-}
-
-.stat-grid {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: 320px 1fr;
+  gap: var(--spacing-xl);
+  height: 100%;
 }
 
-.stat-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
-  animation: fadeInUp 0.6s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.3);
-}
-
-.stat-card.chat .stat-icon-wrapper {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.stat-card.knowledge .stat-icon-wrapper {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  color: white;
-}
-
-.stat-card.review .stat-icon-wrapper {
-  background: linear-gradient(135deg, #e6a23c 0%, #f0c78a 100%);
-  color: white;
-}
-
-.stat-card.completed .stat-icon-wrapper {
-  background: linear-gradient(135deg, #f56c6c 0%, #f89898 100%);
-  color: white;
-}
-
-.stat-header {
+.sidebar-panel {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  flex-direction: column;
 }
 
-.stat-icon-wrapper {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.user-profile-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-md);
 }
 
-.stat-trend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: #909399;
+.profile-header {
+  margin-bottom: var(--spacing-xl);
 }
 
-.trend-up {
-  color: #67c23a;
-}
-
-.trend-down {
-  color: #f56c6c;
-}
-
-.stat-body {
-  margin-bottom: 16px;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: bold;
-  color: #303133;
+.welcome-text {
+  display: block;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
-.stat-label {
-  font-size: 14px;
-  color: #909399;
+.welcome-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0;
 }
 
-.stat-footer {
-  margin-top: 12px;
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
 }
 
-.stat-chart {
-  height: 4px;
-  background: #f0f0f0;
-  border-radius: 2px;
+.avatar-section :deep(.el-avatar) {
+  width: 100px;
+  height: 100px;
+  margin-bottom: var(--spacing-md);
+  border: 3px solid var(--color-primary-alpha-20);
+}
+
+.level-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: var(--color-primary-alpha-10);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-lg);
+}
+
+.level-num {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.level-title {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+}
+
+.experience-bar {
+  margin-bottom: var(--spacing-xl);
+}
+
+.exp-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.exp-track {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
-.chart-bar {
+.exp-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border-radius: 2px;
-  transition: width 1s ease;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
 }
 
-.content-section {
-  margin-bottom: 20px;
+.user-info-list {
+  margin-bottom: var(--spacing-xl);
 }
 
-.content-grid {
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-lighter);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  width: 60px;
+}
+
+.info-value {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--text-regular);
+}
+
+.edit-profile-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-input);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-regular);
+  cursor: pointer;
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+.edit-profile-btn:hover {
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary);
+}
+
+.main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.section-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.time-select {
+  margin-left: auto;
+  width: 120px;
+}
+
+.learning-overview-section {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-md);
+}
+
+.overview-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
 }
 
-.content-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInUp 0.6s ease-out;
+.overview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-page);
+  border-radius: var(--radius-lg);
+}
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.card-value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.card-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-regular);
+}
+
+.card-sub {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.quick-actions-section {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-md);
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.action-card.purple {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+}
+
+.action-card.blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+}
+
+.action-card.green {
+  background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
+}
+
+.action-card.orange {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+}
+
+.action-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.action-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: white;
+  margin-bottom: 2px;
+}
+
+.action-desc {
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bottom-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xl);
+}
+
+.review-center-card,
+.knowledge-management-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f0f0f0;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
 }
 
-.card-header h3 {
-  font-size: 18px;
-  color: #303133;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.card-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 
-.card-header h3 .el-icon {
-  color: #667eea;
-}
-
-.card-body {
-  min-height: 300px;
-}
-
-.list-container {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.list-item {
-  background: #f9f9f9;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
+.view-all-btn {
+  margin-left: auto;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: transparent;
+  border: none;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: color var(--transition-base);
 }
 
-.list-item:hover {
-  background: #f0f0f0;
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+.view-all-btn:hover {
+  text-decoration: underline;
 }
 
-.item-header {
+.review-progress {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
 }
 
-.item-time {
-  font-size: 12px;
-  color: #909399;
+.progress-info {
+  flex: 1;
 }
 
-.item-content {
-  color: #606266;
-  font-size: 14px;
-  line-height: 1.5;
+.progress-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.progress-text {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.progress-bar-container {
+  flex: 2;
+}
+
+.progress-track {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-full);
   overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+}
+
+.progress-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.progress-ring svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ring-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.review-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.review-stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.review-stat-item .stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.review-stat-item .stat-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.start-review-btn {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: white;
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.start-review-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary-hover);
+}
+
+.knowledge-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.knowledge-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
+}
+
+.item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .item-title {
-  color: #303133;
-  font-size: 15px;
-  font-weight: bold;
-  margin-bottom: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin-bottom: 2px;
 }
 
-.item-summary {
-  color: #909399;
-  font-size: 13px;
-  line-height: 1.4;
+.item-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.item-progress-track {
+  height: 4px;
+  background: var(--bg-input);
+  border-radius: var(--radius-full);
   overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
-.chart-section {
-  margin-bottom: 20px;
+.item-progress-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
 }
 
-.chart-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInUp 0.6s ease-out;
+.item-percent {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  min-width: 40px;
+  text-align: right;
 }
 
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.chart-header h3 {
-  font-size: 18px;
-  color: #303133;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chart-header h3 .el-icon {
-  color: #667eea;
-}
-
-.chart-container {
-  height: 400px;
+.add-knowledge-btn {
+  margin-top: auto;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-input);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  color: var(--text-regular);
+  cursor: pointer;
+  transition: background var(--transition-base), color var(--transition-base);
 }
 
-:deep(.el-empty) {
-  background: transparent;
-  color: #909399;
+.add-knowledge-btn:hover {
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary);
 }
 
-:deep(.el-empty__description p) {
-  color: #909399;
+.learning-suggestion-card {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-md);
 }
 
-:deep(.el-radio-button__inner) {
-  background: white;
-  border-color: #e0e0e0;
-  color: #606266;
+.suggestion-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
 }
 
-:deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+.suggestion-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-:deep(.el-scrollbar__view) {
-  padding-right: 5px;
+.suggestion-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 
-:deep(.el-scrollbar__bar) {
-  background: rgba(0, 0, 0, 0.05);
+.suggestion-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-regular);
 }
 
-:deep(.el-scrollbar__thumb) {
-  background: rgba(102, 126, 234, 0.5);
-  border-radius: 3px;
+.suggestion-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
-@media (max-width: 1024px) {
-  .stat-grid {
+.ai-avatar {
+  width: 56px;
+  height: 56px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+:deep(.el-select) {
+  width: 120px;
+}
+
+:deep(.el-select__wrapper) {
+  border-radius: var(--radius-md);
+}
+
+:deep(.el-avatar) {
+  background: var(--color-primary-alpha-15);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-panel {
+    order: 2;
+  }
+
+  .main-panel {
+    order: 1;
+  }
+
+  .overview-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .content-grid {
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bottom-section {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .welcome-card {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-progress {
     flex-direction: column;
     text-align: center;
   }
 
-  .welcome-title {
-    font-size: 24px;
-  }
-
-  .stat-grid {
-    grid-template-columns: 1fr;
+  .progress-bar-container {
+    width: 100%;
   }
 }
 </style>

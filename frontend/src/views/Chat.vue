@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-container">
+  <div class="chat-container" aria-label="对话采集页面">
     <div class="background-gradient"></div>
 
     <div class="main-content">
@@ -494,16 +494,6 @@ onMounted(() => {
   overflow-x: hidden;
 }
 
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 0;
-}
-
 .main-content {
   position: relative;
   z-index: 1;
@@ -516,95 +506,20 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-.welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInDown 0.6s ease-out;
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: white;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.welcome-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-}
-
 .toolbar-section {
   margin-bottom: 20px;
 }
 
 .toolbar-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-card-translucent);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   display: flex;
   justify-content: space-between;
   align-items: center;
   animation: fadeInUp 0.6s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .toolbar-left,
@@ -623,11 +538,11 @@ onMounted(() => {
 }
 
 .content-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-card-translucent);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -637,12 +552,12 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-lighter);
 }
 
 .card-header h3 {
   font-size: 18px;
-  color: #303133;
+  color: var(--text-primary);
   margin: 0;
   display: flex;
   align-items: center;
@@ -650,7 +565,7 @@ onMounted(() => {
 }
 
 .card-header h3 .el-icon {
-  color: #667eea;
+  color: var(--color-primary);
 }
 
 .card-body {
@@ -667,16 +582,16 @@ onMounted(() => {
 
 .chat-item {
   background: white;
-  border: 2px solid #f0f0f0;
-  border-radius: 12px;
+  border: 2px solid var(--border-lighter);
+  border-radius: var(--radius-md);
   padding: 20px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 .chat-item:hover {
-  border-color: #667eea;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 24px var(--color-primary-alpha-20);
   transform: translateX(4px);
 }
 
@@ -695,7 +610,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -704,7 +619,7 @@ onMounted(() => {
 }
 
 .content-text {
-  color: #606266;
+  color: var(--text-regular);
   font-size: 14px;
   line-height: 1.6;
   overflow: hidden;
@@ -719,7 +634,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-lighter);
 }
 
 .chat-meta {
@@ -731,12 +646,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .meta-item .el-icon {
-  color: #667eea;
+  color: var(--color-primary);
 }
 
 .pagination-wrapper {
@@ -744,7 +659,7 @@ onMounted(() => {
   justify-content: center;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-lighter);
 }
 
 .option-item {
@@ -754,7 +669,7 @@ onMounted(() => {
 }
 
 .detail-content {
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .detail-header {
@@ -763,7 +678,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-lighter);
 }
 
 .detail-platform {
@@ -774,7 +689,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -785,14 +700,14 @@ onMounted(() => {
 }
 
 .detail-section {
-  background: #f9f9f9;
-  border-radius: 12px;
+  background: var(--bg-list-item);
+  border-radius: var(--radius-md);
   padding: 16px;
 }
 
 .detail-section h4 {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   margin: 0 0 8px 0;
   display: flex;
   align-items: center;
@@ -800,17 +715,17 @@ onMounted(() => {
 }
 
 .detail-section h4 .el-icon {
-  color: #667eea;
+  color: var(--color-primary);
 }
 
 .detail-value {
-  color: #303133;
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: bold;
 }
 
 .detail-text {
-  color: #606266;
+  color: var(--text-regular);
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -821,56 +736,56 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-lighter);
 }
 
 :deep(.el-empty) {
   background: transparent;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 :deep(.el-empty__description p) {
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 :deep(.el-input__wrapper) {
   box-shadow: none;
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
+  border: 2px solid var(--border-light);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 :deep(.el-input__wrapper:hover) {
-  border-color: #667eea;
+  border-color: var(--color-primary);
 }
 
 :deep(.el-input__wrapper.is-focus) {
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 :deep(.el-textarea__inner) {
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
+  border: 2px solid var(--border-light);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 :deep(.el-textarea__inner:hover) {
-  border-color: #667eea;
+  border-color: var(--color-primary);
 }
 
 :deep(.el-textarea__inner:focus) {
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border: none;
-  transition: all 0.3s;
+  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 :deep(.el-button--primary:hover) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-icon);
 }
 
 :deep(.el-scrollbar__view) {

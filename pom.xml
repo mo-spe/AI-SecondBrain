@@ -19,7 +19,7 @@
     <description>AI对话知识沉淀系统</description>
 
     <properties>
-        <java.version>1.8</java.version>
+        <java.version>17</java.version>
         <mybatis-plus.version>3.5.3.1</mybatis-plus.version>
         <knife4j.version>4.4.0</knife4j.version>
         <hutool.version>5.8.24</hutool.version>
@@ -229,6 +229,11 @@
     <build>
         <sourceDirectory>backend/src/main/java</sourceDirectory>
         <testSourceDirectory>backend/src/test/java</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>backend/src/main/resources</directory>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -240,6 +245,14 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>15</source>
+                    <target>15</target>
                 </configuration>
             </plugin>
         </plugins>

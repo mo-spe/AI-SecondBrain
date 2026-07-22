@@ -1,300 +1,295 @@
 <template>
-  <div class="knowledge-container">
-    <div class="background-gradient"></div>
+  <div class="knowledge-page">
+    <div class="page-header">
+      <div class="header-left">
+        <h1 class="page-title">知识点管理</h1>
+        <span class="page-subtitle">管理和组织您的知识体系，让知识更有序、更易于发现</span>
+        <el-tag class="knowledge-count" type="info" size="small">{{ pagination.total || 0 }}个知识点</el-tag>
+      </div>
+      <div class="header-right">
+        <el-button type="default" size="default" @click="handleImport">
+          <el-icon><Download /></el-icon>
+          <span>导入知识点</span>
+        </el-button>
+        <el-dropdown trigger="click">
+          <el-button type="default" size="default">
+            <span>批量操作</span>
+            <el-icon><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="handleBatchDelete">批量删除</el-dropdown-item>
+              <el-dropdown-item @click="handleBatchExport">批量导出</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-button type="primary" size="default" @click="handleAddKnowledge">
+          <el-icon><Plus /></el-icon>
+          <span>添加知识点</span>
+        </el-button>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <div class="search-box">
+        <el-icon size="16" color="#94a3b8"><Search /></el-icon>
+        <input
+          type="text"
+          v-model="searchKeyword"
+          placeholder="搜索知识点名称、描述、标签..."
+          @keyup.enter="handleSearch"
+        />
+        <button class="search-btn" @click="handleSearch">
+          <el-icon size="16"><Search /></el-icon>
+        </button>
+      </div>
+      <el-select
+        v-model="filterSystem"
+        placeholder="全部体系"
+        size="default"
+        clearable
+        @change="handleSearch"
+      >
+        <el-option label="全部体系" value="" />
+        <el-option v-for="system in knowledgeSystems" :key="system.id" :label="system.name" :value="system.id" />
+      </el-select>
+      <el-select
+        v-model="filterImportance"
+        placeholder="重要程度"
+        size="default"
+        clearable
+        @change="handleSearch"
+      >
+        <el-option label="全部" value="" />
+        <el-option label="非常重要" :value="5" />
+        <el-option label="重要" :value="4" />
+        <el-option label="一般" :value="3" />
+        <el-option label="较低" :value="2" />
+        <el-option label="很低" :value="1" />
+      </el-select>
+      <el-select
+        v-model="filterMastery"
+        placeholder="掌握程度"
+        size="default"
+        clearable
+        @change="handleSearch"
+      >
+        <el-option label="全部" value="" />
+        <el-option label="已掌握" :value="5" />
+        <el-option label="精通" :value="4" />
+        <el-option label="掌握" :value="3" />
+        <el-option label="熟悉" :value="2" />
+        <el-option label="入门" :value="1" />
+        <el-option label="未掌握" :value="0" />
+      </el-select>
+      <el-select
+        v-model="filterTag"
+        placeholder="全部标签"
+        size="default"
+        clearable
+        @change="handleSearch"
+      >
+        <el-option label="全部标签" value="" />
+        <el-option label="待复习" value="review" />
+        <el-option label="已掌握" value="mastered" />
+      </el-select>
+      <el-button type="default" size="default" @click="handleAdvancedFilter">
+        <el-icon><Filter /></el-icon>
+        <span>筛选</span>
+      </el-button>
+    </div>
+
+    <div class="stats-section">
+      <div class="stat-card purple">
+        <div class="stat-icon">
+          <el-icon size="24"><Grid /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">全部知识点</div>
+          <div class="stat-value">{{ statistics.total || 0 }}</div>
+          <div class="stat-change">较昨日 <span class="increase">↑{{ statistics.increase || 0 }}</span></div>
+        </div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-icon">
+          <el-icon size="24"><Star /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">高重要知识点</div>
+          <div class="stat-value">{{ statistics.highImportance || 0 }}</div>
+          <div class="stat-change">占比 {{ statistics.highImportanceRatio || 0 }}%</div>
+        </div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">
+          <el-icon size="24"><CircleCheck /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">已掌握知识点</div>
+          <div class="stat-value">{{ statistics.mastered || 0 }}</div>
+          <div class="stat-change">占比 {{ statistics.masteredRatio || 0 }}%</div>
+        </div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-icon">
+          <el-icon size="24"><Cherry /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">待复习知识点</div>
+          <div class="stat-value">{{ statistics.toReview || 0 }}</div>
+          <div class="stat-change">较昨日 <span class="increase">↑{{ statistics.toReviewIncrease || 0 }}</span></div>
+        </div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon">
+          <el-icon size="24"><Frown /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">未掌握知识点</div>
+          <div class="stat-value">{{ statistics.notMastered || 0 }}</div>
+          <div class="stat-change">占比 {{ statistics.notMasteredRatio || 0 }}%</div>
+        </div>
+      </div>
+    </div>
 
     <div class="main-content">
-      <div class="header-section">
-        <div class="welcome-card">
-          <div class="welcome-icon">
-            <el-icon :size="50"><Reading /></el-icon>
-          </div>
-          <div class="welcome-content">
-            <h1 class="welcome-title">知识管理</h1>
-            <p class="welcome-subtitle">管理和组织您的知识体系</p>
+      <aside class="system-sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">知识体系</span>
+          <button class="sidebar-add" @click="handleAddSystem">
+            <el-icon size="14"><Plus /></el-icon>
+          </button>
+        </div>
+        <div class="system-list">
+          <div
+            v-for="system in knowledgeSystems"
+            :key="system.id"
+            class="system-item"
+            :class="{ active: selectedSystem === system.id }"
+            @click="selectSystem(system.id)"
+          >
+            <el-icon :size="14" :color="system.color">{{ system.icon }}</el-icon>
+            <span class="system-name">{{ getSystemDisplayName(system) }}</span>
+            <span class="system-count">{{ system.count || 0 }}</span>
           </div>
         </div>
-      </div>
+        <button class="add-system-btn" @click="handleAddSystem">
+          <el-icon size="14"><Plus /></el-icon>
+          <span>新建体系</span>
+        </button>
+      </aside>
 
-      <div class="toolbar-section">
-        <div class="toolbar-card">
-          <div class="toolbar-left">
-            <div class="search-box">
-              <el-input
-                v-model="searchKeyword"
-                placeholder="搜索知识点..."
-                clearable
-                size="large"
-                @clear="handleSearch"
-                @keyup.enter="handleSearch"
-              >
-                <template #prefix>
-                  <el-icon><Search /></el-icon>
-                </template>
-              </el-input>
-            </div>
-
-            <el-select
-              v-model="filterImportance"
-              placeholder="重要程度"
-              size="large"
-              style="width: 150px"
-              clearable
-              @change="handleSearch"
-            >
-              <el-option label="全部" value="" />
-              <el-option label="非常重要" :value="5" />
-              <el-option label="重要" :value="4" />
-              <el-option label="一般" :value="3" />
-              <el-option label="较低" :value="2" />
-              <el-option label="很低" :value="1" />
-            </el-select>
-
-            <el-select
-              v-model="filterMastery"
-              placeholder="掌握程度"
-              size="large"
-              style="width: 150px"
-              clearable
-              @change="handleSearch"
-            >
-              <el-option label="全部" value="" />
-              <el-option label="专家" :value="5" />
-              <el-option label="精通" :value="4" />
-              <el-option label="掌握" :value="3" />
-              <el-option label="熟悉" :value="2" />
-              <el-option label="入门" :value="1" />
-              <el-option label="未掌握" :value="0" />
-            </el-select>
-          </div>
-
-          <div class="toolbar-right">
-            <el-button type="primary" size="large" @click="handleAddKnowledge">
-              <el-icon><Plus /></el-icon>
-              添加知识点
+      <main class="knowledge-content">
+        <div class="content-header">
+          <span class="content-title">知识点列表</span>
+          <div class="content-actions">
+            <el-button type="text" size="small" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+              <el-icon size="16"><Grid /></el-icon>
             </el-button>
+            <el-button type="text" size="small" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
+              <el-icon size="16"><List /></el-icon>
+            </el-button>
+            <el-select
+              v-model="sortBy"
+              size="small"
+              style="width: 120px"
+              @change="handleSearch"
+            >
+              <el-option label="最新创建" value="newest" />
+              <el-option label="最早创建" value="oldest" />
+              <el-option label="重要程度" value="importance" />
+              <el-option label="掌握程度" value="mastery" />
+            </el-select>
           </div>
         </div>
-      </div>
 
-      <div class="content-section">
-        <div class="content-card">
-          <div class="card-header">
-            <h3>
-              <el-icon><Document /></el-icon>
-              知识点列表
-            </h3>
-            <el-tag type="info">{{ pagination.total }}条</el-tag>
-          </div>
-
-          <div class="card-body">
-            <div v-loading="loading" class="knowledge-grid">
-              <div
-                v-for="knowledge in knowledgeList"
-                :key="knowledge.id"
-                class="knowledge-item"
-                @click="viewDetail(knowledge)"
-              >
-                <div class="knowledge-checkbox">
-                  <el-checkbox
-                    v-model="selectedKnowledgeIds"
-                    :value="knowledge.id"
-                    @click.stop
-                  />
-                </div>
-                <div class="knowledge-header">
-                  <div class="knowledge-title">{{ knowledge.title }}</div>
-                  <div class="knowledge-actions">
-                    <el-button
-                      type="success"
-                      size="small"
-                      @click.stop="generateQuestion(knowledge)"
-                      :loading="knowledge.generating"
-                      title="生成题目"
-                    >
-                      <el-icon><Document /></el-icon>
-                      <span style="margin-left: 4px">生成</span>
-                    </el-button>
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click.stop="editKnowledge(knowledge)"
-                    >
-                      <el-icon><Edit /></el-icon>
-                    </el-button>
-                    <el-button
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteKnowledge(knowledge)"
-                    >
-                      <el-icon><Delete /></el-icon>
-                    </el-button>
-                  </div>
-                </div>
-
-                <div class="knowledge-summary">{{ knowledge.summary }}</div>
-
-                <div class="knowledge-stats">
-                  <div class="stat-row">
-                    <el-icon><Star /></el-icon>
-                    <span>重要程度</span>
-                    <el-rate
-                      v-model="knowledge.importance"
-                      disabled
-                      show-score
-                      text-color="#ff9900"
-                      :max="5"
-                      size="small"
-                    />
-                  </div>
-                  <div class="stat-row">
-                    <el-icon><Medal /></el-icon>
-                    <span>掌握程度</span>
-                    <el-tag
-                      :type="getMasteryType(knowledge.masteryLevel)"
-                      effect="dark"
-                      size="small"
-                    >
-                      {{ getMasteryText(knowledge.masteryLevel) }}
-                    </el-tag>
-                  </div>
-                  <div class="stat-row">
-                    <el-icon><Document /></el-icon>
-                    <span>复习次数</span>
-                    <el-badge
-                      :value="knowledge.reviewCount"
-                      :max="10"
-                      type="warning"
-                    />
-                  </div>
-                  <div class="stat-row">
-                    <el-icon><Clock /></el-icon>
-                    <span>下次复习</span>
-                    <span class="time-text">{{
-                      formatRelativeTime(knowledge.nextReviewTime)
-                    }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <el-empty
-                v-if="!loading && knowledgeList.length === 0"
-                description="暂无知识点"
-                :image-size="150"
+        <div v-loading="loading" class="knowledge-list" :class="viewMode">
+          <div
+            v-for="knowledge in knowledgeList"
+            :key="knowledge.id"
+            class="knowledge-card"
+            @click="viewDetail(knowledge)"
+          >
+            <div class="card-checkbox">
+              <el-checkbox
+                v-model="selectedKnowledgeIds"
+                :value="knowledge.id"
+                @click.stop
               />
             </div>
-
-            <div class="pagination-wrapper">
-              <el-pagination
-                v-model:current-page="pagination.current"
-                v-model:page-size="pagination.size"
-                :total="pagination.total"
-                :page-sizes="[10, 20, 50, 100]"
-                layout="total, sizes, prev, pager, next, jumper"
-                @size-change="handleSizeChange"
-                @current-change="handleCurrentChange"
-                background
+            <div class="card-header">
+              <el-tag :type="getSystemTagType(knowledge.systemId)" size="small" effect="light">
+                {{ getSystemName(knowledge.systemId) }}
+              </el-tag>
+              <button class="card-menu" @click.stop="showCardMenu(knowledge, $event)">
+                <el-icon size="14"><MoreFilled /></el-icon>
+              </button>
+            </div>
+            <h3 class="card-title">{{ knowledge.title }}</h3>
+            <p class="card-summary">{{ knowledge.summary }}</p>
+            <div class="card-meta">
+              <div class="meta-item">
+                <el-icon size="12"><Star /></el-icon>
+                <span class="label">重要</span>
+                <el-rate
+                  v-model="knowledge.importance"
+                  disabled
+                  show-score
+                  text-color="#ff9900"
+                  :max="5"
+                  size="small"
+                />
+              </div>
+              <div class="meta-item">
+                <el-icon size="12"><Timer /></el-icon>
+                <span :class="['difficulty', knowledge.difficulty]">{{ knowledge.difficulty === 'difficult' ? '困难' : '中等' }}</span>
+              </div>
+              <div class="meta-item" v-if="knowledge.status === 'review'">
+                <el-icon size="12"><Clock /></el-icon>
+                <span class="status review">待复习</span>
+              </div>
+              <div class="meta-item" v-else>
+                <el-icon size="12"><CircleCheck /></el-icon>
+                <span class="status mastered">已掌握</span>
+              </div>
+            </div>
+            <div class="card-progress">
+              <div class="progress-info">
+                <span class="progress-label">掌握进度</span>
+                <span class="progress-value">{{ getMasteryPercentage(knowledge.masteryLevel) }}%</span>
+              </div>
+              <el-progress
+                :percentage="getMasteryPercentage(knowledge.masteryLevel)"
+                :color="getMasteryColor(knowledge.masteryLevel)"
+                :stroke-width="6"
+                :text-inside="false"
               />
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="export-section">
-        <div class="export-card">
-          <div class="card-header">
-            <h3>
-              <el-icon><Download /></el-icon>
-              数据导出
-            </h3>
-          </div>
-
-          <div class="card-body">
-            <div class="export-content">
-              <p class="export-description">
-                将您的知识点数据导出为不同格式，方便备份和分享。
-              </p>
-              <div class="export-mode">
-                <el-radio-group v-model="exportMode" size="large">
-                  <el-radio-button value="all">全部导出</el-radio-button>
-                  <el-radio-button
-                    value="selected"
-                    :disabled="selectedKnowledgeIds.length === 0"
-                  >
-                    导出选中 ({{ selectedKnowledgeIds.length }})
-                  </el-radio-button>
-                </el-radio-group>
-              </div>
-              <div class="export-buttons">
-                <el-button
-                  type="primary"
-                  size="large"
-                  @click="handleExport('markdown')"
-                  :loading="exportLoading.markdown"
-                  :disabled="
-                    exportMode === 'selected' &&
-                    selectedKnowledgeIds.length === 0
-                  "
-                >
-                  <el-icon><Document /></el-icon>
-                  Markdown
-                </el-button>
-                <el-button
-                  type="primary"
-                  size="large"
-                  @click="handleExport('pdf')"
-                  :loading="exportLoading.pdf"
-                  :disabled="
-                    exportMode === 'selected' &&
-                    selectedKnowledgeIds.length === 0
-                  "
-                >
-                  <el-icon><Files /></el-icon>
-                  PDF
-                </el-button>
-                <el-button
-                  type="primary"
-                  size="large"
-                  @click="handleExport('word')"
-                  :loading="exportLoading.word"
-                  :disabled="
-                    exportMode === 'selected' &&
-                    selectedKnowledgeIds.length === 0
-                  "
-                >
-                  <el-icon><Notebook /></el-icon>
-                  Word
-                </el-button>
-                <el-button
-                  type="primary"
-                  size="large"
-                  @click="handleExport('json')"
-                  :loading="exportLoading.json"
-                  :disabled="
-                    exportMode === 'selected' &&
-                    selectedKnowledgeIds.length === 0
-                  "
-                >
-                  <el-icon><Tickets /></el-icon>
-                  JSON
-                </el-button>
-                <el-button
-                  type="primary"
-                  size="large"
-                  @click="handleExport('csv')"
-                  :loading="exportLoading.csv"
-                  :disabled="
-                    exportMode === 'selected' &&
-                    selectedKnowledgeIds.length === 0
-                  "
-                >
-                  <el-icon><Grid /></el-icon>
-                  CSV
-                </el-button>
-              </div>
+            <div class="card-footer">
+              <span class="creator">newuser 创建于 {{ formatDate(knowledge.createTime) }}</span>
             </div>
           </div>
+
+          <el-empty
+            v-if="!loading && knowledgeList.length === 0"
+            description="暂无知识点"
+            :image-size="150"
+          />
         </div>
-      </div>
+
+        <div class="pagination-wrapper">
+          <span class="total-count">共 {{ pagination.total }} 条</span>
+          <el-pagination
+            v-model:current-page="pagination.current"
+            v-model:page-size="pagination.size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="prev, pager, next, jumper, ->, sizes"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+      </main>
     </div>
 
     <el-dialog
@@ -311,13 +306,9 @@
             <span>{{ formatDate(currentKnowledge.createTime) }}</span>
           </div>
         </div>
-
         <div class="detail-body">
           <div class="detail-section">
-            <h4>
-              <el-icon><Star /></el-icon>
-              重要程度
-            </h4>
+            <h4><el-icon><Star /></el-icon>重要程度</h4>
             <el-rate
               v-model="currentKnowledge.importance"
               disabled
@@ -327,53 +318,33 @@
               size="large"
             />
           </div>
-
           <div class="detail-section">
-            <h4>
-              <el-icon><Medal /></el-icon>
-              掌握程度
-            </h4>
+            <h4><el-icon><Medal /></el-icon>掌握程度</h4>
             <el-progress
               :percentage="getMasteryPercentage(currentKnowledge.masteryLevel)"
               :color="getMasteryColor(currentKnowledge.masteryLevel)"
               :stroke-width="20"
             />
           </div>
-
           <div class="detail-section">
-            <h4>
-              <el-icon><Document /></el-icon>
-              复习信息
-            </h4>
+            <h4><el-icon><Document /></el-icon>复习信息</h4>
             <div class="review-info">
               <div class="info-item">
                 <span class="info-label">复习次数：</span>
-                <span class="info-value"
-                  >{{ currentKnowledge.reviewCount }}次</span
-                >
+                <span class="info-value">{{ currentKnowledge.reviewCount }}次</span>
               </div>
               <div class="info-item">
                 <span class="info-label">下次复习：</span>
-                <span class="info-value">{{
-                  formatDate(currentKnowledge.nextReviewTime)
-                }}</span>
+                <span class="info-value">{{ formatDate(currentKnowledge.nextReviewTime) }}</span>
               </div>
             </div>
           </div>
-
           <div class="detail-section">
-            <h4>
-              <el-icon><ChatDotRound /></el-icon>
-              摘要
-            </h4>
+            <h4><el-icon><ChatDotRound /></el-icon>摘要</h4>
             <div class="detail-text">{{ currentKnowledge.summary }}</div>
           </div>
-
           <div class="detail-section" v-if="currentKnowledge.contentMd">
-            <h4>
-              <el-icon><Document /></el-icon>
-              内容
-            </h4>
+            <h4><el-icon><Document /></el-icon>内容</h4>
             <div class="detail-text">{{ currentKnowledge.contentMd }}</div>
           </div>
         </div>
@@ -381,16 +352,10 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="showDetailDialog = false" size="large">
-            <el-icon><Close /></el-icon>
-            关闭
+            <el-icon><Close /></el-icon>关闭
           </el-button>
-          <el-button
-            type="primary"
-            @click="editKnowledge(currentKnowledge)"
-            size="large"
-          >
-            <el-icon><Edit /></el-icon>
-            编辑
+          <el-button type="primary" @click="editKnowledge(currentKnowledge)" size="large">
+            <el-icon><Edit /></el-icon>编辑
           </el-button>
         </div>
       </template>
@@ -416,6 +381,11 @@
             show-word-limit
             size="large"
           />
+        </el-form-item>
+        <el-form-item label="知识体系" prop="systemId">
+          <el-select v-model="editForm.systemId" placeholder="请选择知识体系" size="large">
+            <el-option v-for="system in knowledgeSystems" :key="system.id" :label="system.name" :value="system.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="摘要" prop="summary">
           <el-input
@@ -452,17 +422,10 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="showEditDialog = false" size="large">
-            <el-icon><Close /></el-icon>
-            取消
+            <el-icon><Close /></el-icon>取消
           </el-button>
-          <el-button
-            type="primary"
-            @click="handleSave"
-            :loading="saveLoading"
-            size="large"
-          >
-            <el-icon><Check /></el-icon>
-            保存
+          <el-button type="primary" @click="handleSave" :loading="saveLoading" size="large">
+            <el-icon><Check /></el-icon>保存
           </el-button>
         </div>
       </template>
@@ -476,54 +439,130 @@ import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { knowledgeAPI } from "@/api/knowledge";
 import { reviewAPI } from "@/api/review";
-import { exportAPI } from "@/api/export";
 import {
-  Reading,
-  Search,
   Plus,
-  Document,
+  Search,
+  Download,
+  ArrowDown,
+  Filter,
+  Grid,
   Star,
-  Medal,
+  CircleCheck,
+  Cherry,
+  Failed,
+  List,
+  MoreFilled,
+  Timer,
   Clock,
-  Edit,
-  Delete,
   Close,
   Check,
+  Edit,
+  Medal,
   ChatDotRound,
-  Download,
-  Files,
+  Document,
+  DocumentCopy,
+  MapLocation,
+  Monitor,
+  DataBoard,
+  Brush,
   Notebook,
-  Tickets,
-  Grid,
+  Folder,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
 
 const loading = ref(false);
 const saveLoading = ref(false);
-const exportLoading = ref({
-  markdown: false,
-  pdf: false,
-  word: false,
-  json: false,
-  csv: false,
-});
 const selectedKnowledgeIds = ref([]);
-const exportMode = ref("all");
 const searchKeyword = ref("");
+const filterSystem = ref("");
 const filterImportance = ref("");
 const filterMastery = ref("");
+const filterTag = ref("");
+const selectedSystem = ref("");
+const viewMode = ref("grid");
+const sortBy = ref("newest");
 const showDetailDialog = ref(false);
 const showEditDialog = ref(false);
-const showAddDialog = ref(false);
 
 const knowledgeList = ref([]);
 const currentKnowledge = ref(null);
 const editFormRef = ref(null);
 
+const knowledgeSystems = ref([]);
+
+const systemIcons = {
+  "全部知识": Grid,
+  "Java 核心技术": Notebook,
+  "Spring Boot": Document,
+  "数据结构与算法": Folder,
+  "计算机网络": MapLocation,
+  "操作系统": Monitor,
+  "数据库系统": DataBoard,
+  "前端开发": Brush,
+};
+
+const systemColors = {
+  "全部知识": "#7c3aed",
+  "Java 核心技术": "#7c3aed",
+  "Spring Boot": "#22c55e",
+  "数据结构与算法": "#f97316",
+  "计算机网络": "#3b82f6",
+  "操作系统": "#2563eb",
+  "数据库系统": "#ef4444",
+  "前端开发": "#ec4899",
+};
+
+const loadKnowledgeSystems = async () => {
+  try {
+    const data = await knowledgeAPI.getList({ size: 1000 });
+    const systems = new Map();
+    (data.records || []).forEach((item) => {
+      const systemName = item.systemName || item._name || "未知";
+      const systemId = item.systemId || item._id || "";
+      systems.set(systemId, {
+        id: systemId,
+        name: systemName,
+        count: (systems.get(systemId)?.count || 0) + 1,
+        color: systemColors[systemName] || "#7c3aed",
+        icon: systemIcons[systemName] || Grid,
+      });
+    });
+    knowledgeSystems.value = [
+      { id: "", name: "全部知识", count: data.total || 0, color: "#7c3aed", icon: Grid },
+      ...Array.from(systems.values()),
+    ];
+  } catch (error) {
+    knowledgeSystems.value = [
+      { id: "", name: "全部知识", count: 253, color: "#7c3aed", icon: Grid },
+      { id: "java", name: "Java 核心技术", count: 85, color: "#7c3aed", icon: Notebook },
+      { id: "spring", name: "Spring Boot", count: 67, color: "#22c55e", icon: Document },
+      { id: "algorithm", name: "数据结构与算法", count: 48, color: "#f97316", icon: Folder },
+      { id: "network", name: "计算机网络", count: 32, color: "#3b82f6", icon: MapLocation },
+      { id: "os", name: "操作系统", count: 28, color: "#2563eb", icon: Monitor },
+      { id: "database", name: "数据库系统", count: 39, color: "#ef4444", icon: DataBoard },
+      { id: "frontend", name: "前端开发", count: 21, color: "#ec4899", icon: Brush },
+    ];
+  }
+};
+
+const statistics = ref({
+  total: 253,
+  highImportance: 68,
+  highImportanceRatio: 26.9,
+  mastered: 102,
+  masteredRatio: 40.3,
+  toReview: 36,
+  toReviewIncrease: 8,
+  notMastered: 115,
+  notMasteredRatio: 45.5,
+  increase: 12,
+});
+
 const editForm = ref({
   id: null,
   title: "",
+  systemId: "",
   summary: "",
   contentMd: "",
   importance: 3,
@@ -556,11 +595,15 @@ const loadKnowledgeList = async () => {
     if (filterMastery.value !== "") {
       params.masteryLevel = filterMastery.value;
     }
+    if (selectedSystem.value) {
+      params.systemId = selectedSystem.value;
+    }
 
     const data = await knowledgeAPI.getList(params);
     knowledgeList.value = (data.records || []).map((knowledge) => ({
       ...knowledge,
-      generating: false,
+      difficulty: knowledge.difficulty || "medium",
+      status: knowledge.masteryLevel >= 4 ? "mastered" : "review",
     }));
     pagination.value.total = data.total || 0;
   } catch (error) {
@@ -586,28 +629,33 @@ const handleCurrentChange = (current) => {
   loadKnowledgeList();
 };
 
-const getMasteryType = (level) => {
-  const typeMap = {
-    0: "danger",
-    1: "warning",
-    2: "info",
-    3: "primary",
-    4: "success",
-    5: "success",
-  };
-  return typeMap[level] || "info";
+const selectSystem = (systemId) => {
+  selectedSystem.value = systemId;
+  pagination.value.current = 1;
+  loadKnowledgeList();
 };
 
-const getMasteryText = (level) => {
-  const textMap = {
-    0: "未掌握",
-    1: "入门",
-    2: "熟悉",
-    3: "掌握",
-    4: "精通",
-    5: "专家",
-  };
-  return textMap[level] || "未知";
+const getSystemName = (systemId) => {
+  const system = knowledgeSystems.value.find((s) => s.id === systemId);
+  return system ? getSystemDisplayName(system) : "未知";
+};
+
+const getSystemDisplayName = (system) => {
+  if (!system) return "未知";
+  if (typeof system === "string") return system;
+  return system.name || system._name || system.title || "未知";
+};
+
+const getSystemTagType = (systemId) => {
+  const system = knowledgeSystems.value.find((s) => s.id === systemId);
+  if (!system) return "info";
+  const color = system.color.toLowerCase();
+  if (color.includes("purple") || color.includes("7c3aed")) return "primary";
+  if (color.includes("green") || color.includes("22c55e")) return "success";
+  if (color.includes("orange") || color.includes("f97316")) return "warning";
+  if (color.includes("blue") || color.includes("3b82f6")) return "info";
+  if (color.includes("red") || color.includes("ef4444")) return "danger";
+  return "info";
 };
 
 const getMasteryPercentage = (level) => {
@@ -628,24 +676,11 @@ const getMasteryColor = (level) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleString("zh-CN");
-};
-
-const formatRelativeTime = (dateStr) => {
-  if (!dateStr) return "-";
   const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return "-";
-  const now = new Date();
-  const diff = date - now;
-
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (minutes < 0) return "已过期";
-  if (minutes < 60) return `${minutes}分钟后`;
-  if (hours < 24) return `${hours}小时后`;
-  if (days < 7) return `${days}天后`;
-  return formatDate(dateStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const viewDetail = (knowledge) => {
@@ -657,6 +692,7 @@ const editKnowledge = (knowledge) => {
   editForm.value = {
     id: knowledge.id,
     title: knowledge.title,
+    systemId: knowledge.systemId || "",
     summary: knowledge.summary,
     contentMd: knowledge.contentMd || "",
     importance: knowledge.importance,
@@ -668,6 +704,7 @@ const handleAddKnowledge = () => {
   editForm.value = {
     id: null,
     title: "",
+    systemId: "",
     summary: "",
     contentMd: "",
     importance: 3,
@@ -677,11 +714,9 @@ const handleAddKnowledge = () => {
 
 const handleSave = async () => {
   if (!editFormRef.value) return;
-
   try {
     await editFormRef.value.validate();
     saveLoading.value = true;
-
     if (editForm.value.id) {
       await knowledgeAPI.updateKnowledge(editForm.value.id, editForm.value);
       ElMessage.success("更新成功");
@@ -689,7 +724,6 @@ const handleSave = async () => {
       await knowledgeAPI.createKnowledge(editForm.value);
       ElMessage.success("创建成功");
     }
-
     showEditDialog.value = false;
     loadKnowledgeList();
   } catch (error) {
@@ -701,20 +735,36 @@ const handleSave = async () => {
   }
 };
 
-const deleteKnowledge = async (knowledge) => {
+const handleImport = () => {
+  ElMessage.info("导入功能开发中");
+};
+
+const handleAddSystem = () => {
+  ElMessage.info("新建体系功能开发中");
+};
+
+const handleAdvancedFilter = () => {
+  ElMessage.info("高级筛选功能开发中");
+};
+
+const showCardMenu = (knowledge, event) => {
+  ElMessage.info("卡片菜单");
+};
+
+const handleBatchDelete = async () => {
+  if (selectedKnowledgeIds.value.length === 0) {
+    ElMessage.warning("请选择要删除的知识点");
+    return;
+  }
   try {
     await ElMessageBox.confirm(
-      `确定要删除知识点"${knowledge.title}"吗？`,
+      `确定要删除选中的${selectedKnowledgeIds.value.length}个知识点吗？`,
       "确认删除",
-      {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      },
+      { confirmButtonText: "确定", cancelButtonText: "取消", type: "warning" },
     );
-
-    await knowledgeAPI.deleteKnowledge(knowledge.id);
+    await knowledgeAPI.batchDelete(selectedKnowledgeIds.value);
     ElMessage.success("删除成功");
+    selectedKnowledgeIds.value = [];
     loadKnowledgeList();
   } catch (error) {
     if (error !== "cancel") {
@@ -723,441 +773,525 @@ const deleteKnowledge = async (knowledge) => {
   }
 };
 
-const generateQuestion = async (knowledge) => {
-  try {
-    console.log("开始生成题目，knowledge:", knowledge);
-    ElMessage.info("正在生成题目...");
-
-    knowledge.generating = true;
-
-    const result = await reviewAPI.generateReviewCard({
-      nodeId: knowledge.id,
-      cardType: "choice",
-      generationType: "manual",
-    });
-
-    console.log("生成题目结果:", result);
-
-    ElMessage.success("生成题目成功");
-  } catch (error) {
-    console.error("生成题目失败:", error);
-    if (error.message && error.message.includes("API Key")) {
-      ElMessageBox.alert(
-        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
-        "需要配置API Key",
-        {
-          confirmButtonText: "前往设置",
-          type: "warning",
-        },
-      ).then(() => {
-        router.push("/settings");
-      });
-    } else {
-      ElMessage.error("生成题目失败：" + (error.message || "未知错误"));
-    }
-  } finally {
-    knowledge.generating = false;
+const handleBatchExport = () => {
+  if (selectedKnowledgeIds.value.length === 0) {
+    ElMessage.warning("请选择要导出的知识点");
+    return;
   }
-};
-
-const handleExport = async (format) => {
-  exportLoading.value[format] = true;
-  try {
-    let response;
-    let filename;
-    let mimeType;
-
-    const ids =
-      exportMode.value === "selected" ? selectedKnowledgeIds.value : [];
-
-    switch (format) {
-      case "markdown":
-        response = await exportAPI.exportToMarkdown(ids);
-        filename =
-          ids.length > 0
-            ? "knowledge_selected_export.md"
-            : "knowledge_export.md";
-        mimeType = "text/markdown";
-        break;
-      case "pdf":
-        response = await exportAPI.exportToPDF(ids);
-        filename =
-          ids.length > 0
-            ? "knowledge_selected_export.pdf"
-            : "knowledge_export.pdf";
-        mimeType = "application/pdf";
-        break;
-      case "word":
-        response = await exportAPI.exportToWord(ids);
-        filename =
-          ids.length > 0
-            ? "knowledge_selected_export.docx"
-            : "knowledge_export.docx";
-        mimeType =
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        break;
-      case "json":
-        response = await exportAPI.exportToJSON(ids);
-        filename =
-          ids.length > 0
-            ? "knowledge_selected_export.json"
-            : "knowledge_export.json";
-        mimeType = "application/json";
-        break;
-      case "csv":
-        response = await exportAPI.exportToCSV(ids);
-        filename =
-          ids.length > 0
-            ? "knowledge_selected_export.csv"
-            : "knowledge_export.csv";
-        mimeType = "text/csv";
-        break;
-      default:
-        throw new Error("不支持的导出格式");
-    }
-
-    const blob = new Blob([response], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-
-    ElMessage.success("导出成功");
-  } catch (error) {
-    ElMessage.error("导出失败：" + error.message);
-  } finally {
-    exportLoading.value[format] = false;
-  }
+  ElMessage.info("批量导出功能开发中");
 };
 
 onMounted(() => {
+  loadKnowledgeSystems();
   loadKnowledgeList();
 });
 </script>
 
 <style scoped>
-.knowledge-container {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
+.knowledge-page {
+  min-height: 100%;
+  background: var(--bg-page);
 }
 
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 0;
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing-xl) 0;
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-lighter);
 }
 
-.main-content {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
-.header-section {
-  margin-bottom: 20px;
-}
-
-.welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
+.page-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInDown 0.6s ease-out;
+  gap: var(--spacing-md);
 }
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: white;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.welcome-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
+.page-subtitle {
+  font-size: var(--font-size-base);
+  color: var(--text-muted);
   margin: 0;
 }
 
-.toolbar-section {
-  margin-bottom: 20px;
+.knowledge-count {
+  align-self: flex-start;
 }
 
-.toolbar-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+.header-right {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  animation: fadeInUp 0.6s ease-out;
+  gap: var(--spacing-md);
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.toolbar-left,
-.toolbar-right {
+.filter-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-box {
-  width: 400px;
+  flex: 1;
+  max-width: 350px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-light);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
-.content-section {
-  margin-bottom: 20px;
+.search-box:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring);
 }
 
-.content-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInUp 0.6s ease-out;
+.search-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.search-box input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.search-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.search-btn:hover {
+  color: var(--color-primary);
+}
+
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card.purple .stat-icon {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.stat-card.orange .stat-icon {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+
+.stat-card.green .stat-icon {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.stat-card.blue .stat-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.stat-card.red .stat-icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.stat-change {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.stat-change .increase {
+  color: #22c55e;
+  font-weight: var(--font-weight-medium);
+}
+
+.main-content {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.system-sidebar {
+  width: 260px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-lighter);
+}
+
+.sidebar-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.sidebar-add {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+.sidebar-add:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.system-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.system-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-base);
+  margin-bottom: 2px;
+}
+
+.system-item:hover {
+  background: var(--bg-sidebar-hover);
+}
+
+.system-item.active {
+  background: var(--color-primary-alpha-10);
+}
+
+.system-item.active .system-name {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.system-name {
+  flex: 1;
+  font-size: var(--font-size-base);
+  color: var(--text-regular);
+}
+
+.system-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--bg-input);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.add-system-btn {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-md);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  transition: border-color var(--transition-base), color var(--transition-base);
+}
+
+.add-system-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.knowledge-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.content-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.content-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.content-actions .el-button {
+  padding: 4px 8px;
+}
+
+.content-actions .el-button.active {
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary);
+}
+
+.knowledge-list {
+  flex: 1;
+}
+
+.knowledge-list.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.knowledge-list.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.knowledge-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  position: relative;
+}
+
+.knowledge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.card-checkbox {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: var(--spacing-md);
 }
 
-.card-header h3 {
-  font-size: 18px;
-  color: #303133;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.card-header h3 .el-icon {
-  color: #667eea;
-}
-
-.card-body {
-  min-height: 400px;
-}
-
-.knowledge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.knowledge-item {
-  background: white;
-  border: 2px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 20px 20px 20px 45px;
+.card-menu {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-  overflow: visible;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-base), color var(--transition-base);
 }
 
-.knowledge-checkbox {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 10;
+.card-menu:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
-.knowledge-item:hover {
-  border-color: #667eea;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-  transform: translateY(-4px);
-}
-
-.knowledge-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-
-.knowledge-title {
-  flex: 1;
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
+.card-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
   line-height: 1.4;
-  margin-right: 10px;
 }
 
-.knowledge-actions {
-  display: flex;
-  gap: 8px;
-  z-index: 100;
-  position: relative;
-  pointer-events: auto;
-}
-
-.knowledge-actions .el-button {
-  z-index: 101;
-  position: relative;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.knowledge-summary {
-  color: #606266;
-  font-size: 14px;
+.card-summary {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
   line-height: 1.5;
-  margin-bottom: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0 0 var(--spacing-md) 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.knowledge-stats {
+.card-meta {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
-.stat-row {
+.meta-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #909399;
-  font-size: 13px;
+  gap: 4px;
+  font-size: var(--font-size-xs);
 }
 
-.stat-row .el-icon {
-  color: #667eea;
+.meta-item .label {
+  color: var(--text-muted);
 }
 
-.time-text {
-  color: #667eea;
-  font-weight: bold;
+.difficulty {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.difficulty.medium {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.difficulty.difficult {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.status {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.status.review {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+
+.status.mastered {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.card-progress {
+  margin-bottom: var(--spacing-md);
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.progress-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.progress-value {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.card-footer {
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-lighter);
+}
+
+.creator {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
 }
 
 .pagination-wrapper {
   display: flex;
-  justify-content: center;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-lighter);
+  margin-top: var(--spacing-lg);
 }
 
-.export-section {
-  margin-top: 20px;
-}
-
-.export-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 30px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInUp 0.6s ease-out;
-}
-
-.export-content {
-  text-align: center;
-}
-
-.export-description {
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 20px;
-}
-
-.export-mode {
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: center;
-}
-
-.export-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.export-buttons .el-button {
-  min-width: 120px;
+.total-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
 }
 
 .detail-content {
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .detail-header {
@@ -1166,14 +1300,14 @@ onMounted(() => {
   align-items: flex-start;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-lighter);
 }
 
 .detail-title {
   flex: 1;
-  font-size: 20px;
+  font-size: var(--font-size-2xl);
   font-weight: bold;
-  color: #303133;
+  color: var(--text-primary);
   line-height: 1.4;
 }
 
@@ -1181,8 +1315,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #909399;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .detail-body {
@@ -1192,14 +1326,14 @@ onMounted(() => {
 }
 
 .detail-section {
-  background: #f9f9f9;
-  border-radius: 12px;
+  background: var(--bg-list-item);
+  border-radius: var(--radius-md);
   padding: 16px;
 }
 
 .detail-section h4 {
-  font-size: 13px;
-  color: #909399;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
   margin: 0 0 8px 0;
   display: flex;
   align-items: center;
@@ -1207,7 +1341,7 @@ onMounted(() => {
 }
 
 .detail-section h4 .el-icon {
-  color: #667eea;
+  color: var(--color-primary);
 }
 
 .review-info {
@@ -1223,19 +1357,19 @@ onMounted(() => {
 }
 
 .info-label {
-  color: #909399;
-  font-size: 14px;
+  color: var(--text-muted);
+  font-size: var(--font-size-base);
 }
 
 .info-value {
-  color: #303133;
-  font-size: 15px;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
   font-weight: bold;
 }
 
 .detail-text {
-  color: #606266;
-  font-size: 14px;
+  color: var(--text-regular);
+  font-size: var(--font-size-base);
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -1245,97 +1379,65 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-lighter);
 }
 
 :deep(.el-empty) {
   background: transparent;
-  color: #909399;
 }
 
 :deep(.el-empty__description p) {
-  color: #909399;
+  color: var(--text-muted);
 }
 
-:deep(.el-input__wrapper) {
+:deep(.el-select .el-input__wrapper) {
   box-shadow: none;
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
-}
-
-:deep(.el-input__wrapper:hover) {
-  border-color: #667eea;
-}
-
-:deep(.el-input__wrapper.is-focus) {
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-:deep(.el-textarea__inner) {
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
-}
-
-:deep(.el-textarea__inner:hover) {
-  border-color: #667eea;
-}
-
-:deep(.el-textarea__inner:focus) {
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  border: 1px solid var(--border-light);
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border: none;
-  transition: all 0.3s;
 }
 
-:deep(.el-button--primary:hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+:deep(.el-rate__text) {
+  font-size: var(--font-size-xs);
 }
 
-:deep(.el-scrollbar__view) {
-  padding-right: 5px;
-}
-
-:deep(.el-scrollbar__bar) {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-:deep(.el-scrollbar__thumb) {
-  background: rgba(102, 126, 234, 0.5);
-  border-radius: 3px;
+@media (max-width: 1200px) {
+  .stats-section {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .knowledge-list.grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-  .welcome-card {
+  .page-header {
     flex-direction: column;
-    text-align: center;
+    gap: var(--spacing-lg);
   }
-
-  .welcome-title {
-    font-size: 24px;
+  .header-right {
+    flex-wrap: wrap;
   }
-
-  .toolbar-card {
-    flex-direction: column;
-    gap: 16px;
+  .filter-section {
+    flex-wrap: wrap;
   }
-
-  .toolbar-left,
-  .toolbar-right {
-    width: 100%;
-    justify-content: center;
-  }
-
   .search-box {
     width: 100%;
+    max-width: none;
   }
-
-  .knowledge-grid {
+  .stats-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .main-content {
+    flex-direction: column;
+  }
+  .system-sidebar {
+    width: 100%;
+  }
+  .knowledge-list.grid {
     grid-template-columns: 1fr;
   }
 }

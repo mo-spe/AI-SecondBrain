@@ -1,5 +1,5 @@
 <template>
-  <div class="knowledge-graph-container">
+  <div class="knowledge-graph-container" aria-label="知识图谱页面">
     <div class="background-gradient"></div>
 
     <div class="main-content">
@@ -209,7 +209,7 @@ const renderGraph = (graph) => {
       formatter: function (params) {
         if (params.dataType === "node") {
           return `
-            <div style="padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+            <div style="padding: 12px; background: linear-gradient(135deg, #0f172a 0%, #0e7490 100%); border-radius: 8px; color: white;">
               <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${params.name}</div>
               <div style="font-size: 12px; margin-bottom: 4px;">📊 重要程度：${"⭐".repeat(params.data.importance || 0)}</div>
               <div style="font-size: 12px;">🎯 掌握程度：${getMasteryLevelText(params.data.masteryLevel)}</div>
@@ -217,7 +217,7 @@ const renderGraph = (graph) => {
           `;
         } else {
           return `
-            <div style="padding: 12px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; color: white;">
+            <div style="padding: 12px; background: linear-gradient(135deg, #b91c1c 0%, #f87171 100%); border-radius: 8px; color: white;">
               <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${params.data.label}</div>
               <div style="font-size: 12px;">💪 强度：${(params.data.strength * 100).toFixed(1)}%</div>
             </div>
@@ -302,15 +302,15 @@ const renderGraph = (graph) => {
           lineStyle: {
             width: 6,
             color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: "#667eea" },
-              { offset: 1, color: "#f093fb" },
+              { offset: 0, color: "#0891b2" },
+              { offset: 1, color: "#22d3ee" },
             ]),
             shadowBlur: 10,
-            shadowColor: "#667eea",
+            shadowColor: "#0891b2",
           },
           itemStyle: {
             shadowBlur: 20,
-            shadowColor: "#667eea",
+            shadowColor: "#0891b2",
           },
         },
         blur: {
@@ -442,84 +442,6 @@ onUnmounted(() => {
   overflow-x: hidden;
 }
 
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(
-      ellipse at 20% 30%,
-      rgba(102, 126, 234, 0.4) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 80% 20%,
-      rgba(118, 75, 162, 0.4) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 40% 80%,
-      rgba(240, 147, 251, 0.3) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 60% 60%,
-      rgba(102, 126, 234, 0.2) 0%,
-      transparent 40%
-    ),
-    linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  z-index: 0;
-}
-
-.background-gradient::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image:
-    radial-gradient(
-      2px 2px at 20px 30px,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    ),
-    radial-gradient(
-      2px 2px at 40px 70px,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 90px 40px,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    ),
-    radial-gradient(
-      2px 2px at 130px 80px,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    ),
-    radial-gradient(
-      1px 1px at 160px 120px,
-      rgba(255, 255, 255, 0.4),
-      transparent
-    );
-  background-size: 200px 200px;
-  animation: twinkle 4s ease-in-out infinite;
-}
-
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 .main-content {
   position: relative;
   z-index: 1;
@@ -532,119 +454,22 @@ onUnmounted(() => {
   margin-bottom: 20px;
 }
 
-.welcome-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  animation: fadeInDown 0.6s ease-out;
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-  box-shadow:
-    0 4px 20px rgba(102, 126, 234, 0.5),
-    inset 0 2px 0 rgba(255, 255, 255, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-.welcome-icon::before {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 70%
-  );
-  animation: shine 3s infinite;
-}
-
-@keyframes shine {
-  0% {
-    transform: translateX(-100%) rotate(45deg);
-  }
-  100% {
-    transform: translateX(100%) rotate(45deg);
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 6px 30px rgba(102, 126, 234, 0.7);
-  }
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  margin: 0;
-  font-size: 28px;
-  color: white;
-  font-weight: 600;
-}
-
-.welcome-subtitle {
-  margin: 8px 0 0 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-}
-
 .toolbar-section {
   margin-bottom: 20px;
 }
 
 .toolbar-card {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-white-alpha-15);
   backdrop-filter: blur(20px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+    inset 0 1px 0 var(--border-white-medium);
+  border: 1px solid var(--border-white-medium);
 }
 
 .toolbar-left {
@@ -662,23 +487,23 @@ onUnmounted(() => {
 }
 
 .graph-card {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-white-alpha-15);
   backdrop-filter: blur(20px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+    inset 0 1px 0 var(--border-white-medium);
+  border: 1px solid var(--border-white-medium);
   overflow: hidden;
 }
 
 .graph-header {
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid var(--border-white-translucent);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-white-alpha-10);
 }
 
 .graph-header h3 {
@@ -703,16 +528,16 @@ onUnmounted(() => {
   gap: 5px;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-white-alpha-10);
   padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-white-translucent);
 }
 
 .legend-color {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: inline-block;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -724,9 +549,9 @@ onUnmounted(() => {
 .graph-container {
   width: 100%;
   height: 600px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-white-translucent);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-white-alpha-10);
   backdrop-filter: blur(10px);
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
 }
@@ -737,14 +562,14 @@ onUnmounted(() => {
 
 .recommendation-card {
   background: white;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 
 .recommendation-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-lighter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -770,8 +595,8 @@ onUnmounted(() => {
 }
 
 .recommendation-item {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
   padding: 12px;
   background: #fafafa;
 }
@@ -796,7 +621,7 @@ onUnmounted(() => {
 
 .similarity {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .recommendation-target {

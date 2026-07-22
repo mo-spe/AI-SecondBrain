@@ -1,0 +1,57 @@
+/* ============================================================
+   UI/UX Pro Max — Dark Mode Overrides
+   Activated via [data-theme="dark"] on <html>
+   ============================================================ */
+
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-page: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-card-translucent: rgba(22, 33, 62, 0.95);
+  --bg-input: #0f3460;
+  --bg-hover: #1a1a3e;
+  --bg-list-item: #1a2744;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-white-alpha-10: rgba(255, 255, 255, 0.05);
+  --bg-white-alpha-15: rgba(255, 255, 255, 0.08);
+  --bg-white-alpha-20: rgba(255, 255, 255, 0.1);
+
+  /* Text */
+  --text-primary: #e8e8e8;
+  --text-regular: #c0c0c0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #909090;
+  --text-placeholder: #808080;
+
+  /* Borders */
+  --border-base: #2a2a4a;
+  --border-light: #333355;
+  --border-lighter: #2a2a40;
+  --border-white-translucent: rgba(255, 255, 255, 0.1);
+  --border-white-medium: rgba(255, 255, 255, 0.15);
+
+  /* Shadows (darker in dark mode) */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-primary: 0 4px 12px rgba(168, 85, 247, 0.2);
+  --shadow-primary-hover: 0 12px 40px rgba(168, 85, 247, 0.2);
+  --shadow-primary-xl: 0 10px 25px rgba(168, 85, 247, 0.3);
+  --shadow-dropdown: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-icon: 0 8px 20px rgba(168, 85, 247, 0.3);
+  --shadow-focus-ring: 0 0 0 2px rgba(168, 85, 247, 0.25);
+  --shadow-focus-ring-lg: 0 0 0 3px rgba(168, 85, 247, 0.2);
+
+  /* Semantic backgrounds */
+  --color-success-bg: rgba(103, 194, 58, 0.15);
+  --color-success-border: rgba(103, 194, 58, 0.3);
+  --color-warning-bg: rgba(230, 162, 60, 0.15);
+  --color-warning-border: rgba(230, 162, 60, 0.3);
+  --color-danger-bg: rgba(245, 108, 108, 0.15);
+  --color-danger-border: rgba(245, 108, 108, 0.3);
+  --color-info-bg: rgba(64, 158, 255, 0.15);
+  --color-info-border: rgba(64, 158, 255, 0.3);
+
+  /* Keep gradients but dim the radial */
+  --gradient-radial-top: radial-gradient(ellipse at top, rgba(168, 85, 247, 0.05) 0%, transparent 55%);
+}

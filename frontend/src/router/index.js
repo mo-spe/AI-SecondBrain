@@ -27,16 +27,10 @@ const routes = [
         meta: { title: "数据统计" },
       },
       {
-        path: "chat",
-        name: "Chat",
-        component: () => import("@/views/Chat.vue"),
-        meta: { title: "对话采集" },
-      },
-      {
         path: "capture",
         name: "Capture",
         component: () => import("@/views/Capture.vue"),
-        meta: { title: "数据捕捉" },
+        meta: { title: "数据采集中心" },
       },
       {
         path: "knowledge",
@@ -57,22 +51,10 @@ const routes = [
         meta: { title: "知识搜索" },
       },
       {
-        path: "rag-qa",
-        name: "RagQA",
-        component: () => import("@/views/RagQA.vue"),
-        meta: { title: "RAG知识问答" },
-      },
-      {
-        path: "knowledge-graph",
-        name: "KnowledgeGraph",
-        component: () => import("@/views/KnowledgeGraph.vue"),
-        meta: { title: "知识图谱" },
-      },
-      {
-        path: "report",
-        name: "Report",
-        component: () => import("@/views/Report.vue"),
-        meta: { title: "学习报告" },
+        path: "knowledge-system",
+        name: "KnowledgeSystem",
+        component: () => import("@/views/KnowledgeSystem.vue"),
+        meta: { title: "知识体系" },
       },
       {
         path: "research",

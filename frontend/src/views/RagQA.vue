@@ -1,5 +1,5 @@
 <template>
-  <div class="rag-qa-container">
+  <div class="rag-qa-container" aria-label="RAG问答页面">
     <div class="background-gradient"></div>
 
     <div class="main-content">
@@ -212,16 +212,6 @@ const handleGenerateVectors = async () => {
   overflow-x: hidden;
 }
 
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 0;
-}
-
 .main-content {
   position: relative;
   z-index: 1;
@@ -234,68 +224,7 @@ const handleGenerateVectors = async () => {
   margin-bottom: 20px;
 }
 
-.welcome-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  animation: fadeInDown 0.6s ease-out;
-}
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.welcome-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  margin: 0;
-  font-size: 28px;
-  color: white;
-  font-weight: 600;
-}
-
-.welcome-subtitle {
-  margin: 8px 0 0 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-}
 
 .content-wrapper {
   display: grid;
@@ -319,14 +248,14 @@ const handleGenerateVectors = async () => {
 .answer-card,
 .references-card {
   background: white;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 
 .card-header {
   padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-lighter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -335,7 +264,7 @@ const handleGenerateVectors = async () => {
 .card-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #2c3e50;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -358,18 +287,18 @@ const handleGenerateVectors = async () => {
 
 .answer-content {
   padding: 20px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
+  background-color: var(--bg-input);
+  border-radius: var(--radius-sm);
   line-height: 1.8;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-size: 15px;
   white-space: pre-wrap;
 }
 
 .reference-card {
   margin-bottom: 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
 }
 
 .reference-card:last-child {
@@ -386,20 +315,20 @@ const handleGenerateVectors = async () => {
 .reference-title {
   font-weight: 600;
   font-size: 15px;
-  color: #2c3e50;
+  color: var(--text-primary);
   flex: 1;
   margin-right: 10px;
 }
 
 .reference-summary {
-  color: #606266;
+  color: var(--text-regular);
   margin-bottom: 10px;
   font-size: 14px;
   line-height: 1.6;
 }
 
 .reference-content {
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.6;
   max-height: 100px;

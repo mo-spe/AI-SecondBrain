@@ -1,0 +1,77 @@
+<template>
+  <svg
+    :width="size"
+    :height="size"
+    viewBox="0 0 100 100"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    class="brain-icon"
+  >
+    <defs>
+      <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#A855F7;stop-opacity:1" />
+      </linearGradient>
+    </defs>
+
+    <rect width="100" height="100" rx="24" fill="url(#bgGradient)"/>
+
+    <g transform="translate(50, 45)">
+      <path d="M-22 -20 C-30 -20, -35 -12, -35 -3 C-35 3, -32 8, -28 11 C-30 15, -31 20, -29 24 C-27 28, -23 30, -19 30 C-15 30, -12 28, -10 25 C-8 28, -6 29, -6 29 L-6 -20 C-10 -20, -15 -18, -18 -15 C-20 -17, -21 -19, -22 -20 Z" fill="url(#brainGradient)" stroke="#4C1D95" stroke-width="1.5"/>
+      <path d="M22 -20 C30 -20, 35 -12, 35 -3 C35 3, 32 8, 28 11 C30 15, 31 20, 29 24 C27 28, 23 30, 19 30 C15 30, 12 28, 10 25 C8 28, 6 29, 6 29 L6 -20 C10 -20, 15 -18, 18 -15 C20 -17, 21 -19, 22 -20 Z" fill="none" stroke="url(#brainGradient)" stroke-width="2"/>
+
+      <circle cx="-15" cy="-8" r="2" fill="#C4B5FD" opacity="0.8"/>
+      <circle cx="-10" cy="2" r="2" fill="#C4B5FD" opacity="0.8"/>
+      <circle cx="-14" cy="12" r="2" fill="#C4B5FD" opacity="0.8"/>
+      <circle cx="-8" cy="18" r="2" fill="#C4B5FD" opacity="0.8"/>
+      <circle cx="-3" cy="16" r="2" fill="#C4B5FD" opacity="0.8"/>
+
+      <line x1="-15" y1="-8" x2="-10" y2="2" stroke="#C4B5FD" stroke-width="1" opacity="0.6"/>
+      <line x1="-10" y1="2" x2="-14" y2="12" stroke="#C4B5FD" stroke-width="1" opacity="0.6"/>
+      <line x1="-14" y1="12" x2="-8" y2="18" stroke="#C4B5FD" stroke-width="1" opacity="0.6"/>
+      <line x1="-8" y1="18" x2="-3" y2="16" stroke="#C4B5FD" stroke-width="1" opacity="0.6"/>
+
+      <circle cx="15" cy="-10" r="2.5" fill="#8B5CF6"/>
+      <circle cx="10" cy="2" r="2.5" fill="#8B5CF6"/>
+      <circle cx="16" cy="10" r="2.5" fill="#8B5CF6"/>
+      <circle cx="12" cy="18" r="2.5" fill="#8B5CF6"/>
+
+      <line x1="15" y1="-10" x2="10" y2="2" stroke="#8B5CF6" stroke-width="1.5"/>
+      <line x1="10" y1="2" x2="16" y2="10" stroke="#8B5CF6" stroke-width="1.5"/>
+      <line x1="16" y1="10" x2="12" y2="18" stroke="#8B5CF6" stroke-width="1.5"/>
+
+      <text x="0" y="4" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">AI</text>
+    </g>
+
+    <g transform="translate(50, 78)">
+      <path d="M-18 0 Q-25 -8, -18 -8 L-14 -8 Q-10 -8, -10 -4 L-10 0" fill="#E0E7FF" stroke="#6366F1" stroke-width="1"/>
+      <path d="M-14 -8 L-14 -3" stroke="#6366F1" stroke-width="1" stroke-dasharray="2 2"/>
+      <path d="M-14 -3 L-8 -3" stroke="#6366F1" stroke-width="1" stroke-dasharray="2 2"/>
+
+      <rect x="5" y="-8" width="4" height="8" rx="1" fill="#8B5CF6"/>
+      <rect x="12" y="-5" width="4" height="5" rx="1" fill="#A78BFA"/>
+      <rect x="19" y="-10" width="4" height="10" rx="1" fill="#6366F1"/>
+      <rect x="26" y="-3" width="4" height="3" rx="1" fill="#C4B5FD"/>
+    </g>
+  </svg>
+</template>
+
+<script setup>
+defineProps({
+  size: {
+    type: [Number, String],
+    default: 48,
+  },
+});
+</script>
+
+<style scoped>
+.brain-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+</style>

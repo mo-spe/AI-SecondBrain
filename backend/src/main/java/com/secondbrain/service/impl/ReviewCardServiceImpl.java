@@ -139,9 +139,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         
         ReviewResultDTO result = new ReviewResultDTO(isCorrect, card.getAnswer(), explanation, message);
         
-        // 无论自动生成还是手动生成，提交后都硬删除
-        reviewCardMapper.deleteById(cardId);
-        log.info("复习卡片已完成并硬删除，cardId：{}", cardId);
+        log.info("复习卡片已完成，cardId：{}", cardId);
         
         return result;
     }

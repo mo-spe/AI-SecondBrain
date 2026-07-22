@@ -1,5 +1,5 @@
 <template>
-  <div class="async-task-demo">
+  <div class="async-task-demo" aria-label="异步任务演示页面">
     <el-card shadow="hover">
       <template #header>
         <div class="card-header">
@@ -254,21 +254,21 @@ onUnmounted(() => {
 .task-result {
   margin-top: 20px;
   padding: 20px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
 }
 
 .task-result h3 {
   margin: 0 0 16px 0;
   font-size: 16px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .result-content {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.6;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .ws-info {
@@ -279,7 +279,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border-base);
 }
 
 .info-item:last-child {
@@ -288,11 +288,11 @@ onUnmounted(() => {
 
 .info-item .label {
   font-weight: 500;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .info-item .value {
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .ws-actions {
