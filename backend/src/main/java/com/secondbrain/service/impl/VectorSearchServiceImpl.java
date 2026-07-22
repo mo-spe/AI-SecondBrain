@@ -11,7 +11,6 @@ import com.secondbrain.service.EmbeddingService;
 import com.secondbrain.service.VectorSearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,27 +19,49 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 向量检索服务实现类
+ * 提供基于向量相似度的知识检索功能
+ */
 @Service
 public class VectorSearchServiceImpl implements VectorSearchService {
 
     private static final Logger log = LoggerFactory.getLogger(VectorSearchServiceImpl.class);
 
-    @Autowired
-    private EmbeddingService embeddingService;
+    private final EmbeddingService embeddingService;
+    private final KnowledgeEmbeddingMapper embeddingMapper;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
 
-    @Autowired
-    private KnowledgeEmbeddingMapper embeddingMapper;
-
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
+    public VectorSearchServiceImpl(EmbeddingService embeddingService, KnowledgeEmbeddingMapper embeddingMapper, KnowledgeNodeMapper knowledgeNodeMapper) {
+        this.embeddingService = embeddingService;
+        this.embeddingMapper = embeddingMapper;
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+    }
 
     private static final String defaultModel = "text-embedding-v2";
 
+    /**
+     * 搜索相似知识（使用默认API Key）
+     *
+     * @param question 查询问题
+     * @param userId   用户ID
+     * @param topK     返回结果数量
+     * @return 相似知识引用列表
+     */
     @Override
     public List<KnowledgeReference> searchSimilar(String question, Long userId, int topK) {
         return searchSimilar(question, userId, topK, null);
     }
 
+    /**
+     * 搜索相似知识（支持用户自定义API Key）
+     *
+     * @param question   查询问题
+     * @param userId     用户ID
+     * @param topK       返回结果数量
+     * @param userApiKey 用户API Key
+     * @return 相似知识引用列表
+     */
     @Override
     public List<KnowledgeReference> searchSimilar(String question, Long userId, int topK, String userApiKey) {
         log.info("开始向量检索，问题：'{}'，userId：{}，topK：{}", question, userId, topK);
@@ -49,7 +70,7 @@ public class VectorSearchServiceImpl implements VectorSearchService {
         
         if (questionEmbedding == null || questionEmbedding.isEmpty()) {
             log.error("问题向量化失败，无法进行检索");
-            throw new RuntimeException("问题向量化失败，请检查API Key配置或稍后重试");
+            throw new IllegalStateException("问题向量化失败，请检查API Key配置或稍后重试");
         }
 
         List<KnowledgeEmbedding> embeddings = embeddingMapper.getByUserId(userId);
@@ -114,6 +135,13 @@ public class VectorSearchServiceImpl implements VectorSearchService {
         return references;
     }
 
+    /**
+     * 计算两个向量之间的余弦相似度
+     *
+     * @param vec1 向量1
+     * @param vec2 向量2
+     * @return 余弦相似度值
+     */
     @Override
     public double calculateSimilarity(List<Float> vec1, List<Float> vec2) {
         if (vec1 == null || vec2 == null || vec1.isEmpty() || vec2.isEmpty()) {

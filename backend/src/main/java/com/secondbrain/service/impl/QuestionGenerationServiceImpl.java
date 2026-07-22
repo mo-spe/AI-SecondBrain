@@ -1,6 +1,5 @@
 package com.secondbrain.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondbrain.entity.KnowledgeNode;
@@ -20,6 +19,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 题目生成服务实现.
+ * <p>基于AI为知识点生成高质量的选择题、填空题和简答题</p>
+ */
 @Service
 public class QuestionGenerationServiceImpl implements QuestionGenerationService {
 
@@ -137,7 +140,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         } catch (RuntimeException e) {
             if (e.getMessage().contains("API Key")) {
                 log.error("AI服务不可用，请配置API Key：{}", e.getMessage());
-                throw new RuntimeException("AI服务不可用，请配置有效的API Key后重试。请前往个人设置添加API Key。");
+                throw new IllegalStateException("AI服务不可用，请配置有效的API Key后重试。请前往个人设置添加API Key。");
             }
             log.error("AI生成单选题失败，nodeId：{}", node.getId(), e);
             return generateFallbackChoiceQuestion(node);
@@ -1126,16 +1129,16 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
 
     private List<String> getExistingQuestions(Long nodeId) {
         try {
-            List<ReviewCard> cards = reviewCardMapper.selectList(
-                    new LambdaQueryWrapper<ReviewCard>()
-                            .eq(ReviewCard::getNodeId, nodeId)
-                            .eq(ReviewCard::getDeleted, 0)
-                            .orderByDesc(ReviewCard::getCreateTime)
+            List<com.secondbrain.entity.ReviewCard> cards = reviewCardMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.secondbrain.entity.ReviewCard>()
+                            .eq(com.secondbrain.entity.ReviewCard::getNodeId, nodeId)
+                            .eq(com.secondbrain.entity.ReviewCard::getDeleted, 0)
+                            .orderByDesc(com.secondbrain.entity.ReviewCard::getCreateTime)
                             .last("LIMIT 5")
             );
 
             List<String> questions = new ArrayList<>();
-            for (ReviewCard card : cards) {
+            for (com.secondbrain.entity.ReviewCard card : cards) {
                 if (card.getQuestion() != null && !card.getQuestion().isEmpty()) {
                     String questionText = extractQuestionText(card.getQuestion());
                     if (questionText != null && !questionText.isEmpty()) {

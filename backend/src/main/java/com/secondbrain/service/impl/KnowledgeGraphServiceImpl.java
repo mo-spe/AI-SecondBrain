@@ -13,7 +13,6 @@ import com.secondbrain.service.KnowledgeGraphService;
 import com.secondbrain.service.VectorSearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,23 +20,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 知识图谱服务实现类
+ * 构建和管理用户知识图谱，包括节点、关系及可视化数据
+ */
 @Service
 public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeGraphServiceImpl.class);
 
-    @Autowired
-    private KnowledgeRelationMapper relationMapper;
+    private final KnowledgeRelationMapper relationMapper;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
+    private final KnowledgeEmbeddingMapper embeddingMapper;
+    private final VectorSearchService vectorSearchService;
 
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
+    public KnowledgeGraphServiceImpl(KnowledgeRelationMapper relationMapper, KnowledgeNodeMapper knowledgeNodeMapper,
+                                     KnowledgeEmbeddingMapper embeddingMapper, VectorSearchService vectorSearchService) {
+        this.relationMapper = relationMapper;
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+        this.embeddingMapper = embeddingMapper;
+        this.vectorSearchService = vectorSearchService;
+    }
 
-    @Autowired
-    private KnowledgeEmbeddingMapper embeddingMapper;
-
-    @Autowired
-    private VectorSearchService vectorSearchService;
-
+    /**
+     * 获取用户的知识图谱
+     *
+     * @param userId 用户ID
+     * @return 知识图谱数据
+     */
     @Override
     public KnowledgeGraph getGraph(Long userId) {
         log.info("获取知识图谱，userId：{}", userId);
@@ -81,6 +91,12 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
         return graph;
     }
 
+    /**
+     * 手动添加知识关系
+     *
+     * @param request 关系请求
+     * @param userId  用户ID
+     */
     @Override
     public void addRelation(KnowledgeRelationRequest request, Long userId) {
         log.info("添加知识关系，fromId：{}，toId：{}，type：{}", 
@@ -99,6 +115,12 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
         log.info("知识关系添加成功，id：{}", relation.getId());
     }
 
+    /**
+     * 删除指定知识关系
+     *
+     * @param relationId 关系ID
+     * @param userId     用户ID
+     */
     @Override
     public void deleteRelation(Long relationId, Long userId) {
         log.info("删除知识关系，id：{}，userId：{}", relationId, userId);
@@ -108,10 +130,15 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
             relationMapper.deleteById(relationId);
             log.info("知识关系删除成功");
         } else {
-            throw new RuntimeException("关系不存在或无权限删除");
+            throw new IllegalStateException("关系不存在或无权限删除");
         }
     }
 
+    /**
+     * 自动为用户生成知识关系（基于向量相似度）
+     *
+     * @param userId 用户ID
+     */
     @Override
     public void autoGenerateRelations(Long userId) {
         log.info("自动生成知识关系（使用向量嵌入），userId：{}", userId);

@@ -10,32 +10,51 @@ import com.secondbrain.service.EmbeddingService;
 import com.secondbrain.service.RelationRecommendationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 关系推荐服务实现类
+ * 基于向量相似度为用户推荐知识节点之间的关系
+ */
 @Service
 public class RelationRecommendationServiceImpl implements RelationRecommendationService {
 
     private static final Logger log = LoggerFactory.getLogger(RelationRecommendationServiceImpl.class);
 
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
+    private final KnowledgeEmbeddingMapper embeddingMapper;
+    private final EmbeddingService embeddingService;
 
-    @Autowired
-    private KnowledgeEmbeddingMapper embeddingMapper;
+    public RelationRecommendationServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, KnowledgeEmbeddingMapper embeddingMapper, EmbeddingService embeddingService) {
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+        this.embeddingMapper = embeddingMapper;
+        this.embeddingService = embeddingService;
+    }
 
-    @Autowired
-    private EmbeddingService embeddingService;
-
+    /**
+     * 为知识节点推荐关系（默认返回前10个推荐）
+     *
+     * @param knowledgeId 知识节点ID
+     * @param userId      用户ID
+     * @return 关系推荐列表
+     */
     @Override
     public List<RelationRecommendation> recommendRelations(Long knowledgeId, Long userId) {
         return recommendRelations(knowledgeId, userId, 10);
     }
 
+    /**
+     * 为知识节点推荐关系
+     *
+     * @param knowledgeId 知识节点ID
+     * @param userId      用户ID
+     * @param topK        返回推荐数量
+     * @return 关系推荐列表
+     */
     @Override
     public List<RelationRecommendation> recommendRelations(Long knowledgeId, Long userId, int topK) {
         log.info("开始为知识节点{}推荐关系，userId：{}，topK：{}", knowledgeId, userId, topK);

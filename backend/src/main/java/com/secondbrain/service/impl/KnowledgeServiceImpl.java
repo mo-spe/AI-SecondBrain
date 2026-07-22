@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * 知识节点服务实现.
+ * <p>提供知识点的增删改查、搜索、缓存管理及Elasticsearch同步等功能</p>
+ */
 @Service
 public class KnowledgeServiceImpl implements KnowledgeService {
 
@@ -37,21 +41,25 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final CacheService cacheService;
     private final EbbinghausService ebbinghausService;
     private final VectorSearchService vectorSearchService;
+    private final ElasticsearchService elasticsearchService;
+    private final RelationRecommendationService relationRecommendationService;
+    private final KnowledgeVectorService knowledgeVectorService;
 
-    @Autowired(required = false)
-    private ElasticsearchService elasticsearchService;
-
-    @Autowired(required = false)
-    private RelationRecommendationService relationRecommendationService;
-
-    @Autowired(required = false)
-    private KnowledgeVectorService knowledgeVectorService;
-
-    public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, CacheService cacheService, EbbinghausService ebbinghausService, VectorSearchService vectorSearchService) {
+    @Autowired
+    public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper,
+                                CacheService cacheService,
+                                EbbinghausService ebbinghausService,
+                                VectorSearchService vectorSearchService,
+                                @Autowired(required = false) ElasticsearchService elasticsearchService,
+                                @Autowired(required = false) RelationRecommendationService relationRecommendationService,
+                                @Autowired(required = false) KnowledgeVectorService knowledgeVectorService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.cacheService = cacheService;
         this.ebbinghausService = ebbinghausService;
         this.vectorSearchService = vectorSearchService;
+        this.elasticsearchService = elasticsearchService;
+        this.relationRecommendationService = relationRecommendationService;
+        this.knowledgeVectorService = knowledgeVectorService;
     }
 
     @Override
@@ -116,7 +124,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node != null && !node.getUserId().equals(userId)) {
-            throw new RuntimeException("无权访问此知识点");
+            throw new IllegalStateException("无权访问此知识点");
         }
         KnowledgeNodeVO vo = convertToVO(node);
         
@@ -131,10 +139,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     public void deleteById(Long id, Long userId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node == null) {
-            throw new RuntimeException("知识点不存在");
+            throw new IllegalStateException("知识点不存在");
         }
         if (!node.getUserId().equals(userId)) {
-            throw new RuntimeException("无权删除此知识点");
+            throw new IllegalStateException("无权删除此知识点");
         }
         
         knowledgeNodeMapper.deleteById(id);
@@ -152,10 +160,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     public void updateImportance(Long id, Integer importance, Long userId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node == null) {
-            throw new RuntimeException("知识点不存在");
+            throw new IllegalStateException("知识点不存在");
         }
         if (!node.getUserId().equals(userId)) {
-            throw new RuntimeException("无权更新此知识点");
+            throw new IllegalStateException("无权更新此知识点");
         }
         
         KnowledgeNode updateNode = new KnowledgeNode();
@@ -172,11 +180,11 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     public void updateKnowledge(Long id, String title, String summary, String contentMd, Long userId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node == null) {
-            throw new RuntimeException("知识点不存在");
+            throw new IllegalStateException("知识点不存在");
         }
 
         if (!node.getUserId().equals(userId)) {
-            throw new RuntimeException("无权更新此知识点");
+            throw new IllegalStateException("无权更新此知识点");
         }
         
         KnowledgeNode updateNode = new KnowledgeNode();

@@ -20,6 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * DeerFlow研究服务.
+ * <p>调用外部DeerFlow服务提供学习报告、学习路径、知识盲区分析等AI研究能力</p>
+ */
 @Service
 public class DeerFlowResearchService {
 
@@ -41,18 +45,16 @@ public class DeerFlowResearchService {
     private String localReportUrl;
 
     private final RestTemplate restTemplate;
-
-    @Lazy
-    @Autowired(required = false)
-    private AsyncTaskService asyncTaskService;
-
-    @Lazy
-    @Autowired(required = false)
-    private KafkaProducerService kafkaProducerService;
+    private final AsyncTaskService asyncTaskService;
+    private final KafkaProducerService kafkaProducerService;
 
     @Autowired
-    public DeerFlowResearchService(RestTemplate restTemplate) {
+    public DeerFlowResearchService(RestTemplate restTemplate,
+                                   @Autowired(required = false) @Lazy AsyncTaskService asyncTaskService,
+                                   @Autowired(required = false) @Lazy KafkaProducerService kafkaProducerService) {
         this.restTemplate = restTemplate;
+        this.asyncTaskService = asyncTaskService;
+        this.kafkaProducerService = kafkaProducerService;
     }
 
     public String generateDeepLearningReport(String learningData, String topic, String depth, String userApiKey) {
@@ -87,11 +89,11 @@ public class DeerFlowResearchService {
                 }
             }
 
-            throw new RuntimeException("DeerFlow研究服务返回错误");
+            throw new IllegalStateException("DeerFlow研究服务返回错误");
 
         } catch (Exception e) {
             log.error("调用DeerFlow研究服务失败", e);
-            throw new RuntimeException("调用DeerFlow研究服务失败：" + e.getMessage(), e);
+            throw new IllegalStateException("调用DeerFlow研究服务失败：" + e.getMessage(), e);
         }
     }
 
@@ -145,12 +147,12 @@ public class DeerFlowResearchService {
             }
 
             String serviceName = useLocalService ? "本地服务" : "DeerFlow研究服务";
-            throw new RuntimeException(serviceName + "返回错误");
+            throw new IllegalStateException(serviceName + "返回错误");
 
         } catch (Exception e) {
             String serviceName = useLocalService ? "本地服务" : "DeerFlow研究服务";
             log.error("调用{}失败", serviceName, e);
-            throw new RuntimeException("调用" + serviceName + "失败：" + e.getMessage(), e);
+            throw new IllegalStateException("调用" + serviceName + "失败：" + e.getMessage(), e);
         }
     }
 
@@ -193,12 +195,12 @@ public class DeerFlowResearchService {
             }
 
             String serviceName = useLocalService ? "本地服务" : "DeerFlow研究服务";
-            throw new RuntimeException(serviceName + "返回错误");
+            throw new IllegalStateException(serviceName + "返回错误");
 
         } catch (Exception e) {
             String serviceName = useLocalService ? "本地服务" : "DeerFlow研究服务";
             log.error("调用{}失败", serviceName, e);
-            throw new RuntimeException("调用" + serviceName + "失败：" + e.getMessage(), e);
+            throw new IllegalStateException("调用" + serviceName + "失败：" + e.getMessage(), e);
         }
     }
 

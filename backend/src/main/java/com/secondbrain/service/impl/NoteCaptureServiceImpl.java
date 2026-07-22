@@ -16,14 +16,27 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+/**
+ * 笔记捕捉服务实现类
+ * 将Markdown格式的笔记解析并发送到Kafka进行后续处理
+ */
 @Service
 public class NoteCaptureServiceImpl implements NoteCaptureService {
 
     private static final Logger log = LoggerFactory.getLogger(NoteCaptureServiceImpl.class);
 
-    @Autowired
-    private KafkaProducerService kafkaProducerService;
+    private final KafkaProducerService kafkaProducerService;
 
+    public NoteCaptureServiceImpl(KafkaProducerService kafkaProducerService) {
+        this.kafkaProducerService = kafkaProducerService;
+    }
+
+    /**
+     * 捕捉Markdown笔记并发送到处理队列
+     *
+     * @param request 笔记捕捉请求
+     * @return 处理结果说明
+     */
     @Override
     public String captureMarkdownNote(NoteCaptureRequest request) {
         log.info("【NoteCaptureService】开始捕捉笔记，标题：{}，用户 ID：{}", request.getTitle(), request.getUserId());
@@ -49,7 +62,7 @@ public class NoteCaptureServiceImpl implements NoteCaptureService {
             return "笔记捕捉成功";
         } catch (Exception e) {
             log.error("【NoteCaptureService】笔记捕捉失败，标题：{}", request.getTitle(), e);
-            throw new RuntimeException("笔记捕捉失败：" + e.getMessage());
+            throw new IllegalStateException("笔记捕捉失败：" + e.getMessage());
         }
     }
 
@@ -67,7 +80,7 @@ public class NoteCaptureServiceImpl implements NoteCaptureService {
             return text;
         } catch (Exception e) {
             log.error("Markdown解析失败", e);
-            throw new RuntimeException("Markdown解析失败：" + e.getMessage());
+            throw new IllegalStateException("Markdown解析失败：" + e.getMessage());
         }
     }
 }

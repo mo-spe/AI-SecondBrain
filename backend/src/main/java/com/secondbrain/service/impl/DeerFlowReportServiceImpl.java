@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,19 +29,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * DeerFlow 学习报告服务实现类
+ * 生成用户学习报告并支持本地或远程服务调用
+ */
 @Service
 public class DeerFlowReportServiceImpl implements DeerFlowReportService {
 
     private static final Logger log = LoggerFactory.getLogger(DeerFlowReportServiceImpl.class);
 
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
-
-    @Autowired
-    private LearningReportMapper learningReportMapper;
-
-    @Autowired
-    private DeerFlowResearchService deerFlowResearchService;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
+    private final LearningReportMapper learningReportMapper;
+    private final DeerFlowResearchService deerFlowResearchService;
+    private final RestTemplate restTemplate;
 
     @Autowired(required = false)
     private AsyncTaskService asyncTaskService;
@@ -50,15 +49,28 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
     @Autowired(required = false)
     private KafkaProducerService kafkaProducerService;
 
-    @Autowired
-    private RestTemplate restTemplate;
-
     @Value("${deerflow.local.enabled:false}")
     private boolean useLocalService;
 
     @Value("${deerflow.local.report-url:http://localhost:8002}")
     private String localReportUrl;
 
+    public DeerFlowReportServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, LearningReportMapper learningReportMapper,
+                                     DeerFlowResearchService deerFlowResearchService, RestTemplate restTemplate) {
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+        this.learningReportMapper = learningReportMapper;
+        this.deerFlowResearchService = deerFlowResearchService;
+        this.restTemplate = restTemplate;
+    }
+
+    /**
+     * 生成学习报告
+     *
+     * @param userId 用户ID
+     * @param topic  报告主题
+     * @param days   统计天数
+     * @return 学习报告内容
+     */
     @Override
     public String generateLearningReport(Long userId, String topic, Integer days) {
         try {
@@ -66,7 +78,7 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
 
             List<KnowledgeNode> knowledgeNodes = getLearningData(userId, days);
             if (knowledgeNodes.isEmpty()) {
-                throw new RuntimeException("指定时间范围内没有学习数据");
+                throw new IllegalStateException("指定时间范围内没有学习数据");
             }
 
             String report;
@@ -84,7 +96,7 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
             return report;
         } catch (Exception e) {
             log.error("生成学习报告失败，用户ID：{}，主题：{}", userId, topic, e);
-            throw new RuntimeException("生成学习报告失败：" + e.getMessage(), e);
+            throw new IllegalStateException("生成学习报告失败：" + e.getMessage(), e);
         }
     }
 
@@ -114,11 +126,11 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
                 }
             }
 
-            throw new RuntimeException("本地报告服务返回错误");
+            throw new IllegalStateException("本地报告服务返回错误");
 
         } catch (Exception e) {
             log.error("调用本地报告服务失败", e);
-            throw new RuntimeException("调用本地报告服务失败：" + e.getMessage(), e);
+            throw new IllegalStateException("调用本地报告服务失败：" + e.getMessage(), e);
         }
     }
 
@@ -172,6 +184,14 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         learningReportMapper.insert(reportRecord);
     }
 
+    /**
+     * 异步生成学习报告
+     *
+     * @param userId 用户ID
+     * @param topic  报告主题
+     * @param days   统计天数
+     * @return 异步任务响应
+     */
     @Override
     public AsyncTaskResponse generateLearningReportAsync(Long userId, String topic, Integer days) {
         log.info("异步生成学习报告，使用同步方式处理");
@@ -186,6 +206,14 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         return response;
     }
 
+    /**
+     * 获取用户的学习报告列表
+     *
+     * @param userId  用户ID
+     * @param current 当前页
+     * @param size    每页大小
+     * @return 分页报告列表
+     */
     @Override
     public Page<LearningReport> getReportList(Long userId, Integer current, Integer size) {
         Page<LearningReport> page = new Page<>(current, size);
@@ -197,6 +225,13 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         );
     }
 
+    /**
+     * 根据ID获取学习报告
+     *
+     * @param id     报告ID
+     * @param userId 用户ID
+     * @return 学习报告
+     */
     @Override
     public LearningReport getReportById(Long id, Long userId) {
         return learningReportMapper.selectOne(
@@ -206,6 +241,13 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         );
     }
 
+    /**
+     * 删除学习报告
+     *
+     * @param id     报告ID
+     * @param userId 用户ID
+     * @return 是否删除成功
+     */
     @Override
     public boolean deleteReport(Long id, Long userId) {
         int result = learningReportMapper.delete(

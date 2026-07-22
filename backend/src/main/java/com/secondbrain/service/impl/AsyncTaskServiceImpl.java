@@ -25,31 +25,35 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * 异步任务服务实现.
+ * <p>负责任务的创建、状态查询、进度更新、执行及完成处理</p>
+ */
 @Service
 public class AsyncTaskServiceImpl implements AsyncTaskService {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncTaskServiceImpl.class);
 
-    @Autowired
-    private AsyncTaskMapper asyncTaskMapper;
+    private final AsyncTaskMapper asyncTaskMapper;
+    private final KafkaProducerService kafkaProducerService;
+    private final DeerFlowReportService deerFlowReportService;
+    private final DeerFlowResearchService deerFlowResearchService;
+    private final ResearchHistoryService researchHistoryService;
+    private final WebSocketService webSocketService;
 
-    @Autowired
-    private KafkaProducerService kafkaProducerService;
-
-    @Autowired(required = false)
-    private WebSocketService webSocketService;
-
-    @Lazy
-    @Autowired
-    private DeerFlowReportService deerFlowReportService;
-
-    @Lazy
-    @Autowired
-    private DeerFlowResearchService deerFlowResearchService;
-
-    @Lazy
-    @Autowired
-    private ResearchHistoryService researchHistoryService;
+    public AsyncTaskServiceImpl(AsyncTaskMapper asyncTaskMapper,
+                                KafkaProducerService kafkaProducerService,
+                                @Lazy DeerFlowReportService deerFlowReportService,
+                                @Lazy DeerFlowResearchService deerFlowResearchService,
+                                @Lazy ResearchHistoryService researchHistoryService,
+                                @org.springframework.beans.factory.annotation.Autowired(required = false) WebSocketService webSocketService) {
+        this.asyncTaskMapper = asyncTaskMapper;
+        this.kafkaProducerService = kafkaProducerService;
+        this.deerFlowReportService = deerFlowReportService;
+        this.deerFlowResearchService = deerFlowResearchService;
+        this.researchHistoryService = researchHistoryService;
+        this.webSocketService = webSocketService;
+    }
 
     @Override
     public AsyncTaskResponse createTask(String taskType, Long userId, Object parameters) {
@@ -177,7 +181,7 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                 return blindSpotResult;
 
             default:
-                throw new RuntimeException("未知的任务类型：" + task.getTaskType());
+                throw new IllegalStateException("未知的任务类型：" + task.getTaskType());
         }
     }
 

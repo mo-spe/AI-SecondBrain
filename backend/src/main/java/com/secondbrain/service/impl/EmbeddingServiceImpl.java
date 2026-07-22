@@ -15,6 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Embedding向量生成服务实现.
+ * <p>调用阿里云通义千问Embedding API生成文本向量</p>
+ */
 @Service
 public class EmbeddingServiceImpl implements EmbeddingService {
 
@@ -59,7 +63,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         
         if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
             log.error("阿里云API Key未配置，无法生成Embedding");
-            throw new RuntimeException("阿里云API Key未配置，无法生成Embedding。请前往个人设置添加API Key。");
+            throw new IllegalStateException("阿里云API Key未配置，无法生成Embedding。请前往个人设置添加API Key。");
         }
 
         log.info("生成Embedding，使用API Key来源：{}", userApiKey != null && !userApiKey.isEmpty() ? "用户API Key" : "平台API Key");
@@ -88,7 +92,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 if (!response.isSuccessful()) {
                     String errorBody = response.body() != null ? response.body().string() : "无错误详情";
                     log.error("阿里云API调用失败: {}, 错误详情: {}", response.code(), errorBody);
-                    throw new RuntimeException("阿里云API调用失败: " + response.code() + ", " + errorBody);
+                    throw new IllegalStateException("阿里云API调用失败: " + response.code() + ", " + errorBody);
                 }
 
                 String responseBody = response.body().string();
@@ -112,11 +116,11 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 }
                 
                 log.error("Embedding生成失败，响应格式错误: {}", responseBody);
-                throw new RuntimeException("Embedding生成失败，响应格式错误");
+                throw new IllegalStateException("Embedding生成失败，响应格式错误");
             }
         } catch (IOException e) {
             log.error("生成Embedding失败", e);
-            throw new RuntimeException("生成Embedding失败: " + e.getMessage());
+            throw new IllegalStateException("生成Embedding失败: " + e.getMessage());
         }
     }
 

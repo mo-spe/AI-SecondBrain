@@ -21,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 知识向量服务实现类
+ * 负责为知识节点生成、保存和管理向量嵌入
+ */
 @Service
 public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
@@ -28,21 +32,27 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
     private static final String defaultModel = "text-embedding-v2";
 
-    @Autowired
-    private EmbeddingService embeddingService;
-
-    @Autowired
-    private KnowledgeEmbeddingMapper embeddingMapper;
-
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
-
-    @Autowired
-    private UserService userService;
+    private final EmbeddingService embeddingService;
+    private final KnowledgeEmbeddingMapper embeddingMapper;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
+    private final UserService userService;
 
     @Autowired(required = false)
     private ElasticsearchService elasticsearchService;
 
+    public KnowledgeVectorServiceImpl(EmbeddingService embeddingService, KnowledgeEmbeddingMapper embeddingMapper,
+                                      KnowledgeNodeMapper knowledgeNodeMapper, UserService userService) {
+        this.embeddingService = embeddingService;
+        this.embeddingMapper = embeddingMapper;
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+        this.userService = userService;
+    }
+
+    /**
+     * 为单个知识节点生成并保存向量
+     *
+     * @param node 知识节点
+     */
     @Override
     @Async("vectorTaskExecutor")
     @Transactional
@@ -110,6 +120,11 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
         }
     }
 
+    /**
+     * 批量为用户生成向量
+     *
+     * @param userId 用户ID
+     */
     @Override
     @Async("vectorTaskExecutor")
     public void batchGenerateVectors(Long userId) {
@@ -145,6 +160,11 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
         }
     }
 
+    /**
+     * 重新生成指定知识节点的向量
+     *
+     * @param knowledgeId 知识节点ID
+     */
     @Override
     @Async("vectorTaskExecutor")
     @Transactional

@@ -25,20 +25,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Elasticsearch知识搜索服务实现.
+ * <p>提供知识节点的同步、删除、关键词搜索、多字段搜索及语义搜索功能</p>
+ */
 @Service
 @ConditionalOnProperty(name = "spring.elasticsearch.enabled", havingValue = "true", matchIfMissing = false)
 public class ElasticsearchServiceImpl implements ElasticsearchService {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchServiceImpl.class);
 
-    @Autowired
-    private ElasticsearchOperations elasticsearchOperations;
+    private final ElasticsearchOperations elasticsearchOperations;
+    private final KnowledgeEmbeddingMapper embeddingMapper;
+    private final EmbeddingService embeddingService;
 
-    @Autowired
-    private KnowledgeEmbeddingMapper embeddingMapper;
-
-    @Autowired
-    private EmbeddingService embeddingService;
+    public ElasticsearchServiceImpl(ElasticsearchOperations elasticsearchOperations,
+                                    KnowledgeEmbeddingMapper embeddingMapper,
+                                    EmbeddingService embeddingService) {
+        this.elasticsearchOperations = elasticsearchOperations;
+        this.embeddingMapper = embeddingMapper;
+        this.embeddingService = embeddingService;
+    }
 
     @Override
     public void syncKnowledgeNode(KnowledgeNode node) {

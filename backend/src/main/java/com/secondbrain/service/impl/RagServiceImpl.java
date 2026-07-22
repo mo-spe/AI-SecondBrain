@@ -8,31 +8,50 @@ import com.secondbrain.service.RagService;
 import com.secondbrain.service.VectorSearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * RAG（检索增强生成）服务实现类
+ * 结合向量检索与AI生成，为用户提供基于知识库的智能问答
+ */
 @Service
 public class RagServiceImpl implements RagService {
 
     private static final Logger log = LoggerFactory.getLogger(RagServiceImpl.class);
 
-    @Autowired
-    private VectorSearchService vectorSearchService;
+    private final VectorSearchService vectorSearchService;
+    private final AiService aiService;
+    private final KnowledgeNodeMapper knowledgeNodeMapper;
 
-    @Autowired
-    private AiService aiService;
+    public RagServiceImpl(VectorSearchService vectorSearchService, AiService aiService, KnowledgeNodeMapper knowledgeNodeMapper) {
+        this.vectorSearchService = vectorSearchService;
+        this.aiService = aiService;
+        this.knowledgeNodeMapper = knowledgeNodeMapper;
+    }
 
-    @Autowired
-    private KnowledgeNodeMapper knowledgeNodeMapper;
-
+    /**
+     * 回答用户问题（使用默认API Key）
+     *
+     * @param request RAG请求
+     * @param userId  用户ID
+     * @return RAG响应
+     */
     @Override
     public RagResponse answer(RagRequest request, Long userId) {
         return answer(request, userId, null);
     }
 
+    /**
+     * 回答用户问题（支持用户自定义API Key）
+     *
+     * @param request    RAG请求
+     * @param userId     用户ID
+     * @param userApiKey 用户API Key
+     * @return RAG响应
+     */
     @Override
     public RagResponse answer(RagRequest request, Long userId, String userApiKey) {
         long startTime = System.currentTimeMillis();

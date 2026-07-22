@@ -14,19 +14,28 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
+/**
+ * 文件服务实现类
+ * 提供头像上传、文件删除等OSS文件操作功能
+ */
 @Service
 public class FileServiceImpl implements FileService {
 
     private static final Logger log = LoggerFactory.getLogger(FileServiceImpl.class);
 
-    private final OSS ossClient;
     private final OssConfig ossConfig;
 
     public FileServiceImpl(OssConfig ossConfig) {
-        this.ossClient = null;
         this.ossConfig = ossConfig;
     }
 
+    /**
+     * 上传用户头像到OSS
+     *
+     * @param file   头像文件
+     * @param userId 用户ID
+     * @return 文件访问URL
+     */
     @Override
     public String uploadAvatar(MultipartFile file, Long userId) {
         OSS ossClient = getOssClient();
@@ -55,10 +64,15 @@ public class FileServiceImpl implements FileService {
             return fileUrl;
         } catch (IOException e) {
             log.error("头像上传失败，userId: {}", userId, e);
-            throw new RuntimeException("头像上传失败：" + e.getMessage());
+            throw new IllegalStateException("头像上传失败：" + e.getMessage());
         }
     }
 
+    /**
+     * 删除OSS上的文件
+     *
+     * @param fileUrl 文件URL
+     */
     @Override
     public void deleteFile(String fileUrl) {
         OSS ossClient = getOssClient();

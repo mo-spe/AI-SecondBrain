@@ -33,6 +33,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * 导出服务实现类
+ * 支持将知识节点导出为Markdown、PDF、Word、JSON、CSV等多种格式
+ */
 @Service
 public class ExportServiceImpl implements ExportService {
 
@@ -46,6 +50,13 @@ public class ExportServiceImpl implements ExportService {
         this.rawChatRecordMapper = rawChatRecordMapper;
     }
 
+    /**
+     * 导出知识节点为Markdown格式
+     *
+     * @param userId   用户ID
+     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
+     * @param response HTTP响应
+     */
     @Override
     public void exportToMarkdown(Long userId, List<Long> ids, HttpServletResponse response) {
         try {
@@ -86,10 +97,17 @@ public class ExportServiceImpl implements ExportService {
             log.info("Markdown导出成功，userId: {}, 知识点数量: {}", userId, knowledgeList.size());
         } catch (IOException e) {
             log.error("Markdown导出失败，userId: {}", userId, e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
+            throw new IllegalStateException("导出失败：" + e.getMessage());
         }
     }
 
+    /**
+     * 导出知识节点为PDF格式
+     *
+     * @param userId   用户ID
+     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
+     * @param response HTTP响应
+     */
     @Override
     public void exportToPDF(Long userId, List<Long> ids, HttpServletResponse response) {
         try {
@@ -160,10 +178,17 @@ public class ExportServiceImpl implements ExportService {
             log.info("PDF导出成功，userId: {}, 知识点数量: {}", userId, knowledgeList.size());
         } catch (Exception e) {
             log.error("PDF导出失败，userId: {}", userId, e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
+            throw new IllegalStateException("导出失败：" + e.getMessage());
         }
     }
 
+    /**
+     * 导出知识节点为Word格式
+     *
+     * @param userId   用户ID
+     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
+     * @param response HTTP响应
+     */
     @Override
     public void exportToWord(Long userId, List<Long> ids, HttpServletResponse response) {
         try {
@@ -219,10 +244,17 @@ public class ExportServiceImpl implements ExportService {
             log.info("Word导出成功，userId: {}, 知识点数量: {}", userId, knowledgeList.size());
         } catch (IOException e) {
             log.error("Word导出失败，userId: {}", userId, e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
+            throw new IllegalStateException("导出失败：" + e.getMessage());
         }
     }
 
+    /**
+     * 导出知识节点为JSON格式
+     *
+     * @param userId   用户ID
+     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
+     * @param response HTTP响应
+     */
     @Override
     public void exportToJSON(Long userId, List<Long> ids, HttpServletResponse response) {
         try {
@@ -275,10 +307,17 @@ public class ExportServiceImpl implements ExportService {
             log.info("JSON导出成功，userId: {}, 知识点数量: {}", userId, knowledgeList.size());
         } catch (IOException e) {
             log.error("JSON导出失败，userId: {}", userId, e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
+            throw new IllegalStateException("导出失败：" + e.getMessage());
         }
     }
 
+    /**
+     * 导出知识节点为CSV格式
+     *
+     * @param userId   用户ID
+     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
+     * @param response HTTP响应
+     */
     @Override
     public void exportToCSV(Long userId, List<Long> ids, HttpServletResponse response) {
         try {
@@ -317,7 +356,7 @@ public class ExportServiceImpl implements ExportService {
             log.info("CSV导出成功，userId: {}, 知识点数量: {}", userId, knowledgeList.size());
         } catch (IOException e) {
             log.error("CSV导出失败，userId: {}", userId, e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
+            throw new IllegalStateException("导出失败：" + e.getMessage());
         }
     }
 
