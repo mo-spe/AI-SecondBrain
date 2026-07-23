@@ -48,7 +48,7 @@ public class ReviewCardController {
         Long userId = (Long) httpRequest.getAttribute("userId");
         String generationType = request.getGenerationType() != null ? request.getGenerationType() : "auto";
         com.secondbrain.entity.ReviewCard card = reviewCardService.generateReviewCard(
-                request.getNodeId(), request.getCardType(), generationType
+                request.getNodeId(), request.getCardType(), generationType, userId
         );
 
         if (card == null) {
@@ -109,10 +109,12 @@ public class ReviewCardController {
      */
     @PostMapping("/submit")
     public Result<ReviewResultDTO> submitReviewResult(@RequestBody SubmitReviewRequest request, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
         ReviewResultDTO result = reviewCardService.submitReviewResult(
                 request.getCardId(),
                 request.getUserAnswer(),
-                request.getDuration()
+                request.getDuration(),
+                userId
         );
 
         return Result.success(result);
@@ -127,7 +129,9 @@ public class ReviewCardController {
      */
     @GetMapping("/node/{nodeId}")
     public Result<List<ReviewCardVO>> getReviewCardsByNodeId(@PathVariable Long nodeId, HttpServletRequest httpRequest) {
-        List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getReviewCardsByNodeId(nodeId);
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getReviewCardsByNodeId(nodeId, userId, workspaceId);
 
         List<ReviewCardVO> vos = cards.stream()
                 .map(this::convertToVO)
@@ -145,7 +149,8 @@ public class ReviewCardController {
      */
     @DeleteMapping("/{id}")
     public Result<Void> deleteReviewCard(@PathVariable Long id, HttpServletRequest httpRequest) {
-        reviewCardService.deleteReviewCard(id);
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        reviewCardService.deleteReviewCard(id, userId);
         return Result.success();
     }
 

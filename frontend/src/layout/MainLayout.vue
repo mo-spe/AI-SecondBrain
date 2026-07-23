@@ -1,343 +1,143 @@
 <template>
-  <div class="layout-container">
+  <div class="app-shell">
     <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
       <div class="sidebar-header">
-        <router-link to="/dashboard" class="logo">
-          <div class="logo-icon">
-              <BrainIcon :size="40" />
-            </div>
-          <span class="logo-text">AI-SecondBrain</span>
+        <router-link to="/dashboard" class="logo-link">
+          <span class="logo-mark">SB</span>
+          <span v-show="!isSidebarCollapsed" class="logo-label">SecondBrain</span>
         </router-link>
-        <button class="collapse-btn" @click="isSidebarCollapsed = !isSidebarCollapsed">
-          <el-icon :size="18"><Fold v-if="!isSidebarCollapsed" /><Expand v-else /></el-icon>
-        </button>
       </div>
 
-      <nav class="sidebar-menu">
-        <template v-for="group in sidebarGroups" :key="group.title">
-          <div v-if="group.children && !isSidebarCollapsed" class="menu-group-title">
-            {{ group.title }}
-          </div>
-          <router-link
-            v-if="!group.children"
-            :to="group.path"
-            class="sidebar-item"
-            :class="{ active: isActive(group.path) }"
-          >
-            <el-icon :size="18" :color="group.color || 'inherit'">
-              <component :is="group.icon" />
-            </el-icon>
-            <span v-if="!isSidebarCollapsed">{{ group.title }}</span>
-          </router-link>
-          <div v-else class="sidebar-subgroup">
-            <router-link
-              v-for="child in group.children"
-              :key="child.path"
-              :to="child.path"
-              class="sidebar-item"
-              :class="{ active: isActive(child.path) }"
-            >
-              <el-icon :size="18">
-                <component :is="child.icon" />
-              </el-icon>
-              <span v-if="!isSidebarCollapsed">{{ child.title }}</span>
-            </router-link>
-          </div>
-        </template>
+      <nav class="sidebar-nav">
+        <router-link
+          v-for="item in visibleNavItems"
+          :key="item.path"
+          :to="item.path"
+          class="nav-link"
+          :class="{ active: isActive(item.path) }"
+          :title="item.label"
+        >
+          <el-icon :size="18"><component :is="item.icon" /></el-icon>
+          <span v-show="!isSidebarCollapsed" class="nav-label">{{ item.label }}</span>
+        </router-link>
       </nav>
 
-      <div v-if="!isSidebarCollapsed" class="sidebar-bottom">
-        <div class="daily-goal-card">
-          <div class="goal-header">
-            <el-icon size="16" color="#7c3aed"><Target /></el-icon>
-            <span>今日学习目标</span>
-          </div>
-          <div class="goal-progress">
-            <div class="progress-ring">
-              <svg class="ring-svg" viewBox="0 0 100 100">
-                <circle
-                  class="ring-bg"
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  fill="none"
-                  stroke="#e2e8f0"
-                  stroke-width="8"
-                />
-                <circle
-                  class="ring-progress"
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  fill="none"
-                  stroke="#7c3aed"
-                  stroke-width="8"
-                  stroke-linecap="round"
-                  :stroke-dasharray="264"
-                  :stroke-dashoffset="264 * (1 - dailyProgress / 100)"
-                  transform="rotate(-90 50 50)"
-                />
-              </svg>
-              <div class="progress-text">{{ dailyProgress }}%</div>
-            </div>
-          </div>
-          <div class="goal-stats">
-            <div class="stat-item">
-              <span class="stat-label">目标</span>
-              <span class="stat-value">复习 20 个卡片</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">已完成</span>
-              <span class="stat-value">{{ Math.round(dailyProgress * 0.2) }} 个</span>
-            </div>
-          </div>
-          <div class="goal-tip">
-            <el-icon size="14" color="#f59e0b"><Trophy /></el-icon>
-            <span>继续加油，您可以做得更好！</span>
-          </div>
-        </div>
-
-        <div class="copyright">
-          <span>&copy; 2026 AI-SecondBrain</span>
-          <span>版本 v2.0.0</span>
-        </div>
+      <div class="sidebar-footer">
+        <button
+          class="collapse-btn"
+          @click="isSidebarCollapsed = !isSidebarCollapsed"
+          :title="isSidebarCollapsed ? '展开菜单' : '收起菜单'"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+            :style="{ transform: isSidebarCollapsed ? 'scaleX(-1)' : '' }">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </aside>
 
-    <header class="top-navbar">
-      <div class="navbar-left">
-        <nav class="main-menu">
-          <template v-for="group in topNavGroups" :key="group.title">
-            <router-link
-              v-if="!group.children"
-              :to="group.path"
-              class="nav-item"
-              :class="{ active: isActive(group.path) }"
-            >
-              <el-icon :size="16">
-                <component :is="group.icon" />
-              </el-icon>
-              <span>{{ group.title }}</span>
-            </router-link>
-            <el-dropdown
-              v-else
-              :class="['nav-group', { active: isGroupActive(group) }]"
-              trigger="hover"
-              popper-class="nav-dropdown-popper"
-            >
-              <div class="nav-item">
-                <el-icon :size="16">
-                  <component :is="group.icon" />
-                </el-icon>
-                <span>{{ group.title }}</span>
-                <el-icon size="12"><ArrowDown /></el-icon>
-              </div>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item
-                    v-for="child in group.children"
-                    :key="child.path"
-                    @click="router.push(child.path)"
-                  >
-                    <el-icon :size="14">
-                      <component :is="child.icon" />
-                    </el-icon>
-                    <span>{{ child.title }}</span>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </template>
-        </nav>
-      </div>
-
-      <div class="navbar-right">
-        <div class="search-wrapper">
-          <el-icon size="16" color="#94a3b8"><Search /></el-icon>
-          <input
-            type="text"
-            placeholder="搜索知识点、卡片..."
-            class="search-input"
-            v-model="searchQuery"
-            @keyup.enter="handleSearch"
-          />
+    <div class="main-area" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
+      <header class="topbar">
+        <div class="topbar-left">
+          <WorkspaceSwitcher />
         </div>
 
-        <button class="notification-btn" aria-label="通知">
-          <el-icon :size="18" color="#64748b"><Bell /></el-icon>
-          <span class="badge">6</span>
-        </button>
-
-        <el-dropdown @command="handleCommand" trigger="click" popper-class="nav-dropdown-popper">
-          <div class="user-dropdown">
-            <el-avatar :size="32" :src="userAvatar">
-              <el-icon><User /></el-icon>
-            </el-avatar>
-            <span class="username">{{ userStore.userInfo.username || "用户" }}</span>
+        <div class="topbar-right">
+          <div class="global-search">
+            <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="搜索..."
+              class="search-field"
+              @keyup.enter="handleSearch"
+            />
           </div>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="profile">
-                <el-icon><User /></el-icon>
-                个人资料
-              </el-dropdown-item>
-              <el-dropdown-item command="settings">
-                <el-icon><Setting /></el-icon>
-                账户设置
-              </el-dropdown-item>
-              <el-dropdown-item divided command="logout">
-                <el-icon><SwitchButton /></el-icon>
-                退出登录
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
 
-        <button class="theme-toggle" :aria-label="theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'" @click="toggleTheme">
-          <el-icon :size="18">
-            <Sunny v-if="theme === 'dark'" />
-            <Moon v-else />
-          </el-icon>
-        </button>
-      </div>
-    </header>
+          <el-dropdown trigger="click" popper-class="user-menu-popper" @command="handleCommand">
+            <button class="user-btn" aria-label="用户菜单">
+              <span class="user-avatar">{{ userInitial }}</span>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="settings">个人设置</el-dropdown-item>
+                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </header>
 
-    <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="page-fade" mode="out-in">
-          <div class="page-wrapper" :key="route.path">
-            <component :is="Component" />
-          </div>
-        </transition>
-      </router-view>
-    </main>
+      <main class="content">
+        <router-view v-slot="{ Component }">
+          <transition name="page" mode="out-in">
+            <div class="page" :key="route.path">
+              <component :is="Component" />
+            </div>
+          </transition>
+        </router-view>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import { useThemeStore } from "@/stores/theme";
-import BrainIcon from "@/components/BrainIcon.vue";
+import { useWorkspaceStore } from "@/stores/workspace";
+import WorkspaceSwitcher from "@/components/WorkspaceSwitcher.vue";
 import {
   DataAnalysis,
-  ChatDotRound,
   Collection,
   Reading,
-  Bell,
   Search,
-  Setting,
-  User,
-  ArrowDown,
-  SwitchButton,
-  DocumentCopy,
+  Bell,
   TrendCharts,
   Share,
-  Sunny,
-  Moon,
-  Fold,
-  Expand,
   Notebook,
-  Star,
-  Brush,
-  Document,
-  Aim,
-  Medal,
-  Trophy,
+  Setting,
 } from "@element-plus/icons-vue";
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
-const { theme, toggleTheme } = useThemeStore();
+const workspaceStore = useWorkspaceStore();
 
 const isSidebarCollapsed = ref(false);
 const searchQuery = ref("");
-const dailyProgress = ref(65);
 
-const sidebarGroups = [
-  {
-    path: "/settings",
-    title: "个人设置",
-    icon: Setting,
-    color: "#7c3aed",
-  },
-  {
-    title: "学习成长",
-    children: [
-      { path: "/review", title: "复习中心", icon: Bell },
-      { path: "/report", title: "学习统计", icon: TrendCharts },
-    ],
-  },
-  {
-    title: "知识管理",
-    children: [
-      { path: "/knowledge", title: "知识管理", icon: Reading },
-      { path: "/knowledge", title: "知识点管理", icon: Notebook },
-      { path: "/knowledge-system", title: "知识体系", icon: Share },
-    ],
-  },
-  {
-    title: "我的内容",
-    children: [
-      { path: "/knowledge", title: "我的笔记", icon: Notebook },
-      { path: "/review", title: "我的卡片", icon: DocumentCopy },
-      { path: "/knowledge", title: "我的收藏", icon: Star },
-    ],
-  },
+const navItems = [
+  { path: "/dashboard", label: "工作台", icon: DataAnalysis },
+  { path: "/capture", label: "数据采集", icon: Collection },
+  { path: "/knowledge", label: "知识管理", icon: Reading },
+  { path: "/search", label: "知识搜索", icon: Search },
+  { path: "/knowledge-system", label: "知识体系", icon: Share },
+  { path: "/review", label: "复习中心", icon: Bell },
+  { path: "/research", label: "AI研究", icon: TrendCharts },
+  { path: "/settings", label: "个人设置", icon: Setting },
 ];
 
-const topNavGroups = [
-  {
-    path: "/dashboard",
-    title: "工作台",
-    icon: DataAnalysis,
-  },
-  {
-    title: "数据采集",
-    icon: Collection,
-    children: [
-      { path: "/capture", title: "数据采集", icon: Collection },
-    ],
-  },
-  {
-    title: "知识中心",
-    icon: Document,
-    children: [
-      { path: "/knowledge", title: "知识管理", icon: Reading },
-      { path: "/search", title: "知识搜索", icon: Search },
-      { path: "/knowledge-system", title: "知识体系", icon: Share },
-    ],
-  },
-  {
-    title: "学习成长",
-    icon: TrendCharts,
-    children: [
-      { path: "/review", title: "复习提醒", icon: Bell },
-      { path: "/research", title: "AI学习研究", icon: TrendCharts },
-    ],
-  },
-  {
-    title: "系统管理",
-    icon: Setting,
-    children: [
-      { path: "/settings", title: "个人设置", icon: Setting },
-    ],
-  },
-];
+const adminNavItem = { path: "/admin", label: "平台管理", icon: Notebook };
 
-const userAvatar = computed(() => {
-  return userStore.userInfo.avatar || "";
+const visibleNavItems = computed(() => {
+  if (userStore.userInfo.role === "super_admin") {
+    return [...navItems, adminNavItem];
+  }
+  return navItems;
+});
+
+const userInitial = computed(() => {
+  const name = userStore.userInfo.username || "U";
+  return name.charAt(0).toUpperCase();
 });
 
 const isActive = (path) => {
+  if (path === "/dashboard") return route.path === "/dashboard";
   return route.path === path || route.path.startsWith(path + "/");
-};
-
-const isGroupActive = (group) => {
-  if (!group.children) return false;
-  return group.children.some((child) => isActive(child.path));
 };
 
 const handleSearch = () => {
@@ -346,498 +146,319 @@ const handleSearch = () => {
   }
 };
 
-const handleCommand = (command) => {
-  if (command === "logout") {
+const handleCommand = (cmd) => {
+  if (cmd === "logout") {
     userStore.logout();
     router.push("/login");
-  } else if (command === "profile") {
-    router.push("/settings");
-  } else if (command === "settings") {
+  } else if (cmd === "settings") {
     router.push("/settings");
   }
 };
+
+onMounted(() => {
+  workspaceStore.fetchWorkspaces();
+});
 </script>
 
 <style scoped>
-.layout-container {
+.app-shell {
+  display: flex;
   min-height: 100vh;
   background: var(--bg-page);
-  display: flex;
+  font-family: var(--font-family-base);
+  color: var(--text-primary);
 }
 
+/* ===== Sidebar ===== */
 .sidebar {
-  width: 240px;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-lighter);
+  width: var(--sidebar-width);
   display: flex;
   flex-direction: column;
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 1001;
+  inset: 0 auto 0 0;
+  z-index: 100;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-lighter);
   transition: width var(--transition-base);
 }
 
 .sidebar.collapsed {
-  width: 64px;
+  width: var(--sidebar-collapsed-width);
 }
 
 .sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-lg);
   border-bottom: 1px solid var(--border-lighter);
 }
 
-.logo {
+.logo-link {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 10px;
   text-decoration: none;
   color: var(--text-primary);
 }
 
-.logo-icon {
-  width: 40px;
-  height: 40px;
+.logo-mark {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-display);
+  border-radius: var(--radius-sm);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
 }
 
-.logo-text {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
+.logo-label {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Sidebar Nav ===== */
+.sidebar-nav {
+  flex: 1;
+  padding: var(--spacing-sm);
+  overflow-y: auto;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: 9px var(--spacing-md);
+  margin-bottom: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  transition: background var(--transition-fast), color var(--transition-fast);
   white-space: nowrap;
 }
 
+.nav-link:hover {
+  background: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Sidebar Footer ===== */
+.sidebar-footer {
+  padding: var(--spacing-sm);
+  border-top: 1px solid var(--border-lighter);
+}
+
 .collapse-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.collapse-btn:hover {
+  background: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+}
+
+/* ===== Main Area ===== */
+.main-area {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-base);
+}
+
+.main-area.sidebar-collapsed {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+/* ===== Top Bar ===== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--navbar-height);
+  padding: 0 var(--spacing-xl);
+  background: var(--bg-page);
+  border-bottom: 1px solid var(--border-lighter);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* ===== Global Search ===== */
+.global-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.global-search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.search-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.search-field {
+  border: none;
+  background: transparent;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  outline: none;
+  width: 180px;
+}
+
+.search-field::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* ===== User ===== */
+.user-btn {
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
-  background: var(--bg-input);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: background var(--transition-base), color var(--transition-base);
-}
-
-.collapse-btn:hover {
-  background: var(--bg-hover);
-  color: var(--color-primary);
-}
-
-.sidebar-menu {
-  flex: 1;
-  padding: var(--spacing-md);
-  overflow-y: auto;
-}
-
-.menu-group-title {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: var(--spacing-md) var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
-}
-
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  color: var(--text-regular);
-  text-decoration: none;
-  font-size: var(--font-size-base);
-  transition: background var(--transition-base), color var(--transition-base);
-  white-space: nowrap;
-}
-
-.sidebar-item:hover {
-  background: var(--bg-sidebar-hover);
-  color: var(--color-primary);
-}
-
-.sidebar-item.active {
+  border-radius: var(--radius-full);
   background: var(--color-primary-alpha-10);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  padding: 0;
 }
 
-.sidebar-subgroup {
-  padding-left: var(--spacing-sm);
+.user-btn:hover {
+  background: var(--color-primary-alpha-20);
 }
 
-.sidebar-bottom {
-  padding: var(--spacing-md);
-  border-top: 1px solid var(--border-lighter);
-}
-
-.daily-goal-card {
-  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
-}
-
-.goal-header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+.user-avatar {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-lg);
-}
-
-.goal-progress {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--spacing-lg);
-}
-
-.progress-ring {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-
-.ring-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.ring-progress {
-  transition: stroke-dashoffset var(--transition-slow);
-}
-
-.progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
   color: var(--color-primary);
+  line-height: 1;
 }
 
-.goal-stats {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-md);
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-label {
-  display: block;
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-
-.stat-value {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-}
-
-.goal-tip {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.6);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-sm);
-}
-
-.copyright {
-  text-align: center;
-}
-
-.copyright span {
-  display: block;
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.top-navbar {
-  position: fixed;
-  top: 0;
-  left: 240px;
-  right: 0;
-  height: var(--navbar-height);
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-lighter);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--spacing-xl);
-  z-index: 1000;
-  transition: left var(--transition-base);
-  box-shadow: var(--shadow-navbar);
-}
-
-.sidebar.collapsed ~ .top-navbar {
-  left: 64px;
-}
-
-.navbar-left {
-  display: flex;
-  align-items: center;
-}
-
-.main-menu {
-  display: flex;
-  gap: var(--spacing-xs);
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-radius: var(--radius-md);
-  color: var(--text-regular);
-  text-decoration: none;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  transition: background var(--transition-base), color var(--transition-base);
-  cursor: pointer;
-}
-
-.nav-item:hover {
-  background: var(--bg-sidebar-hover);
-  color: var(--color-primary);
-}
-
-.nav-item.active {
-  background: var(--color-primary-alpha-10);
-  color: var(--color-primary);
-}
-
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  background: var(--bg-input);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  min-width: 280px;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: var(--font-size-base);
-  color: var(--text-primary);
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: var(--text-placeholder);
-}
-
-.notification-btn {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--transition-base);
-}
-
-.notification-btn:hover {
-  background: var(--bg-input);
-}
-
-.badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  min-width: 16px;
-  height: 16px;
-  background: var(--color-danger);
-  color: white;
-  font-size: 10px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-}
-
-.user-dropdown {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--transition-base);
-}
-
-.user-dropdown:hover {
-  background: var(--bg-input);
-}
-
-.username {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-}
-
-.theme-toggle {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: background var(--transition-base), color var(--transition-base);
-}
-
-.theme-toggle:hover {
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-.main-content {
-  flex: 1;
-  margin-left: 240px;
-  padding-top: var(--navbar-height);
-  min-height: 100vh;
-  transition: margin-left var(--transition-base);
-}
-
-.sidebar.collapsed ~ .main-content {
-  margin-left: 64px;
-}
-
-.page-wrapper {
-  padding: var(--spacing-xl);
+/* ===== Content ===== */
+.content {
   min-height: calc(100vh - var(--navbar-height));
 }
 
-.page-fade-enter-active {
-  transition: opacity var(--transition-base), transform var(--transition-base);
+.page {
+  padding: var(--spacing-2xl);
 }
 
-.page-fade-leave-active {
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+/* ===== Page transition ===== */
+.page-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.page-fade-enter-from {
+.page-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.page-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(6px);
 }
 
-.page-fade-leave-to {
+.page-leave-to {
   opacity: 0;
   transform: translateY(-4px);
 }
 
-:deep(.nav-dropdown-popper .el-dropdown-menu) {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xs) 0;
-  min-width: 180px;
-}
-
-:deep(.nav-dropdown-popper .el-dropdown-menu__item) {
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: var(--font-size-base);
-  color: var(--text-regular);
-  transition: background var(--transition-base), color var(--transition-base);
-}
-
-:deep(.nav-dropdown-popper .el-dropdown-menu__item:hover) {
-  background: var(--bg-sidebar-hover);
-  color: var(--color-primary);
-}
-
-:deep(.nav-dropdown-popper .el-dropdown-menu__item.is-divided) {
-  border-top: 1px solid var(--border-lighter);
-  margin-top: var(--spacing-xs);
-  padding-top: var(--spacing-md);
-}
-
-:deep(.nav-dropdown-popper .el-dropdown-menu__item .el-icon) {
-  margin-right: var(--spacing-sm);
-}
-
-:deep(.el-avatar) {
-  background: var(--color-primary-alpha-15);
-  border: 1px solid var(--color-primary-alpha-20);
-}
-
-@media (max-width: 1024px) {
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
-    z-index: 2000;
   }
 
   .sidebar.collapsed {
     transform: translateX(0);
-    width: 240px;
+    width: var(--sidebar-width);
   }
 
-  .top-navbar {
-    left: 0;
-  }
-
-  .main-content {
+  .main-area,
+  .main-area.sidebar-collapsed {
     margin-left: 0;
   }
 
-  .search-wrapper {
-    min-width: 200px;
+  .page {
+    padding: var(--spacing-lg);
   }
 
-  .nav-item span {
+  .global-search {
     display: none;
   }
 }
+</style>
 
-@media (max-width: 768px) {
-  .search-wrapper {
-    display: none;
-  }
+<style>
+/* ===== Global: Element Plus dropdown overrides ===== */
+.user-menu-popper {
+  margin-top: 4px !important;
+}
 
-  .username {
-    display: none;
-  }
+.user-menu-popper .el-dropdown-menu {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+  padding: 4px;
+}
+
+.user-menu-popper .el-dropdown-menu__item {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+}
+
+.user-menu-popper .el-dropdown-menu__item:hover {
+  background: var(--bg-hover);
 }
 </style>

@@ -54,7 +54,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
     public ReviewCard generateHighQualityQuestion(KnowledgeNode node, String cardType, Long userId) {
         ReviewCard card = new ReviewCard();
         card.setNodeId(node.getId());
-        card.setUserId(node.getUserId());
+        card.setUserId(userId);
         card.setCardType(cardType != null ? cardType : "choice");
         card.setReviewCount(0);
         card.setCorrectCount(0);
@@ -82,7 +82,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
                 break;
             }
             log.info("题目质量不达标，重新生成，重试次数：{}", retryCount);
-            question = generateChoiceQuestion(node, targetDifficulty, existingQuestions, node.getUserId());
+            question = generateChoiceQuestion(node, targetDifficulty, existingQuestions, userId);
         }
 
         int difficulty = estimateQuestionDifficulty(question, node);
@@ -90,7 +90,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         double quality = evaluateQuestionQuality(question, node.getSummary());
         if (quality < 0.6) {
             log.warn("题目质量较低，quality：{}，重新生成", quality);
-            question = generateChoiceQuestion(node, targetDifficulty, existingQuestions, node.getUserId());
+            question = generateChoiceQuestion(node, targetDifficulty, existingQuestions, userId);
             difficulty = estimateQuestionDifficulty(question, node);
         }
 

@@ -85,7 +85,7 @@ public class ReviewJob extends QuartzJobBean {
         
         for (KnowledgeNode node : nodesNeedReview) {
             try {
-                ReviewCard card = reviewCardService.generateReviewCard(node.getId(), "choice", "auto");
+                ReviewCard card = reviewCardService.generateReviewCard(node.getId(), "choice", "auto", node.getUserId());
                 if (card != null) {
                     generatedCount++;
                     log.info("为知识点生成复习卡片成功，nodeId：{}，nextReviewTime：{}，cardId：{}", 

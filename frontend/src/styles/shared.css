@@ -182,7 +182,7 @@
 .list-item:hover {
   background: var(--bg-hover);
   transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 /* ============================================================

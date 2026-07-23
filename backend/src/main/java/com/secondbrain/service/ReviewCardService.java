@@ -14,9 +14,10 @@ public interface ReviewCardService {
      *
      * @param nodeId 知识节点ID
      * @param cardType 卡片类型
+     * @param userId 当前用户ID（卡片归属用户）
      * @return 复习卡片
      */
-    ReviewCard generateReviewCard(Long nodeId, String cardType);
+    ReviewCard generateReviewCard(Long nodeId, String cardType, Long userId);
 
     /**
      * 生成复习卡片（指定生成方式）.
@@ -24,9 +25,10 @@ public interface ReviewCardService {
      * @param nodeId 知识节点ID
      * @param cardType 卡片类型
      * @param generationType 生成方式
+     * @param userId 当前用户ID（卡片归属用户）
      * @return 复习卡片
      */
-    ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType);
+    ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType, Long userId);
 
     /**
      * 获取今日待复习卡片列表.
@@ -48,12 +50,13 @@ public interface ReviewCardService {
     /**
      * 提交复习结果.
      *
-     * @param cardId 卡片ID
+     * @param cardId     卡片ID
      * @param userAnswer 用户答案
-     * @param duration 答题时长
+     * @param duration   答题时长
+     * @param userId     当前用户ID（用于权限校验）
      * @return 复习结果
      */
-    ReviewResultDTO submitReviewResult(Long cardId, String userAnswer, Integer duration);
+    ReviewResultDTO submitReviewResult(Long cardId, String userAnswer, Integer duration, Long userId);
 
     /**
      * 更新复习计划.
@@ -65,20 +68,23 @@ public interface ReviewCardService {
     void updateReviewSchedule(Long cardId, boolean isCorrect);
 
     /**
-     * 根据知识节点ID查询复习卡片列表.
+     * 根据知识节点ID查询复习卡片列表（含用户隔离）.
      *
-     * @param nodeId 知识节点ID
+     * @param nodeId      知识节点ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
      * @return 复习卡片列表
      */
-    List<ReviewCard> getReviewCardsByNodeId(Long nodeId);
+    List<ReviewCard> getReviewCardsByNodeId(Long nodeId, Long userId, Long workspaceId);
 
     /**
      * 删除复习卡片.
      *
-     * @param id 卡片ID
+     * @param id     卡片ID
+     * @param userId 当前用户ID（用于权限校验）
      * @return void
      */
-    void deleteReviewCard(Long id);
+    void deleteReviewCard(Long id, Long userId);
 
     /**
      * 删除用户全部复习卡片.

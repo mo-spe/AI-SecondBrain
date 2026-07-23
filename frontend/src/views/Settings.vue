@@ -7,7 +7,7 @@
             <div class="user-greeting">
               <div class="greeting-icon">👋</div>
               <div class="greeting-text">
-                <div class="greeting-title">こんにちは, {{ userStore.userInfo.username || 'newuser' }}</div>
+                <div class="greeting-title">こんにちは, {{ userStore.userInfo.username }}</div>
                 <div class="greeting-subtitle">欢迎来到 AI-SecondBrain</div>
               </div>
             </div>
@@ -21,17 +21,6 @@
                 >
                   <el-icon :size="50"><User /></el-icon>
                 </el-avatar>
-                <div class="user-level">Lv.5 学习者</div>
-              </div>
-            </div>
-
-            <div class="user-progress">
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: 64%"></div>
-              </div>
-              <div class="progress-info">
-                <span>经验值 1280 / 2000</span>
-                <span>64%</span>
               </div>
             </div>
 
@@ -44,12 +33,12 @@
               <div class="info-row">
                 <el-icon size="14"><Message /></el-icon>
                 <span class="info-label">邮箱</span>
-                <span class="info-value">{{ userStore.userInfo.email || 'newuser@example.com' }}</span>
+                <span class="info-value">{{ userStore.userInfo.email }}</span>
               </div>
               <div class="info-row">
                 <el-icon size="14"><Phone /></el-icon>
                 <span class="info-label">手机号</span>
-                <span class="info-value">{{ userStore.userInfo.phone || '15337153738' }}</span>
+                <span class="info-value">{{ userStore.userInfo.phone }}</span>
               </div>
               <div class="info-row">
                 <el-icon size="14"><Clock /></el-icon>
@@ -160,56 +149,30 @@
 
             <div class="section-card">
               <div class="section-header">
-                <div class="section-icon blue">
-                  <el-icon size="16" color="white"><Trophy /></el-icon>
-                </div>
-                <h3 class="section-title">我的学习与成就</h3>
-                <el-button type="text" size="small" class="view-all-btn">查看全部</el-button>
-              </div>
-              <div class="section-body">
-                <div class="achievement-grid">
-                  <div v-for="item in achievements" :key="item.name" class="achievement-item">
-                    <div class="achievement-icon" :style="{ background: item.color }">
-                      <el-icon size="20" color="white"><component :is="item.icon" /></el-icon>
-                    </div>
-                    <div class="achievement-info">
-                      <div class="achievement-name">{{ item.name }}</div>
-                      <div class="achievement-meta">{{ item.count }} 个知识点</div>
-                      <div class="achievement-progress">
-                        <div class="progress-track">
-                          <div class="progress-fill" :style="{ width: item.percentage + '%', background: item.color }"></div>
-                        </div>
-                        <span class="progress-text">{{ item.percentage }}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-header">
                 <div class="section-icon green">
-                  <el-icon size="16" color="white"><Folder /></el-icon>
+                  <el-icon size="16" color="white"><Collection /></el-icon>
                 </div>
-                <h3 class="section-title">知识管理</h3>
-                <el-button type="text" size="small" class="view-all-btn">查看全部</el-button>
+                <h3 class="section-title">我的工作区</h3>
+                <el-button type="primary" size="small" @click="openCreateWorkspace">+ 新建工作区</el-button>
               </div>
               <div class="section-body">
-                <div class="knowledge-grid">
-                  <div v-for="item in knowledgeItems" :key="item.name" class="knowledge-item">
-                    <div class="knowledge-icon" :style="{ background: item.color }">
-                      <el-icon size="18" color="white"><component :is="item.icon" /></el-icon>
-                    </div>
-                    <div class="knowledge-info">
-                      <div class="knowledge-name">{{ item.name }}</div>
-                      <div class="knowledge-meta">{{ item.count }}</div>
-                      <div class="knowledge-progress">
-                        <div class="progress-track">
-                          <div class="progress-fill" :style="{ width: item.percentage + '%', background: item.color }"></div>
-                        </div>
-                        <span class="progress-text">{{ item.percentage }}%</span>
+                <el-empty v-if="!workspaceStore.loading && workspaceStore.workspaces.length === 0" description="暂无工作区" :image-size="80" />
+                <div v-else class="workspace-list">
+                  <div v-for="ws in workspaceStore.workspaces" :key="ws.id" class="workspace-row">
+                    <div class="workspace-info">
+                      <div class="workspace-name">{{ ws.name }}</div>
+                      <div class="workspace-meta">
+                        <el-tag size="small" :type="ws.role === 'owner' ? 'warning' : ws.role === 'admin' ? 'success' : 'info'">
+                          {{ ws.role === 'owner' ? 'Owner' : ws.role === 'admin' ? 'Admin' : ws.role === 'editor' ? 'Editor' : 'Viewer' }}
+                        </el-tag>
+                        <span v-if="ws.memberCount !== undefined" class="workspace-stat">{{ ws.memberCount }} 名成员</span>
+                        <span class="workspace-stat">{{ ws.createTime }}</span>
                       </div>
+                    </div>
+                    <div class="workspace-actions">
+                      <el-button size="small" @click="openEditWorkspace(ws)">编辑</el-button>
+                      <el-button size="small" @click="goToMembers(ws.id)">成员</el-button>
+                      <el-button v-if="ws.role === 'owner'" size="small" type="danger" @click="handleDeleteWorkspace(ws)">删除</el-button>
                     </div>
                   </div>
                 </div>
@@ -237,6 +200,30 @@
         </div>
       </div>
     </div>
+
+    <el-dialog
+      v-model="showWorkspaceDialog"
+      :title="workspaceForm.id ? '编辑工作区' : '新建工作区'"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        :model="workspaceForm"
+        ref="workspaceFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="名称" required>
+          <el-input v-model="workspaceForm.name" placeholder="请输入工作区名称" maxlength="100" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="workspaceForm.description" type="textarea" :rows="3" placeholder="请输入工作区描述" maxlength="500" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showWorkspaceDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveWorkspace" :loading="workspaceLoading">保存</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="showPasswordDialog"
@@ -293,8 +280,10 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import { ElMessage } from "element-plus";
+import { useWorkspaceStore } from "@/stores/workspace";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { userAPI } from "@/api/user";
+import { workspaceAPI } from "@/api/workspace";
 import {
   User,
   Edit,
@@ -316,6 +305,7 @@ import {
 
 const router = useRouter();
 const userStore = useUserStore();
+const workspaceStore = useWorkspaceStore();
 
 const defaultAvatar =
   "https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png";
@@ -340,21 +330,14 @@ const passwordForm = ref({
   confirmPassword: "",
 });
 
-const achievements = ref([
-  { name: "Java 核心技术", count: 85, percentage: 78, color: "#7c3aed", icon: "Cpu" },
-  { name: "MySql 性能优化", count: 45, percentage: 78, color: "#3b82f6", icon: "Monitor" },
-  { name: "MySql 性能优化", count: 85, percentage: 75, color: "#22c55e", icon: "Monitor" },
-  { name: "Docker 容器化", count: 19, percentage: 65, color: "#14b8a6", icon: "Collection" },
-  { name: "Spring Boot", count: 67, percentage: 65, color: "#f59e0b", icon: "Cpu" },
-  { name: "Spring Boot", count: 32, percentage: 65, color: "#f97316", icon: "Cpu" },
-]);
-
-const knowledgeItems = ref([
-  { name: "云计算", count: "48 个知识点", percentage: 45, color: "#3b82f6", icon: "DataLine" },
-  { name: "边缘计算", count: "32 - 50测试", percentage: 45, color: "#f97316", icon: "Cpu" },
-  { name: "计算计算", count: "32 个知识点", percentage: 60, color: "#f59e0b", icon: "Monitor" },
-  { name: "边缘计算", count: "26 - 50测试", percentage: 60, color: "#3b82f6", icon: "Cpu" },
-]);
+const showWorkspaceDialog = ref(false);
+const workspaceFormRef = ref(null);
+const workspaceLoading = ref(false);
+const workspaceForm = ref({
+  id: null,
+  name: "",
+  description: "",
+});
 
 const passwordRules = {
   oldPassword: [{ required: true, message: "请输入原密码", trigger: "blur" }],
@@ -453,8 +436,72 @@ const handleLogout = () => {
   ElMessage.success("已退出登录");
 };
 
-onMounted(() => {
+const openCreateWorkspace = () => {
+  workspaceForm.value = { id: null, name: "", description: "" };
+  showWorkspaceDialog.value = true;
+};
+
+const openEditWorkspace = (ws) => {
+  workspaceForm.value = { id: ws.id, name: ws.name, description: ws.description || "" };
+  showWorkspaceDialog.value = true;
+};
+
+const handleSaveWorkspace = async () => {
+  if (!workspaceForm.value.name.trim()) {
+    ElMessage.warning("请输入工作区名称");
+    return;
+  }
+  workspaceLoading.value = true;
+  try {
+    if (workspaceForm.value.id) {
+      await workspaceAPI.update(workspaceForm.value.id, {
+        name: workspaceForm.value.name,
+        description: workspaceForm.value.description,
+      });
+      ElMessage.success("工作区已更新");
+    } else {
+      await workspaceAPI.create({
+        name: workspaceForm.value.name,
+        description: workspaceForm.value.description,
+      });
+      ElMessage.success("工作区已创建");
+    }
+    showWorkspaceDialog.value = false;
+    await workspaceStore.fetchWorkspaces();
+  } catch (error) {
+    ElMessage.error("操作失败：" + (error.message || "未知错误"));
+  } finally {
+    workspaceLoading.value = false;
+  }
+};
+
+const handleDeleteWorkspace = (ws) => {
+  ElMessageBox.confirm(
+    `确定要删除工作区「${ws.name}」吗？删除后所有关联数据将不可恢复。`,
+    "删除工作区",
+    {
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    }
+  ).then(async () => {
+    try {
+      await workspaceAPI.delete(ws.id);
+      ElMessage.success("工作区已删除");
+      await workspaceStore.fetchWorkspaces();
+    } catch (error) {
+      ElMessage.error("删除失败：" + (error.message || "未知错误"));
+    }
+  }).catch(() => {});
+};
+
+const goToMembers = (id) => {
+  router.push(`/workspace/${id}/members`);
+};
+
+onMounted(async () => {
   loadUserInfo();
+  await workspaceStore.fetchWorkspaces();
 });
 </script>
 
@@ -872,6 +919,52 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+}
+
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.workspace-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-lighter);
+}
+
+.workspace-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.workspace-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.workspace-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.workspace-stat {
+  color: var(--text-muted);
+}
+
+.workspace-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 .logout-section {

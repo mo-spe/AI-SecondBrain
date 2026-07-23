@@ -68,6 +68,18 @@ const routes = [
         component: () => import("@/views/Settings.vue"),
         meta: { title: "个人设置" },
       },
+      {
+        path: "workspace/:id/members",
+        name: "WorkspaceMembers",
+        component: () => import("@/views/WorkspaceMembers.vue"),
+        meta: { title: "成员管理" },
+      },
+      {
+        path: "admin",
+        name: "AdminDashboard",
+        component: () => import("@/views/AdminDashboard.vue"),
+        meta: { title: "平台管理", requiresAdmin: true },
+      },
     ],
   },
 ];
@@ -86,6 +98,8 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth !== false && !userStore.isLoggedIn()) {
     next("/login");
+  } else if (to.meta.requiresAdmin && userStore.userInfo.role !== "super_admin") {
+    next("/dashboard");
   } else if (
     (to.path === "/login" || to.path === "/register") &&
     userStore.isLoggedIn()

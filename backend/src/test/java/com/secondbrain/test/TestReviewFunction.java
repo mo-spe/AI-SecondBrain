@@ -81,19 +81,19 @@ public class TestReviewFunction {
         for (KnowledgeNode node : nodes) {
             System.out.println("\n知识点：" + node.getTitle());
 
-            ReviewCard simpleCard = reviewCardService.generateReviewCard(node.getId(), "simple");
+            ReviewCard simpleCard = reviewCardService.generateReviewCard(node.getId(), "simple", 1L);
             if (simpleCard != null) {
                 System.out.println("  简单卡片生成成功，ID：" + simpleCard.getId());
                 System.out.println("  问题：" + simpleCard.getQuestion());
             }
 
-            ReviewCard choiceCard = reviewCardService.generateReviewCard(node.getId(), "choice");
+            ReviewCard choiceCard = reviewCardService.generateReviewCard(node.getId(), "choice", 1L);
             if (choiceCard != null) {
                 System.out.println("  单选题卡片生成成功，ID：" + choiceCard.getId());
                 System.out.println("  问题：" + choiceCard.getQuestion());
             }
 
-            ReviewCard fillCard = reviewCardService.generateReviewCard(node.getId(), "fill");
+            ReviewCard fillCard = reviewCardService.generateReviewCard(node.getId(), "fill", 1L);
             if (fillCard != null) {
                 System.out.println("  填空题卡片生成成功，ID：" + fillCard.getId());
                 System.out.println("  问题：" + fillCard.getQuestion());
@@ -125,7 +125,7 @@ public class TestReviewFunction {
         System.out.println("当前复习次数：" + card.getReviewCount());
 
         System.out.println("\n模拟复习（正确）");
-        reviewCardService.submitReviewResult(card.getId(), "A", 30);
+        reviewCardService.submitReviewResult(card.getId(), "A", 30, 1L);
 
         ReviewCard updatedCard = reviewCardMapper.selectById(card.getId());
         System.out.println("复习后复习次数：" + updatedCard.getReviewCount());
@@ -135,7 +135,7 @@ public class TestReviewFunction {
         System.out.println("下次复习时间：" + updatedCard.getNextReviewTime());
 
         System.out.println("\n模拟复习（错误）");
-        reviewCardService.submitReviewResult(card.getId(), "B", 20);
+        reviewCardService.submitReviewResult(card.getId(), "B", 20, 1L);
 
         ReviewCard updatedCard2 = reviewCardMapper.selectById(card.getId());
         System.out.println("复习后复习次数：" + updatedCard2.getReviewCount());

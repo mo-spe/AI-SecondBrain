@@ -50,15 +50,16 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     }
 
     /**
-     * 生成复习卡片.
+     * 生成复习卡片（默认自动生成）.
      *
      * @param nodeId   知识节点ID
      * @param cardType 卡片类型
+     * @param userId   卡片归属用户ID
      * @return 复习卡片
      */
     @Override
-    public ReviewCard generateReviewCard(Long nodeId, String cardType) {
-        return generateReviewCard(nodeId, cardType, "auto");
+    public ReviewCard generateReviewCard(Long nodeId, String cardType, Long userId) {
+        return generateReviewCard(nodeId, cardType, "auto", userId);
     }
 
     /**
@@ -67,24 +68,25 @@ public class ReviewCardServiceImpl implements ReviewCardService {
      * @param nodeId         知识节点ID
      * @param cardType       卡片类型
      * @param generationType 生成类型
+     * @param userId         卡片归属用户ID
      * @return 复习卡片
      */
     @Override
-    public ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType) {
+    public ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType, Long userId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(nodeId);
         if (node == null) {
             log.warn("知识点不存在，nodeId：{}", nodeId);
             return null;
         }
 
-        ReviewCard card = questionGenerationService.generateHighQualityQuestion(node, cardType, node.getUserId());
+        ReviewCard card = questionGenerationService.generateHighQualityQuestion(node, cardType, userId);
         card.setGenerationType(generationType);
         card.setWorkspaceId(node.getWorkspaceId());
 
         reviewCardMapper.insert(card);
-        log.info("生成复习卡片成功，nodeId：{}，cardType：{}，generationType：{}，cardId：{}", 
+        log.info("生成复习卡片成功，nodeId：{}，cardType：{}，generationType：{}，cardId：{}",
                 nodeId, cardType, generationType, card.getId());
-        
+
         return card;
     }
 
@@ -125,14 +127,20 @@ public class ReviewCardServiceImpl implements ReviewCardService {
      * @param cardId     卡片ID
      * @param userAnswer 用户答案
      * @param duration   答题耗时（秒）
+     * @param userId     当前用户ID（用于权限校验）
      * @return 复习结果DTO
      */
     @Override
-    public ReviewResultDTO submitReviewResult(Long cardId, String userAnswer, Integer duration) {
+    public ReviewResultDTO submitReviewResult(Long cardId, String userAnswer, Integer duration, Long userId) {
         ReviewCard card = reviewCardMapper.selectById(cardId);
         if (card == null) {
             log.warn("复习卡片不存在，cardId：{}", cardId);
             return new ReviewResultDTO(false, "", null, "复习卡片不存在");
+        }
+
+        if (!card.getUserId().equals(userId)) {
+            log.warn("用户无权操作此卡片，cardId：{}，ownerUserId：{}，requestUserId：{}", cardId, card.getUserId(), userId);
+            return new ReviewResultDTO(false, "", null, "无权操作此卡片");
         }
 
         boolean isCorrect = checkAnswer(card, userAnswer);
@@ -226,14 +234,14 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     }
 
     /**
-     * 应用用户或工作区过滤条件.
-     * workspaceId 为 null 时降级为 userId 过滤，兼容迁移前未分配工作区的历史数据.
+     * 应用用户+工作区双重过滤条件.
+     * 复习卡片始终按 userId 隔离（个人数据），workspaceId 作为额外限定范围.
+     * workspaceId 为 null 时仅按 userId 过滤，兼容迁移前未分配工作区的历史数据.
      */
     private void applyUserOrWorkspaceFilter(LambdaQueryWrapper<ReviewCard> wrapper, Long userId, Long workspaceId) {
+        wrapper.eq(ReviewCard::getUserId, userId);
         if (workspaceId != null) {
             wrapper.eq(ReviewCard::getWorkspaceId, workspaceId);
-        } else {
-            wrapper.eq(ReviewCard::getUserId, userId);
         }
     }
 
@@ -310,16 +318,19 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     }
 
     /**
-     * 根据知识点ID获取复习卡片列表.
+     * 根据知识点ID获取复习卡片列表（含用户隔离）.
      *
-     * @param nodeId 知识节点ID
+     * @param nodeId      知识节点ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
      * @return 复习卡片列表
      */
     @Override
-    public List<ReviewCard> getReviewCardsByNodeId(Long nodeId) {
+    public List<ReviewCard> getReviewCardsByNodeId(Long nodeId, Long userId, Long workspaceId) {
         LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReviewCard::getNodeId, nodeId);
         wrapper.eq(ReviewCard::getDeleted, 0);
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
         wrapper.orderByAsc(ReviewCard::getCreateTime);
 
         return reviewCardMapper.selectList(wrapper);
@@ -328,13 +339,18 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     /**
      * 删除复习卡片（软删除）.
      *
-     * @param id 卡片ID
+     * @param id     卡片ID
+     * @param userId 当前用户ID（用于权限校验）
      * @return void
      */
     @Override
-    public void deleteReviewCard(Long id) {
+    public void deleteReviewCard(Long id, Long userId) {
         ReviewCard card = reviewCardMapper.selectById(id);
         if (card != null) {
+            if (!card.getUserId().equals(userId)) {
+                log.warn("用户无权删除此卡片，cardId：{}，ownerUserId：{}，requestUserId：{}", id, card.getUserId(), userId);
+                throw new com.secondbrain.exception.WorkspaceAccessDeniedException("无权删除此卡片");
+            }
             card.setDeleted(1);
             reviewCardMapper.updateById(card);
             log.info("删除复习卡片成功，cardId：{}", id);
@@ -353,10 +369,9 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         LambdaUpdateWrapper<ReviewCard> wrapper = new LambdaUpdateWrapper<>();
         wrapper.set(ReviewCard::getDeleted, 1);
         wrapper.eq(ReviewCard::getDeleted, 0);
+        wrapper.eq(ReviewCard::getUserId, userId);
         if (workspaceId != null) {
             wrapper.eq(ReviewCard::getWorkspaceId, workspaceId);
-        } else {
-            wrapper.eq(ReviewCard::getUserId, userId);
         }
         int deletedCount = reviewCardMapper.update(null, wrapper);
         log.info("软删除所有复习卡片成功，userId：{}，共{}张", userId, deletedCount);
@@ -375,8 +390,8 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         // 恢复卡片：将 deleted 设为 0，同时将 is_restored 设为 1
         int count;
         if (workspaceId != null) {
-            String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE workspace_id = ? AND deleted = 1";
-            count = jdbcTemplate.update(sql, workspaceId);
+            String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE user_id = ? AND workspace_id = ? AND deleted = 1";
+            count = jdbcTemplate.update(sql, userId, workspaceId);
         } else {
             String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE user_id = ? AND deleted = 1";
             count = jdbcTemplate.update(sql, userId);
@@ -410,7 +425,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         for (KnowledgeNode node : allNodes) {
             try {
                 for (int i = 0; i < 2; i++) {
-                    ReviewCard card = generateReviewCard(node.getId(), "choice", "manual");
+                    ReviewCard card = generateReviewCard(node.getId(), "choice", "manual", userId);
                     if (card != null) {
                         generatedCount++;
                         log.info("生成手动练习卡片成功，nodeId：{}，cardType：{}，cardId：{}", 
