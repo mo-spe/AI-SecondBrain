@@ -71,6 +71,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         member.setUserId(userId);
         member.setRole(WorkspaceRole.OWNER);
         member.setJoinedTime(LocalDateTime.now());
+        member.setStatus("accepted");
         memberMapper.insert(member);
 
         log.info("workspace_created id={} name={} userId={}", workspace.getId(), name, userId);
@@ -94,9 +95,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             if (workspace == null || workspace.getDeleted() == 1) {
                 return null;
             }
+            // 仅统计已确认的成员
             long memberCount = memberMapper.selectCount(
                     new LambdaQueryWrapper<WorkspaceMember>()
-                            .eq(WorkspaceMember::getWorkspaceId, m.getWorkspaceId()));
+                            .eq(WorkspaceMember::getWorkspaceId, m.getWorkspaceId())
+                            .eq(WorkspaceMember::getStatus, "accepted"));
             return toResponse(workspace, m.getRole(), (int) memberCount);
         }).filter(r -> r != null).collect(Collectors.toList());
     }
@@ -206,13 +209,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     }
 
     /**
-     * 添加工作区成员.
-     *
-     * @param workspaceId    工作区ID
-     * @param targetUserId   目标用户ID
-     * @param role           角色
-     * @param operatorUserId 操作者用户ID
-     * @return void
+     * 添加工作区成员（邀请）.
+     * 被邀请人状态设为pending，需对方确认后才成为正式成员。
      */
     @Override
     public void addMember(Long workspaceId, Long targetUserId, String role, Long operatorUserId) {
@@ -234,11 +232,15 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             throw new IllegalArgumentException("用户不存在: " + targetUserId);
         }
 
-        Long existingCount = memberMapper.selectCount(
+        // 检查是否已存在成员记录（包括pending状态）
+        WorkspaceMember existingMember = memberMapper.selectOne(
                 new LambdaQueryWrapper<WorkspaceMember>()
                         .eq(WorkspaceMember::getWorkspaceId, workspaceId)
                         .eq(WorkspaceMember::getUserId, targetUserId));
-        if (existingCount > 0) {
+        if (existingMember != null) {
+            if ("pending".equals(existingMember.getStatus())) {
+                throw new IllegalStateException("已向该用户发送过邀请，请等待对方确认");
+            }
             throw new IllegalStateException("该用户已经是工作区成员");
         }
 
@@ -246,11 +248,33 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         member.setWorkspaceId(workspaceId);
         member.setUserId(targetUserId);
         member.setRole(role);
-        member.setJoinedTime(LocalDateTime.now());
+        member.setStatus("pending");
         memberMapper.insert(member);
 
-        log.info("workspace_member_added workspaceId={} targetUserId={} role={} operatorUserId={}",
+        log.info("workspace_member_invited workspaceId={} targetUserId={} role={} operatorUserId={}",
                 workspaceId, targetUserId, role, operatorUserId);
+    }
+
+    /**
+     * 被邀请人确认加入工作区.
+     * 将pending状态更新为accepted，设置加入时间。
+     */
+    @Override
+    public void acceptInvitation(Long workspaceId, Long userId) {
+        WorkspaceMember member = memberMapper.selectOne(
+                new LambdaQueryWrapper<WorkspaceMember>()
+                        .eq(WorkspaceMember::getWorkspaceId, workspaceId)
+                        .eq(WorkspaceMember::getUserId, userId)
+                        .eq(WorkspaceMember::getStatus, "pending"));
+        if (member == null) {
+            throw new IllegalStateException("未找到待确认的邀请");
+        }
+
+        member.setStatus("accepted");
+        member.setJoinedTime(LocalDateTime.now());
+        memberMapper.updateById(member);
+
+        log.info("workspace_invitation_accepted workspaceId={} userId={}", workspaceId, userId);
     }
 
     /**
@@ -276,6 +300,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             response.setAvatar(user != null ? user.getAvatar() : null);
             response.setRole(m.getRole());
             response.setJoinedTime(m.getJoinedTime());
+            response.setStatus(m.getStatus());
             return response;
         }).collect(Collectors.toList());
     }

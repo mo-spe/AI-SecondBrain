@@ -160,7 +160,7 @@ public class WorkspaceController {
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         workspaceService.addMember(id, request.getUserId(), request.getRole(), userId);
-        return Result.<Void>success("成员添加成功", null);
+        return Result.<Void>success("邀请已发送，等待对方确认", null);
     }
 
     /**
@@ -199,6 +199,23 @@ public class WorkspaceController {
         Long userId = (Long) httpRequest.getAttribute("userId");
         workspaceService.updateMemberRole(id, targetUserId, request.getRole(), userId);
         return Result.<Void>success("角色更新成功", null);
+    }
+
+    /**
+     * 被邀请人确认加入工作区.
+     *
+     * @param id          工作区ID
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @PutMapping("/{id}/members/accept")
+    @Operation(summary = "确认加入工作区")
+    public Result<Void> acceptInvitation(
+            @Parameter(description = "工作区ID") @PathVariable Long id,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        workspaceService.acceptInvitation(id, userId);
+        return Result.<Void>success("已成功加入工作区", null);
     }
 
     /**

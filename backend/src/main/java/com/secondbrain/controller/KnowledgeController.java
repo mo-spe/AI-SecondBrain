@@ -3,7 +3,12 @@ package com.secondbrain.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.Result;
 import com.secondbrain.dto.UpdateKnowledgeRequest;
+import com.secondbrain.entity.EditingLock;
+import com.secondbrain.entity.KnowledgeRevision;
 import com.secondbrain.entity.User;
+import com.secondbrain.service.EditingLockService;
+import com.secondbrain.service.KnowledgeRevisionService;
+import com.secondbrain.service.KnowledgeRevisionService;
 import com.secondbrain.service.KnowledgeService;
 import com.secondbrain.service.UserService;
 import com.secondbrain.vo.KnowledgeNodeVO;
@@ -27,10 +32,16 @@ public class KnowledgeController {
 
     private final KnowledgeService knowledgeService;
     private final UserService userService;
+    private final KnowledgeRevisionService knowledgeRevisionService;
+    private final EditingLockService editingLockService;
 
-    public KnowledgeController(KnowledgeService knowledgeService, UserService userService) {
+    public KnowledgeController(KnowledgeService knowledgeService, UserService userService,
+                               KnowledgeRevisionService knowledgeRevisionService,
+                               EditingLockService editingLockService) {
         this.knowledgeService = knowledgeService;
         this.userService = userService;
+        this.knowledgeRevisionService = knowledgeRevisionService;
+        this.editingLockService = editingLockService;
     }
 
     private Long getWorkspaceId(HttpServletRequest request) {
@@ -147,7 +158,19 @@ public class KnowledgeController {
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         Long workspaceId = getWorkspaceId(httpRequest);
+
+        // 检查编辑锁：如果存在他人持有的锁则拒绝更新
+        EditingLock lock = editingLockService.getLockStatus(id);
+        if (lock != null && !lock.getUserId().equals(userId)) {
+            User holder = userService.getUserById(lock.getUserId());
+            String holderName = holder != null ? holder.getUsername() : "其他用户";
+            return Result.error(409, holderName + " 正在编辑此知识点，请稍后再试");
+        }
+
         knowledgeService.updateKnowledge(id, request.getTitle(), request.getSummary(), request.getContentMd(), userId, workspaceId);
+
+        // 更新成功后自动保存版本快照
+        knowledgeRevisionService.saveRevision(id, userId, request.getTitle(), request.getContentMd(), request.getSummary());
 
         if (request.getImportance() != null) {
             knowledgeService.updateImportance(id, request.getImportance(), userId, workspaceId);
@@ -245,5 +268,79 @@ public class KnowledgeController {
         Long workspaceId = getWorkspaceId(httpRequest);
         knowledgeService.syncToElasticsearch(userId, workspaceId);
         return Result.success("同步成功", null);
+    }
+
+    /**
+     * 版本历史列表.
+     *
+     * @param nodeId      知识节点ID
+     * @param httpRequest HTTP请求对象
+     * @return 版本历史列表
+     */
+    @GetMapping("/{nodeId}/revisions")
+    @Operation(summary = "版本历史列表", description = "获取知识节点的版本历史记录")
+    public Result<List<KnowledgeRevision>> getRevisionList(
+            @Parameter(description = "知识节点ID") @PathVariable Long nodeId,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        KnowledgeNodeVO vo = knowledgeService.getById(nodeId, userId, workspaceId);
+        if (vo == null) {
+            return Result.error(404, "知识点不存在");
+        }
+        List<KnowledgeRevision> revisions = knowledgeRevisionService.getRevisionList(nodeId);
+        return Result.success(revisions);
+    }
+
+    /**
+     * 版本详情.
+     *
+     * @param nodeId      知识节点ID
+     * @param revId       版本ID
+     * @param httpRequest HTTP请求对象
+     * @return 版本详情
+     */
+    @GetMapping("/{nodeId}/revisions/{revId}")
+    @Operation(summary = "版本详情", description = "获取指定版本的详细内容")
+    public Result<KnowledgeRevision> getRevisionDetail(
+            @Parameter(description = "知识节点ID") @PathVariable Long nodeId,
+            @Parameter(description = "版本ID") @PathVariable Long revId,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        KnowledgeNodeVO vo = knowledgeService.getById(nodeId, userId, workspaceId);
+        if (vo == null) {
+            return Result.error(404, "知识点不存在");
+        }
+        KnowledgeRevision revision = knowledgeRevisionService.getRevisionDetail(revId);
+        if (revision == null || !revision.getNodeId().equals(nodeId)) {
+            return Result.error(404, "版本不存在");
+        }
+        return Result.success(revision);
+    }
+
+    /**
+     * 回滚到指定版本.
+     * 仅工作区owner/admin可执行回滚操作。
+     *
+     * @param nodeId      知识节点ID
+     * @param revId       目标版本ID
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @PostMapping("/{nodeId}/revisions/{revId}/rollback")
+    @Operation(summary = "回滚到指定版本", description = "将知识节点内容恢复到指定版本的状态")
+    public Result<Void> rollbackRevision(
+            @Parameter(description = "知识节点ID") @PathVariable Long nodeId,
+            @Parameter(description = "版本ID") @PathVariable Long revId,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        KnowledgeNodeVO vo = knowledgeService.getById(nodeId, userId, workspaceId);
+        if (vo == null) {
+            return Result.error(404, "知识点不存在");
+        }
+        knowledgeRevisionService.rollback(nodeId, revId, userId);
+        return Result.success("回滚成功", null);
     }
 }

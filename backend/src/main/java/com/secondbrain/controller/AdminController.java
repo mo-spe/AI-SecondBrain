@@ -1,16 +1,21 @@
 package com.secondbrain.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.Result;
+import com.secondbrain.dto.SquareHandleReportRequest;
 import com.secondbrain.entity.User;
 import com.secondbrain.entity.Workspace;
 import com.secondbrain.mapper.UserMapper;
 import com.secondbrain.mapper.WorkspaceMapper;
+import com.secondbrain.service.SquareService;
+import com.secondbrain.vo.SquareReportVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -33,10 +38,13 @@ public class AdminController {
 
     private final UserMapper userMapper;
     private final WorkspaceMapper workspaceMapper;
+    private final SquareService squareService;
 
-    public AdminController(UserMapper userMapper, WorkspaceMapper workspaceMapper) {
+    public AdminController(UserMapper userMapper, WorkspaceMapper workspaceMapper,
+                           SquareService squareService) {
         this.userMapper = userMapper;
         this.workspaceMapper = workspaceMapper;
+        this.squareService = squareService;
     }
 
     /**
@@ -181,5 +189,93 @@ public class AdminController {
 
         log.info("admin_workspace_status_changed id={} status={}", id, status);
         return Result.<Void>success(status == 1 ? "工作区已启用" : "工作区已禁用", null);
+    }
+
+    /**
+     * 举报列表.
+     *
+     * @param status      过滤状态：pending / ignored / removed
+     * @param current     当前页
+     * @param size        每页大小
+     * @param httpRequest HTTP请求对象
+     * @return 举报分页数据
+     */
+    @GetMapping("/reports")
+    @Operation(summary = "举报列表")
+    public Result<IPage<SquareReportVO>> listReports(
+            @Parameter(description = "过滤状态") @RequestParam(defaultValue = "pending") String status,
+            @Parameter(description = "当前页") @RequestParam(defaultValue = "1") Integer current,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size,
+            HttpServletRequest httpRequest) {
+        checkSuperAdmin(httpRequest);
+        IPage<SquareReportVO> page = squareService.listReports(status, current, size);
+        return Result.success(page);
+    }
+
+    /**
+     * 处理举报.
+     *
+     * @param id          举报ID
+     * @param request     处理请求（action + handleNote）
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @PutMapping("/reports/{id}/handle")
+    @Operation(summary = "处理举报")
+    public Result<Void> handleReport(
+            @Parameter(description = "举报ID") @PathVariable Long id,
+            @Valid @RequestBody SquareHandleReportRequest request,
+            HttpServletRequest httpRequest) {
+        checkSuperAdmin(httpRequest);
+        squareService.handleReport(id, request.getAction(), request.getHandleNote(),
+                (Long) httpRequest.getAttribute("userId"));
+        return Result.success("处理完成");
+    }
+
+    /**
+     * 敏感词列表.
+     *
+     * @param httpRequest HTTP请求对象
+     * @return 敏感词列表
+     */
+    @GetMapping("/sensitive-words")
+    @Operation(summary = "敏感词列表")
+    public Result<java.util.List<com.secondbrain.entity.SensitiveWord>> listSensitiveWords(HttpServletRequest httpRequest) {
+        checkSuperAdmin(httpRequest);
+        return Result.success(squareService.getSensitiveWords());
+    }
+
+    /**
+     * 添加敏感词.
+     *
+     * @param word        敏感词
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @PostMapping("/sensitive-words")
+    @Operation(summary = "添加敏感词")
+    public Result<Void> addSensitiveWord(
+            @Parameter(description = "敏感词") @RequestParam String word,
+            HttpServletRequest httpRequest) {
+        checkSuperAdmin(httpRequest);
+        squareService.addSensitiveWord(word);
+        return Result.success("敏感词已添加");
+    }
+
+    /**
+     * 删除敏感词.
+     *
+     * @param id          敏感词ID
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @DeleteMapping("/sensitive-words/{id}")
+    @Operation(summary = "删除敏感词")
+    public Result<Void> deleteSensitiveWord(
+            @Parameter(description = "敏感词ID") @PathVariable Long id,
+            HttpServletRequest httpRequest) {
+        checkSuperAdmin(httpRequest);
+        squareService.deleteSensitiveWord(id);
+        return Result.success("敏感词已删除");
     }
 }

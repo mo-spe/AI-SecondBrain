@@ -68,7 +68,8 @@ public interface WorkspaceService {
     void transferOwnership(Long workspaceId, Long newOwnerUserId, Long currentUserId);
 
     /**
-     * 添加成员到工作区.
+     * 添加成员到工作区（邀请）.
+     * 被邀请人需要确认后才能成为正式成员。
      *
      * @param workspaceId 工作区ID
      * @param targetUserId 被邀请的用户ID
@@ -76,6 +77,14 @@ public interface WorkspaceService {
      * @param operatorUserId 操作者用户ID
      */
     void addMember(Long workspaceId, Long targetUserId, String role, Long operatorUserId);
+
+    /**
+     * 被邀请人确认加入工作区.
+     *
+     * @param workspaceId 工作区ID
+     * @param userId 被邀请的用户ID
+     */
+    void acceptInvitation(Long workspaceId, Long userId);
 
     /**
      * 查询工作区成员列表.
