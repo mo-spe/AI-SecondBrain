@@ -1,6 +1,6 @@
 # AI-SecondBrain 🧠
 
-[![Java](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.java.net/)
+[![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.java.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.1.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.4-green.svg)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
@@ -9,6 +9,8 @@
 **智能第二大脑系统** - 基于 AI 大模型的知识管理平台，帮助您高效采集、整理、复习 AI 对话中的宝贵知识。
 
 ![AI-SecondBrain Banner](docs/images/banner.png)
+
+**注意：这个readme不是最新的，所以不要完全参考**
 
 ---
 
@@ -40,6 +42,181 @@
 
 ---
 
+## 🚀 本地部署（推荐）
+
+### 环境要求
+
+- **JDK**: 17
+- **Maven**: 3.8+
+- **Node.js**: 18+
+- **MySQL**: 8.0+
+- **Redis**: 7+
+- **操作系统**: Windows / macOS / Linux
+
+### 步骤 1：克隆项目
+
+```bash
+git clone https://github.com/mo-spe/AI-SecondBrain.git
+cd AI-SecondBrain
+```
+
+### 步骤 2：配置数据库
+
+**方式一（根据sql目录创建）**
+
+#### 创建数据库
+
+```bash
+# 登录 MySQL
+mysql -u root -p
+
+# 创建数据库
+CREATE DATABASE secondbrain CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+#### 执行初始化脚本
+
+```bash
+# 在 MySQL 中执行、
+USE secondbrain;
+然后执行sql目录下sql语句
+
+```
+
+**方式二：直接连我的本机数据库（推荐）**
+
+```java
+# 这里host在本地测试时可以连接我的本机数据库
+  # IP：10.65.59.104
+  #端口：3306
+  #账号：dev
+  #密码：123456
+```
+
+### 步骤 3：配置后端
+
+#### 修改配置文件
+
+编辑 `backend/src/main/resources/application.yml`：
+
+```yaml
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/secondbrain?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: your_mysql_password
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: your_redis_password
+
+# AI API 配置（至少配置一个，可先不配置）
+ai:
+  openai:
+    api-key: your_api_key
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+```
+
+### 步骤 4：启动后端
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+后端服务地址：
+- API 文档：http://localhost:8080/api/doc.html
+- 健康检查：http://localhost:8080/api/health
+
+### 步骤 5：启动前端
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+前端访问地址：http://localhost:5173
+
+### 步骤 6：登录（如果连的是我的本机数据库，否则跳过自己创建）
+
+```
+用户名：newuser
+密码：123456
+```
+
+---
+
+## 🐳 Docker 部署（可选，这个不太确定还对不对了，不推荐）
+
+### 环境要求
+
+- **Docker**: 20.10+
+- **Docker Compose**: 2.0+
+- **内存**: 最少 4GB，推荐 8GB+
+- **磁盘**: 40GB+ 可用空间
+- **操作系统**: Windows / macOS / Linux
+
+### 步骤 1：配置环境变量
+
+```bash
+# 复制环境变量模板
+cp .env.example .env
+
+# 编辑配置文件（必填）
+# Windows: notepad .env
+# macOS/Linux: vim .env
+```
+
+**必须配置的项目**：
+
+```bash
+# 数据库密码（请修改为强密码）
+MYSQL_ROOT_PASSWORD=your_secure_password_here
+MYSQL_PASSWORD=your_secure_password_here
+
+# Redis 密码
+REDIS_PASSWORD=your_secure_password_here
+
+# AI API 密钥（至少配置一个）
+QWEN_API_KEY=your_qwen_api_key_here
+# DEEPSEEK_API_KEY=your_deepseek_api_key_here
+```
+
+### 步骤 2：一键启动
+
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 查看日志（可选）
+docker-compose logs -f
+
+# 检查服务状态
+docker-compose ps
+```
+
+### 步骤 3：访问应用
+
+- **前端界面**: http://localhost
+- **API 文档**: http://localhost:8080/api/doc.html
+- **后端健康检查**: http://localhost:8080/api/health
+
+### 步骤 4：默认登录
+
+```
+用户名：admin
+密码：admin123
+```
+
+**⚠️ 首次登录后请立即修改密码！**
+
+---
+
 ## 🏗️ 技术架构
 
 ### 系统架构图
@@ -64,7 +241,7 @@
 │                    应用层                                │
 │  ┌─────────────────────┐  ┌─────────────────────┐      │
 │  │  Spring Boot 后端   │  │   DeerFlow AI 服务   │      │
-│  │   (Java 21)         │  │   (Python FastAPI)  │      │
+│  │   (Java 17)         │  │   (Python FastAPI)  │      │
 │  └─────────────────────┘  └─────────────────────┘      │
 └─────────────────────────────────────────────────────────┘
                           │
@@ -84,7 +261,7 @@
 
 | 技术          | 版本  | 用途         |
 | ------------- | ----- | ------------ |
-| Java          | 21    | 主要开发语言 |
+| Java          | 17    | 主要开发语言 |
 | Spring Boot   | 3.1.5 | 应用框架     |
 | MyBatis-Plus  | 3.5.3 | ORM 框架     |
 | MySQL         | 8.0   | 关系数据库   |
@@ -112,81 +289,6 @@
 | Qwen Plus         | 阿里云   | 知识提取、报告生成 |
 | DeepSeek          | 深度求索 | 题目生成、RAG 问答 |
 | text-embedding-v2 | 阿里云   | 向量嵌入生成       |
-
----
-
-## 🚀 快速开始
-
-### 环境要求
-
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
-- **内存**: 最少 4GB，推荐 8GB+
-- **磁盘**: 40GB+ 可用空间
-- **操作系统**: Windows / macOS / Linux
-
-### 5 分钟快速部署
-
-#### 步骤 1：克隆项目
-
-```bash
-git clone https://github.com/mo-spe/AI-SecondBrain.git
-cd AI-SecondBrain
-```
-
-#### 步骤 2：配置环境变量
-
-```bash
-# 复制环境变量模板
-cp .env.example .env
-
-# 编辑配置文件（必填）
-# Windows: notepad .env
-# macOS/Linux: vim .env
-```
-
-**必须配置的项目**：
-
-```bash
-# 数据库密码（请修改为强密码）
-MYSQL_ROOT_PASSWORD=your_secure_password_here
-MYSQL_PASSWORD=your_secure_password_here
-
-# Redis 密码
-REDIS_PASSWORD=your_secure_password_here
-
-# AI API 密钥（至少配置一个）
-QWEN_API_KEY=your_qwen_api_key_here
-# DEEPSEEK_API_KEY=your_deepseek_api_key_here
-```
-
-#### 步骤 3：一键启动
-
-```bash
-# 启动所有服务
-docker-compose up -d
-
-# 查看日志（可选）
-docker-compose logs -f
-
-# 检查服务状态
-docker-compose ps
-```
-
-#### 步骤 4：访问应用
-
-- **前端界面**: http://localhost
-- **API 文档**: http://localhost:8080/api/doc.html
-- **后端健康检查**: http://localhost:8080/api/health
-
-#### 步骤 5：默认登录
-
-```
-用户名：admin
-密码：admin123
-```
-
-**⚠️ 首次登录后请立即修改密码！**
 
 ---
 
@@ -329,57 +431,47 @@ AI-SecondBrain/
 
 ### 自定义端口
 
-编辑 `.env` 文件：
+编辑 `backend/src/main/resources/application.yml`：
 
-```bash
-# 修改端口
-BACKEND_PORT=8081
-FRONTEND_PORT=3000
-MYSQL_PORT=3307
+```yaml
+server:
+  port: 8081
+```
+
+编辑 `frontend/vite.config.js`：
+
+```javascript
+server: {
+  port: 3000
+}
 ```
 
 ### 配置多个 AI 提供商
 
-编辑 `.env` 文件：
+编辑 `backend/src/main/resources/application.yml`：
 
-```bash
-# 主提供商
-AI_PROVIDER=qwen
-QWEN_API_KEY=your_key
-QWEN_MODEL=qwen-plus
-
-# 备用提供商
-DEEPSEEK_API_KEY=your_key
-DEEPSEEK_MODEL=deepseek-chat
-
-# OpenAI（可选）
-OPENAI_API_KEY=your_key
-OPENAI_MODEL=gpt-4
+```yaml
+ai:
+  openai:
+    api-key: your_key
+    base-url: https://api.openai.com/v1
+  qwen:
+    api-key: your_key
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  deepseek:
+    api-key: your_key
+    base-url: https://api.deepseek.com/v1
 ```
 
 ### 启用 HTTPS
 
-1. **准备证书**
-
-   ```bash
-   # 将证书文件放到 ssl/ 目录
-   ssl/cert.pem
-   ssl/key.pem
-   ```
-
-2. **修改配置**
-
-   ```bash
-   # .env 文件
-   ENABLE_HTTPS=true
-   DOMAIN_NAME=yourdomain.com
-   ```
-
-3. **重启服务**
-   ```bash
-   docker-compose down
-   docker-compose up -d
-   ```
+```yaml
+server:
+  ssl:
+    key-store: classpath:keystore.p12
+    key-store-password: your_password
+    key-store-type: PKCS12
+```
 
 ---
 
@@ -387,25 +479,24 @@ OPENAI_MODEL=gpt-4
 
 ### 内存优化
 
-对于内存有限的服务器，编辑 `.env`：
+编辑 `backend/src/main/resources/application.yml`：
 
-```bash
-# 降低 JVM 内存
-JAVA_OPTS=-Xms256m -Xmx512m
-
-# 降低 ES 内存
-ES_JAVA_OPTS=-Xms256m -Xmx256m
+```yaml
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 ```
 
 ### 禁用不需要的服务
 
-编辑 `docker-compose.yml`，注释掉不需要的服务：
+编辑 `backend/src/main/resources/application.yml`，注释掉不需要的配置：
 
 ```yaml
-# 如不需要 Kafka，可以注释掉
-# kafka:
-#   image: bitnami/kafka:3.6
-#   ...
+# spring:
+#   kafka:
+#     bootstrap-servers: localhost:9092
 ```
 
 ---
@@ -429,17 +520,11 @@ npm test
 ### 健康检查
 
 ```bash
-# 检查所有服务
-docker-compose ps
-
-# 查看后端日志
-docker-compose logs backend
-
-# 查看前端日志
-docker-compose logs frontend
+# 检查后端
+curl http://localhost:8080/api/health
 
 # 检查数据库连接
-docker-compose exec mysql mysql -u root -p -e "SHOW DATABASES;"
+mysql -u root -p -e "SELECT 1;"
 ```
 
 ---
@@ -472,102 +557,32 @@ docker-compose up -d mysql redis elasticsearch
 
 #### 3. 配置本地环境
 
-```bash
-# 复制环境变量文件
-cp .env.example .env
-
-# 编辑 .env 文件，配置开发环境
-# Windows: notepad .env
-# macOS/Linux: vim .env
-```
-
-**必须配置的项目**：
-
-```bash
-# 数据库配置
-MYSQL_ROOT_PASSWORD=your_password
-MYSQL_PASSWORD=your_password
-REDIS_PASSWORD=your_password
-
-# AI API 密钥（至少配置一个）
-QWEN_API_KEY=your_qwen_api_key_here
-```
+编辑 `backend/src/main/resources/application.yml`，配置数据库连接和 API 密钥。
 
 #### 4. 启动 DeerFlow AI 服务（可选）
 
 如果需要使用 AI 功能（知识提取、报告生成等）：
 
 ```bash
-# 进入 DeerFlow 目录
 cd deerflow
-
-# 安装 Python 依赖
 pip install -r requirements.txt
-
-# 配置 DeerFlow
-cp config.yaml config.local.yaml
-# 编辑 config.local.yaml，配置 API 密钥
-
-# 启动服务
 python app.py
-# 或使用 Docker
-docker-compose up -d deerflow
 ```
-
-**DeerFlow 服务说明**：
-
-- 提供 AI 知识提取、学习报告生成、智能问答等功能
-- 默认端口：8000
-- API 文档：http://localhost:8000/docs
 
 #### 5. 运行后端
 
 ```bash
-# 方式一：使用 Maven（推荐）
 cd backend
 mvn spring-boot:run
-
-# 方式二：使用 IDE
-# 在 IDEA 中运行 AiSecondBrainApplication.java
 ```
-
-后端服务地址：
-
-- API 文档：http://localhost:8080/api/doc.html
-- 健康检查：http://localhost:8080/api/health
 
 #### 6. 运行前端
 
 ```bash
 cd frontend
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run dev
 ```
-
-前端访问地址：http://localhost:5173
-
-#### 7. 初始化数据库（首次运行）
-
-```bash
-# 连接 MySQL
-docker-compose exec mysql mysql -u root -p
-
-# 执行初始化脚本
-source /docker-entrypoint-initdb.d/complete_database_schema_verified.sql
-```
-
-#### 8. 验证环境
-
-访问 http://localhost:5173，使用默认账号登录：
-
-- 用户名：`admin`
-- 密码：`admin123`
-
-**⚠️ 首次登录后请立即修改密码！**
 
 ### 提交 PR
 
@@ -583,21 +598,17 @@ source /docker-entrypoint-initdb.d/complete_database_schema_verified.sql
 
 ### 1. 服务启动失败
 
-**问题**：`docker-compose up -d` 后服务无法启动
+**问题**：后端无法启动
 
 **解决**：
 
 ```bash
-# 查看日志
-docker-compose logs
-
 # 检查端口占用
 netstat -ano | findstr :8080
-netstat -ano | findstr :3306
 
-# 重启服务
-docker-compose down
-docker-compose up -d
+# 查看日志
+cd backend
+mvn spring-boot:run 2>&1 | tail -50
 ```
 
 ### 2. 数据库连接失败
@@ -607,31 +618,27 @@ docker-compose up -d
 **解决**：
 
 ```bash
-# 等待 MySQL 完全启动（约 30 秒）
-docker-compose logs mysql
+# 检查 MySQL 服务状态
+# Windows: services.msc
+# Linux: systemctl status mysql
 
-# 检查网络
-docker-compose exec backend ping mysql
-
-# 重启后端
-docker-compose restart backend
+# 测试连接
+mysql -u root -p -h localhost -P 3306
 ```
 
 ### 3. 前端页面空白
 
-**问题**：访问 http://localhost 显示空白
+**问题**：访问 http://localhost:5173 显示空白
 
 **解决**：
 
 ```bash
 # 检查前端日志
-docker-compose logs frontend
+cd frontend
+npm run dev
 
 # 清除浏览器缓存
 # Ctrl+Shift+Delete
-
-# 检查后端连接
-docker-compose exec frontend wget http://backend:8080/api/health
 ```
 
 ### 4. API 密钥配置
@@ -639,7 +646,6 @@ docker-compose exec frontend wget http://backend:8080/api/health
 **问题**：不知道如何获取 API 密钥
 
 **解决**：
-
 - **通义千问**：访问 https://dashscope.console.aliyun.com/
 - **DeepSeek**：访问 https://platform.deepseek.com/
 - **OpenAI**：访问 https://platform.openai.com/api-keys
@@ -684,7 +690,6 @@ docker-compose exec frontend wget http://backend:8080/api/health
 ## 🙏 致谢
 
 感谢以下开源项目和支持者：
-
 - Spring 社区
 - Vue.js 社区
 - Element Plus 团队
@@ -702,7 +707,6 @@ docker-compose exec frontend wget http://backend:8080/api/health
 ![GitHub license](https://img.shields.io/github/license/mo-spe/AI-SecondBrain)
 
 **代码统计**：
-
 - **文件数**：262+
 - **代码行数**：35,738+
 - **贡献者**：1
