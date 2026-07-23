@@ -35,28 +35,45 @@
               </el-tag>
             </template>
           </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'pending' ? 'warning' : 'success'" size="small">
+                {{ row.status === 'pending' ? '待确认' : '已加入' }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="加入时间" width="180">
             <template #default="{ row }">
               {{ formatDate(row.joinedTime) }}
             </template>
           </el-table-column>
-          <el-table-column v-if="isManager" label="操作" width="200">
+          <el-table-column label="操作" width="260">
             <template #default="{ row }">
-              <el-button
-                v-if="row.role !== 'owner'"
-                size="small"
-                @click="openChangeRoleDialog(row)"
-              >
-                修改角色
-              </el-button>
-              <el-button
-                v-if="row.role !== 'owner' && row.userId !== currentUserId"
-                size="small"
-                type="danger"
-                @click="handleRemoveMember(row)"
-              >
-                移除
-              </el-button>
+              <template v-if="row.status === 'pending' && row.userId === currentUserId">
+                <el-button size="small" type="success" @click="handleAcceptInvitation">
+                  确认加入
+                </el-button>
+              </template>
+              <template v-else-if="row.status === 'pending' && isManager">
+                <span class="pending-hint">等待确认</span>
+              </template>
+              <template v-else-if="isManager">
+                <el-button
+                  v-if="row.role !== 'owner'"
+                  size="small"
+                  @click="openChangeRoleDialog(row)"
+                >
+                  修改角色
+                </el-button>
+                <el-button
+                  v-if="row.role !== 'owner' && row.userId !== currentUserId"
+                  size="small"
+                  type="danger"
+                  @click="handleRemoveMember(row)"
+                >
+                  移除
+                </el-button>
+              </template>
             </template>
           </el-table-column>
         </el-table>
@@ -196,13 +213,23 @@ const handleInvite = async () => {
       userId: inviteForm.value.userId,
       role: inviteForm.value.role,
     });
-    ElMessage.success("成员已邀请");
+    ElMessage.success("邀请已发送，等待对方确认");
     showInviteDialog.value = false;
     await loadData();
   } catch (error) {
     ElMessage.error("邀请失败：" + (error.message || "未知错误"));
   } finally {
     inviteLoading.value = false;
+  }
+};
+
+const handleAcceptInvitation = async () => {
+  try {
+    await workspaceAPI.acceptInvitation(workspaceId);
+    ElMessage.success("已成功加入工作区");
+    await loadData();
+  } catch (error) {
+    ElMessage.error("确认失败：" + (error.message || "未知错误"));
   }
 };
 
@@ -323,5 +350,10 @@ onMounted(async () => {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
+}
+
+.pending-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
 }
 </style>

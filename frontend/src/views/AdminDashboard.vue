@@ -133,6 +133,78 @@
               />
             </div>
           </el-tab-pane>
+
+          <el-tab-pane label="举报管理" name="reports">
+            <el-table :data="reports" border stripe :loading="reportLoading">
+              <el-table-column prop="id" label="ID" width="80" />
+              <el-table-column prop="postTitle" label="被举报内容" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="reporterName" label="举报人" width="120" />
+              <el-table-column prop="reason" label="举报原因" min-width="200" show-overflow-tooltip />
+              <el-table-column label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="reportStatusType(row.status)" size="small">
+                    {{ reportStatusLabel(row.status) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="举报时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDate(row.createdAt) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="200" fixed="right">
+                <template #default="{ row }">
+                  <template v-if="row.status === 'pending'">
+                    <el-button size="small" @click="handleIgnoreReport(row)">
+                      忽略
+                    </el-button>
+                    <el-button size="small" type="danger" @click="handleRemovePost(row)">
+                      移除
+                    </el-button>
+                  </template>
+                  <span v-else class="handled-info">
+                    {{ row.handleNote || '-' }}
+                  </span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="pagination-wrap">
+              <el-pagination
+                v-model:current-page="reportPagination.current"
+                v-model:page-size="reportPagination.size"
+                :total="reportPagination.total"
+                :page-sizes="[10, 20, 50]"
+                layout="total, sizes, prev, pager, next"
+                @size-change="loadReports"
+                @current-change="loadReports"
+              />
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="敏感词管理" name="sensitiveWords">
+            <div class="sensitive-word-header">
+              <el-input
+                v-model="newSensitiveWord"
+                placeholder="输入敏感词..."
+                style="width: 300px"
+                @keyup.enter="handleAddSensitiveWord"
+              />
+              <el-button type="primary" @click="handleAddSensitiveWord">
+                添加
+              </el-button>
+            </div>
+            <el-table :data="sensitiveWords" border stripe style="margin-top: 16px">
+              <el-table-column prop="id" label="ID" width="80" />
+              <el-table-column prop="word" label="敏感词" min-width="200" />
+              <el-table-column label="操作" width="100">
+                <template #default="{ row }">
+                  <el-button size="small" type="danger" @click="handleDeleteSensitiveWord(row)">
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
         </el-tabs>
       </div>
     </div>
@@ -160,6 +232,27 @@ const userPagination = reactive({ current: 1, size: 10, total: 0 });
 const adminWorkspaces = ref([]);
 const workspaceLoading = ref(false);
 const wsPagination = reactive({ current: 1, size: 10, total: 0 });
+
+const reports = ref([]);
+const reportLoading = ref(false);
+const reportPagination = reactive({ current: 1, size: 10, total: 0 });
+
+const sensitiveWords = ref([]);
+const newSensitiveWord = ref("");
+
+const reportStatusType = (status) => {
+  if (status === "pending") return "warning";
+  if (status === "ignored") return "info";
+  if (status === "removed") return "danger";
+  return "info";
+};
+
+const reportStatusLabel = (status) => {
+  if (status === "pending") return "待处理";
+  if (status === "ignored") return "已忽略";
+  if (status === "removed") return "已移除";
+  return status;
+};
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";
@@ -243,9 +336,114 @@ const handleToggleWorkspace = (ws) => {
   }).catch(() => {});
 };
 
+const loadReports = async () => {
+  reportLoading.value = true;
+  try {
+    const data = await adminAPI.getReports({
+      current: reportPagination.current,
+      size: reportPagination.size,
+    });
+    reports.value = data.records || [];
+    reportPagination.total = data.total || 0;
+  } catch (error) {
+    ElMessage.error("加载举报列表失败");
+  } finally {
+    reportLoading.value = false;
+  }
+};
+
+const handleIgnoreReport = async (row) => {
+  try {
+    await ElMessageBox.confirm("确定要忽略该举报吗？", "忽略举报", {
+      confirmButtonText: "确认忽略",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    await adminAPI.handleReport(row.id, { action: "ignore" });
+    ElMessage.success("已忽略该举报");
+    await loadReports();
+  } catch (error) {
+    ElMessage.error("操作失败: " + (error.message || "未知错误"));
+  }
+};
+
+const handleRemovePost = async (row) => {
+  let handleNote = "";
+  try {
+    const { value } = await ElMessageBox.prompt("请输入移除原因", "移除分享内容", {
+      confirmButtonText: "确认移除",
+      cancelButtonText: "取消",
+      inputType: "textarea",
+      inputValidator: (val) => (val ? true : "请输入移除原因"),
+    });
+    handleNote = value;
+  } catch {
+    return;
+  }
+
+  try {
+    await adminAPI.handleReport(row.id, { action: "remove", handleNote });
+    ElMessage.success("内容已移除");
+    await loadReports();
+  } catch (error) {
+    ElMessage.error("操作失败: " + (error.message || "未知错误"));
+  }
+};
+
 const onTabChange = (name) => {
   if (name === "users") loadUsers();
   else if (name === "workspaces") loadAdminWorkspaces();
+  else if (name === "reports") loadReports();
+  else if (name === "sensitiveWords") loadSensitiveWords();
+};
+
+const loadSensitiveWords = async () => {
+  try {
+    const data = await adminAPI.getSensitiveWords();
+    sensitiveWords.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    ElMessage.error("加载敏感词列表失败");
+  }
+};
+
+const handleAddSensitiveWord = async () => {
+  const word = newSensitiveWord.value.trim();
+  if (!word) {
+    ElMessage.warning("请输入敏感词");
+    return;
+  }
+  try {
+    await adminAPI.addSensitiveWord(word);
+    ElMessage.success("敏感词已添加");
+    newSensitiveWord.value = "";
+    await loadSensitiveWords();
+  } catch (error) {
+    ElMessage.error("添加失败: " + (error.message || "未知错误"));
+  }
+};
+
+const handleDeleteSensitiveWord = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除敏感词「${row.word}」吗？`, "删除敏感词", {
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+  try {
+    await adminAPI.deleteSensitiveWord(row.id);
+    ElMessage.success("敏感词已删除");
+    await loadSensitiveWords();
+  } catch (error) {
+    ElMessage.error("删除失败: " + (error.message || "未知错误"));
+  }
 };
 
 onMounted(() => {
@@ -355,5 +553,16 @@ onMounted(() => {
   .stats-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.handled-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sensitive-word-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 </style>

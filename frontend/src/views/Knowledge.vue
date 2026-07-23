@@ -354,6 +354,12 @@
           <el-button @click="showDetailDialog = false" size="large">
             <el-icon><Close /></el-icon>关闭
           </el-button>
+          <el-button @click="showVersionHistory = true" size="large">
+            <el-icon><Clock /></el-icon>版本历史
+          </el-button>
+          <el-button @click="openShareDialog" size="large">
+            <el-icon><Share /></el-icon>分享
+          </el-button>
           <el-button type="primary" @click="editKnowledge(currentKnowledge)" size="large">
             <el-icon><Edit /></el-icon>编辑
           </el-button>
@@ -366,6 +372,7 @@
       :title="editForm.id ? '编辑知识点' : '添加知识点'"
       width="900px"
       class="edit-dialog"
+      @closed="onEditDialogClosed"
     >
       <el-form
         :model="editForm"
@@ -430,15 +437,82 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="showShareDialog"
+      title="分享知识节点"
+      width="500px"
+      :close-on-click-modal="false"
+      @opened="onShareDialogOpened"
+    >
+      <div v-if="!shareLink" class="share-create">
+        <el-form label-width="100px">
+          <el-form-item label="有效期">
+            <el-radio-group v-model="shareForm.expireType">
+              <el-radio value="permanent">永久有效</el-radio>
+              <el-radio value="7d">7天</el-radio>
+              <el-radio value="24h">24小时</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </el-form>
+        <div class="share-actions">
+          <el-button type="primary" @click="handleCreateShare" :loading="shareLoading">
+            生成分享链接
+          </el-button>
+        </div>
+      </div>
+      <div v-else class="share-result">
+        <p class="share-result-label">分享链接已生成：</p>
+        <div class="share-url-box">
+          <input
+            class="share-url-input"
+            :value="shareLink"
+            readonly
+            ref="shareUrlInput"
+            @focus="$event.target.select()"
+          />
+          <el-button type="primary" size="small" @click="copyShareLink">
+            复制
+          </el-button>
+        </div>
+        <el-button @click="shareLink = ''" style="margin-top: 12px">重新生成</el-button>
+      </div>
+
+      <div v-if="myShares.length > 0" class="share-history">
+        <p class="share-history-title">历史分享记录</p>
+        <div v-for="s in myShares" :key="s.id" class="share-record">
+          <div class="share-record-info">
+            <span class="share-record-type">{{ expireLabel(s.expireType) }}</span>
+            <span class="share-record-count">{{ s.accessCount }} 次访问</span>
+            <span class="share-record-time">{{ formatDate(s.createdAt) }}</span>
+          </div>
+          <el-button size="small" type="danger" @click="handleRevokeShare(s.id)">
+            撤销
+          </el-button>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showShareDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <VersionHistory
+      v-model="showVersionHistory"
+      :node-id="currentKnowledge?.id"
+      :can-rollback="true"
+      @rollback-success="onRollbackSuccess"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { knowledgeAPI } from "@/api/knowledge";
 import { reviewAPI } from "@/api/review";
+import { collaborationAPI } from "@/api/collaboration";
+import VersionHistory from "@/components/VersionHistory.vue";
 import {
   Plus,
   Search,
@@ -467,6 +541,7 @@ import {
   Brush,
   Notebook,
   Folder,
+  Share,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -484,10 +559,23 @@ const viewMode = ref("grid");
 const sortBy = ref("newest");
 const showDetailDialog = ref(false);
 const showEditDialog = ref(false);
+const showVersionHistory = ref(false);
 
 const knowledgeList = ref([]);
 const currentKnowledge = ref(null);
 const editFormRef = ref(null);
+
+// 编辑锁相关
+const editingNodeId = ref(null);
+const lockRenewTimer = ref(null);
+const lockStatusMap = ref({});
+
+// 分享相关
+const showShareDialog = ref(false);
+const shareForm = ref({ expireType: "permanent" });
+const shareLink = ref("");
+const shareLoading = ref(false);
+const myShares = ref([]);
 
 const knowledgeSystems = ref([]);
 
@@ -688,7 +776,24 @@ const viewDetail = (knowledge) => {
   showDetailDialog.value = true;
 };
 
-const editKnowledge = (knowledge) => {
+const editKnowledge = async (knowledge) => {
+  try {
+    const res = await collaborationAPI.acquireLock(knowledge.id);
+    if (res.code === 409) {
+      ElMessage.warning(res.message || "其他用户正在编辑此知识点");
+      return;
+    }
+  } catch (error) {
+    ElMessage.warning("获取编辑锁失败：" + (error.message || "未知错误"));
+    return;
+  }
+
+  editingNodeId.value = knowledge.id;
+  // 每5分钟自动续期
+  lockRenewTimer.value = setInterval(() => {
+    collaborationAPI.acquireLock(knowledge.id).catch(() => {});
+  }, 5 * 60 * 1000);
+
   editForm.value = {
     id: knowledge.id,
     title: knowledge.title,
@@ -724,6 +829,7 @@ const handleSave = async () => {
       await knowledgeAPI.createKnowledge(editForm.value);
       ElMessage.success("创建成功");
     }
+    releaseCurrentLock();
     showEditDialog.value = false;
     loadKnowledgeList();
   } catch (error) {
@@ -733,6 +839,23 @@ const handleSave = async () => {
   } finally {
     saveLoading.value = false;
   }
+};
+
+/** 释放当前持有的编辑锁 */
+const releaseCurrentLock = () => {
+  if (editingNodeId.value) {
+    collaborationAPI.releaseLock(editingNodeId.value).catch(() => {});
+    editingNodeId.value = null;
+  }
+  if (lockRenewTimer.value) {
+    clearInterval(lockRenewTimer.value);
+    lockRenewTimer.value = null;
+  }
+};
+
+/** 编辑对话框关闭时释放锁 */
+const onEditDialogClosed = () => {
+  releaseCurrentLock();
 };
 
 const handleImport = () => {
@@ -781,9 +904,91 @@ const handleBatchExport = () => {
   ElMessage.info("批量导出功能开发中");
 };
 
+/** 版本回滚成功后的回调 */
+const onRollbackSuccess = () => {
+  showDetailDialog.value = false;
+  loadKnowledgeList();
+};
+
+// ========== 分享功能 ==========
+
+const shareUrlInput = ref(null);
+
+const openShareDialog = () => {
+  shareForm.value = { expireType: "permanent" };
+  shareLink.value = "";
+  showShareDialog.value = true;
+};
+
+const onShareDialogOpened = () => {
+  loadMyShares();
+};
+
+const handleCreateShare = async () => {
+  if (!currentKnowledge.value) return;
+  shareLoading.value = true;
+  try {
+    const data = await collaborationAPI.createShare({
+      nodeId: currentKnowledge.value.id,
+      expireType: shareForm.value.expireType,
+    });
+    shareLink.value = `${window.location.origin}/share/${data.token}`;
+    ElMessage.success("分享链接已生成");
+    loadMyShares();
+  } catch (error) {
+    ElMessage.error("创建分享失败：" + (error.message || "未知错误"));
+  } finally {
+    shareLoading.value = false;
+  }
+};
+
+const copyShareLink = async () => {
+  try {
+    await navigator.clipboard.writeText(shareLink.value);
+    ElMessage.success("链接已复制到剪贴板");
+  } catch {
+    ElMessage.info("请手动复制链接");
+  }
+};
+
+const loadMyShares = async () => {
+  try {
+    const data = await collaborationAPI.getShareList();
+    myShares.value = Array.isArray(data) ? data : [];
+  } catch {
+    myShares.value = [];
+  }
+};
+
+const handleRevokeShare = async (shareId) => {
+  try {
+    await ElMessageBox.confirm("确定要撤销此分享链接吗？", "确认撤销", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    await collaborationAPI.revokeShare(shareId);
+    ElMessage.success("分享已撤销");
+    loadMyShares();
+  } catch (error) {
+    if (error !== "cancel") {
+      ElMessage.error("撤销失败：" + (error.message || "未知错误"));
+    }
+  }
+};
+
+const expireLabel = (type) => {
+  const map = { permanent: "永久", "7d": "7天", "24h": "24小时" };
+  return map[type] || type;
+};
+
 onMounted(() => {
   loadKnowledgeSystems();
   loadKnowledgeList();
+});
+
+onBeforeUnmount(() => {
+  releaseCurrentLock();
 });
 </script>
 
@@ -1402,6 +1607,87 @@ onMounted(() => {
 
 :deep(.el-rate__text) {
   font-size: var(--font-size-xs);
+}
+
+/* ===== 分享对话框 ===== */
+.share-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.share-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.share-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.share-result-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.share-url-box {
+  display: flex;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.share-url-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  outline: none;
+}
+
+.share-url-input:focus {
+  border-color: var(--color-primary);
+}
+
+.share-history {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-lighter);
+}
+
+.share-history-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.share-record {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+}
+
+.share-record + .share-record {
+  border-top: 1px solid var(--border-lighter);
+}
+
+.share-record-info {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.share-record-type {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
 }
 
 @media (max-width: 1200px) {

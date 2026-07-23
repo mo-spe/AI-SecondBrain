@@ -75,12 +75,30 @@ const routes = [
         meta: { title: "成员管理" },
       },
       {
+        path: "square",
+        name: "Square",
+        component: () => import("@/views/Square.vue"),
+        meta: { title: "知识广场" },
+      },
+      {
+        path: "notifications",
+        name: "Notifications",
+        component: () => import("@/views/Notifications.vue"),
+        meta: { title: "通知中心" },
+      },
+      {
         path: "admin",
         name: "AdminDashboard",
         component: () => import("@/views/AdminDashboard.vue"),
         meta: { title: "平台管理", requiresAdmin: true },
       },
     ],
+  },
+  {
+    path: "/share/:token",
+    name: "ShareView",
+    component: () => import("@/views/ShareView.vue"),
+    meta: { title: "知识分享", requiresAuth: false },
   },
 ];
 

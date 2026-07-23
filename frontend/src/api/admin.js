@@ -39,4 +39,42 @@ export const adminAPI = {
       params: { status },
     });
   },
+
+  getReports(params) {
+    return request({
+      url: "/admin/reports",
+      method: "get",
+      params,
+    });
+  },
+
+  handleReport(id, data) {
+    return request({
+      url: `/admin/reports/${id}/handle`,
+      method: "put",
+      data,
+    });
+  },
+
+  getSensitiveWords() {
+    return request({
+      url: "/admin/sensitive-words",
+      method: "get",
+    });
+  },
+
+  addSensitiveWord(word) {
+    return request({
+      url: "/admin/sensitive-words",
+      method: "post",
+      params: { word },
+    });
+  },
+
+  deleteSensitiveWord(id) {
+    return request({
+      url: `/admin/sensitive-words/${id}`,
+      method: "delete",
+    });
+  },
 };

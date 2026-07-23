@@ -82,6 +82,13 @@ export const workspaceAPI = {
     });
   },
 
+  acceptInvitation(id) {
+    return request({
+      url: `/workspace/${id}/members/accept`,
+      method: "put",
+    });
+  },
+
   transferOwnership(id, data) {
     return request({
       url: `/workspace/${id}/transfer`,

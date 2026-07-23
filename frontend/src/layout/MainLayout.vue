@@ -57,6 +57,12 @@
             />
           </div>
 
+          <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
+            <button class="user-btn" aria-label="通知" @click="handleOpenNotifications">
+              <el-icon :size="18"><Bell /></el-icon>
+            </button>
+          </el-badge>
+
           <el-dropdown trigger="click" popper-class="user-menu-popper" @command="handleCommand">
             <button class="user-btn" aria-label="用户菜单">
               <span class="user-avatar">{{ userInitial }}</span>
@@ -85,11 +91,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { useWorkspaceStore } from "@/stores/workspace";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher.vue";
+import { notificationAPI } from "@/api/notification";
 import {
   DataAnalysis,
   Collection,
@@ -100,6 +107,7 @@ import {
   Share,
   Notebook,
   Setting,
+  Platform,
 } from "@element-plus/icons-vue";
 
 const route = useRoute();
@@ -109,11 +117,14 @@ const workspaceStore = useWorkspaceStore();
 
 const isSidebarCollapsed = ref(false);
 const searchQuery = ref("");
+const unreadCount = ref(0);
+let unreadTimer = null;
 
 const navItems = [
   { path: "/dashboard", label: "工作台", icon: DataAnalysis },
   { path: "/capture", label: "数据采集", icon: Collection },
   { path: "/knowledge", label: "知识管理", icon: Reading },
+  { path: "/square", label: "知识广场", icon: Platform },
   { path: "/search", label: "知识搜索", icon: Search },
   { path: "/knowledge-system", label: "知识体系", icon: Share },
   { path: "/review", label: "复习中心", icon: Bell },
@@ -155,8 +166,29 @@ const handleCommand = (cmd) => {
   }
 };
 
+const handleOpenNotifications = () => {
+  router.push("/notifications");
+};
+
+const fetchUnreadCount = async () => {
+  try {
+    const data = await notificationAPI.getUnreadCount();
+    unreadCount.value = data.unreadCount || 0;
+  } catch {
+    // ignore — user might not be logged in
+  }
+};
+
 onMounted(() => {
   workspaceStore.fetchWorkspaces();
+  if (userStore.isLoggedIn()) {
+    fetchUnreadCount();
+    unreadTimer = setInterval(fetchUnreadCount, 30000);
+  }
+});
+
+onUnmounted(() => {
+  if (unreadTimer) clearInterval(unreadTimer);
 });
 </script>
 
