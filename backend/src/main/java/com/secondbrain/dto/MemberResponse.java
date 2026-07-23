@@ -34,4 +34,9 @@ public class MemberResponse {
      * 加入时间
      */
     private LocalDateTime joinedTime;
+
+    /**
+     * 成员状态（pending-待确认，accepted-已确认）
+     */
+    private String status;
 }

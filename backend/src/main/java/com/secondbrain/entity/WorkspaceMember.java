@@ -57,4 +57,9 @@ public class WorkspaceMember {
      * 删除标记（0-未删除，1-已删除）
      */
     private Integer deleted;
+
+    /**
+     * 成员状态（pending-待确认，accepted-已确认）
+     */
+    private String status;
 }
