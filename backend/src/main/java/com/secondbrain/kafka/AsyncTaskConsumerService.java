@@ -7,10 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-/**
- * 异步任务消费者服务
- * 监听Kafka异步任务队列并执行任务处理
- */
+/** 异步任务消费者服务. <p>监听Kafka异步任务队列并执行任务处理</p> */
 @Service
 public class AsyncTaskConsumerService {
 
@@ -18,14 +15,20 @@ public class AsyncTaskConsumerService {
 
     private final AsyncTaskService asyncTaskService;
 
+    /**
+     * 构造器注入异步任务服务.
+     *
+     * @param asyncTaskService 异步任务服务
+     */
     public AsyncTaskConsumerService(AsyncTaskService asyncTaskService) {
         this.asyncTaskService = asyncTaskService;
     }
 
     /**
-     * 消费异步任务消息
+     * 消费异步任务消息.
      *
      * @param taskRequest 异步任务请求
+     * @return void
      */
     @KafkaListener(topics = "async-tasks", groupId = "async-task-group")
     public void consumeAsyncTask(AsyncTaskRequest taskRequest) {

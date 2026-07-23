@@ -16,10 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 关系推荐服务实现类
- * 基于向量相似度为用户推荐知识节点之间的关系
- */
+/** 关系推荐服务实现类. <p>基于向量相似度的知识关系推荐</p> */
 @Service
 public class RelationRecommendationServiceImpl implements RelationRecommendationService {
 

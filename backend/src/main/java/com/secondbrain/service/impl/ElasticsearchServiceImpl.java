@@ -47,6 +47,12 @@ public class ElasticsearchServiceImpl implements ElasticsearchService {
         this.embeddingService = embeddingService;
     }
 
+    /**
+     * 同步知识节点到Elasticsearch.
+     *
+     * @param node 知识节点
+     * @return void
+     */
     @Override
     public void syncKnowledgeNode(KnowledgeNode node) {
         try {
@@ -63,6 +69,12 @@ public class ElasticsearchServiceImpl implements ElasticsearchService {
         }
     }
 
+    /**
+     * 从Elasticsearch删除知识节点.
+     *
+     * @param id 知识节点ID
+     * @return void
+     */
     @Override
     public void deleteKnowledgeNode(Long id) {
         try {
@@ -76,6 +88,13 @@ public class ElasticsearchServiceImpl implements ElasticsearchService {
         }
     }
 
+    /**
+     * 关键词搜索.
+     *
+     * @param keyword 关键词
+     * @param userId  用户ID
+     * @return 知识文档列表
+     */
     @Override
     public List<KnowledgeDocument> search(String keyword, Long userId) {
         try {
@@ -116,6 +135,13 @@ public class ElasticsearchServiceImpl implements ElasticsearchService {
         }
     }
 
+    /**
+     * 多字段搜索.
+     *
+     * @param keyword 关键词
+     * @param userId  用户ID
+     * @return 知识文档列表
+     */
     @Override
     public List<KnowledgeDocument> multiFieldSearch(String keyword, Long userId) {
         try {
@@ -169,6 +195,14 @@ public class ElasticsearchServiceImpl implements ElasticsearchService {
         }
     }
 
+    /**
+     * 语义搜索.
+     *
+     * @param queryText 查询文本
+     * @param userId    用户ID
+     * @param topK      返回结果数量
+     * @return 知识文档列表
+     */
     @Override
     public List<KnowledgeDocument> semanticSearch(String queryText, Long userId, int topK) {
         try {

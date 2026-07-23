@@ -2,11 +2,9 @@ package com.secondbrain.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.secondbrain.dto.AsyncTaskRequest;
 import com.secondbrain.dto.AsyncTaskResponse;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.LearningReport;
-import com.secondbrain.kafka.KafkaProducerService;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.LearningReportMapper;
 import com.secondbrain.service.AsyncTaskService;
@@ -27,11 +25,10 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
- * DeerFlow 学习报告服务实现类
- * 生成用户学习报告并支持本地或远程服务调用
+ * DeerFlow报告服务实现类.
+ * <p>提供学习报告的生成、查询、删除功能，支持本地和远程两种服务模式</p>
  */
 @Service
 public class DeerFlowReportServiceImpl implements DeerFlowReportService {
@@ -42,12 +39,7 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
     private final LearningReportMapper learningReportMapper;
     private final DeerFlowResearchService deerFlowResearchService;
     private final RestTemplate restTemplate;
-
-    @Autowired(required = false)
-    private AsyncTaskService asyncTaskService;
-
-    @Autowired(required = false)
-    private KafkaProducerService kafkaProducerService;
+    private final AsyncTaskService asyncTaskService;
 
     @Value("${deerflow.local.enabled:false}")
     private boolean useLocalService;
@@ -56,27 +48,30 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
     private String localReportUrl;
 
     public DeerFlowReportServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper, LearningReportMapper learningReportMapper,
-                                     DeerFlowResearchService deerFlowResearchService, RestTemplate restTemplate) {
+                                     DeerFlowResearchService deerFlowResearchService, RestTemplate restTemplate,
+                                     @Autowired(required = false) AsyncTaskService asyncTaskService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.learningReportMapper = learningReportMapper;
         this.deerFlowResearchService = deerFlowResearchService;
         this.restTemplate = restTemplate;
+        this.asyncTaskService = asyncTaskService;
     }
 
     /**
-     * 生成学习报告
+     * 同步生成学习报告.
      *
-     * @param userId 用户ID
-     * @param topic  报告主题
-     * @param days   统计天数
-     * @return 学习报告内容
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param topic       报告主题
+     * @param days        统计天数
+     * @return 生成的报告内容
      */
     @Override
-    public String generateLearningReport(Long userId, String topic, Integer days) {
+    public String generateLearningReport(Long userId, Long workspaceId, String topic, Integer days) {
         try {
-            log.info("开始生成学习报告，用户ID：{}，主题：{}，天数：{}", userId, topic, days);
+            log.info("开始生成学习报告，用户ID：{}，workspaceId：{}，主题：{}，天数：{}", userId, workspaceId, topic, days);
 
-            List<KnowledgeNode> knowledgeNodes = getLearningData(userId, days);
+            List<KnowledgeNode> knowledgeNodes = getLearningData(userId, workspaceId, days);
             if (knowledgeNodes.isEmpty()) {
                 throw new IllegalStateException("指定时间范围内没有学习数据");
             }
@@ -89,8 +84,8 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
                 String learningData = buildLearningData(topic, days, knowledgeNodes);
                 report = deerFlowResearchService.generateDeepLearningReport(learningData, topic, "deep", null);
             }
-            
-            saveReportRecord(userId, topic, report, days);
+
+            saveReportRecord(userId, workspaceId, topic, report, days);
 
             log.info("学习报告生成成功，用户ID：{}，报告长度：{}", userId, report.length());
             return report;
@@ -134,14 +129,17 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         }
     }
 
-    private List<KnowledgeNode> getLearningData(Long userId, Integer days) {
+    private List<KnowledgeNode> getLearningData(Long userId, Long workspaceId, Integer days) {
         LocalDateTime startDate = LocalDateTime.now().minusDays(days);
-        return knowledgeNodeMapper.selectList(
-            new LambdaQueryWrapper<KnowledgeNode>()
-                .eq(KnowledgeNode::getUserId, userId)
+        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<KnowledgeNode>()
                 .ge(KnowledgeNode::getCreateTime, startDate)
-                .orderByDesc(KnowledgeNode::getCreateTime)
-        );
+                .orderByDesc(KnowledgeNode::getCreateTime);
+        if (workspaceId != null) {
+            wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(KnowledgeNode::getUserId, userId);
+        }
+        return knowledgeNodeMapper.selectList(wrapper);
     }
 
     private String buildLearningData(String topic, Integer days, List<KnowledgeNode> knowledgeNodes) {
@@ -175,9 +173,10 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
         return sb.toString();
     }
 
-    private void saveReportRecord(Long userId, String topic, String report, Integer days) {
+    private void saveReportRecord(Long userId, Long workspaceId, String topic, String report, Integer days) {
         LearningReport reportRecord = new LearningReport();
         reportRecord.setUserId(userId);
+        reportRecord.setWorkspaceId(workspaceId);
         reportRecord.setTopic(topic);
         reportRecord.setContent(report);
         reportRecord.setDays(days);
@@ -185,19 +184,20 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
     }
 
     /**
-     * 异步生成学习报告
+     * 异步生成学习报告.
      *
-     * @param userId 用户ID
-     * @param topic  报告主题
-     * @param days   统计天数
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param topic       报告主题
+     * @param days        统计天数
      * @return 异步任务响应
      */
     @Override
-    public AsyncTaskResponse generateLearningReportAsync(Long userId, String topic, Integer days) {
+    public AsyncTaskResponse generateLearningReportAsync(Long userId, Long workspaceId, String topic, Integer days) {
         log.info("异步生成学习报告，使用同步方式处理");
-        
+
         log.warn("异步任务服务未启用，使用同步方式生成学习报告");
-        String report = generateLearningReport(userId, topic, days);
+        String report = generateLearningReport(userId, workspaceId, topic, days);
         AsyncTaskResponse response = new AsyncTaskResponse();
         response.setStatus("COMPLETED");
         response.setTaskType("LEARNING_REPORT");
@@ -207,54 +207,65 @@ public class DeerFlowReportServiceImpl implements DeerFlowReportService {
     }
 
     /**
-     * 获取用户的学习报告列表
+     * 分页查询报告列表.
      *
-     * @param userId  用户ID
-     * @param current 当前页
-     * @param size    每页大小
-     * @return 分页报告列表
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param current     当前页
+     * @param size        每页大小
+     * @return 报告分页
      */
     @Override
-    public Page<LearningReport> getReportList(Long userId, Integer current, Integer size) {
+    public Page<LearningReport> getReportList(Long userId, Long workspaceId, Integer current, Integer size) {
         Page<LearningReport> page = new Page<>(current, size);
-        return learningReportMapper.selectPage(
-            page,
-            new LambdaQueryWrapper<LearningReport>()
-                .eq(LearningReport::getUserId, userId)
-                .orderByDesc(LearningReport::getCreateTime)
-        );
+        LambdaQueryWrapper<LearningReport> wrapper = new LambdaQueryWrapper<>();
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        wrapper.orderByDesc(LearningReport::getCreateTime);
+        return learningReportMapper.selectPage(page, wrapper);
     }
 
     /**
-     * 根据ID获取学习报告
+     * 根据ID查询报告.
      *
-     * @param id     报告ID
-     * @param userId 用户ID
-     * @return 学习报告
+     * @param id          报告ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @return 报告实体
      */
     @Override
-    public LearningReport getReportById(Long id, Long userId) {
-        return learningReportMapper.selectOne(
-            new LambdaQueryWrapper<LearningReport>()
-                .eq(LearningReport::getId, id)
-                .eq(LearningReport::getUserId, userId)
-        );
+    public LearningReport getReportById(Long id, Long userId, Long workspaceId) {
+        LambdaQueryWrapper<LearningReport> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LearningReport::getId, id);
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        return learningReportMapper.selectOne(wrapper);
     }
 
     /**
-     * 删除学习报告
+     * 根据ID删除报告.
      *
-     * @param id     报告ID
-     * @param userId 用户ID
+     * @param id          报告ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
      * @return 是否删除成功
      */
     @Override
-    public boolean deleteReport(Long id, Long userId) {
-        int result = learningReportMapper.delete(
-            new LambdaQueryWrapper<LearningReport>()
-                .eq(LearningReport::getId, id)
-                .eq(LearningReport::getUserId, userId)
-        );
+    public boolean deleteReport(Long id, Long userId, Long workspaceId) {
+        LambdaQueryWrapper<LearningReport> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LearningReport::getId, id);
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        int result = learningReportMapper.delete(wrapper);
         return result > 0;
+    }
+
+    /**
+     * 应用用户或工作区过滤条件.
+     * workspaceId 为 null 时降级为 userId 过滤，兼容迁移前未分配工作区的历史数据.
+     */
+    private void applyUserOrWorkspaceFilter(LambdaQueryWrapper<LearningReport> wrapper, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            wrapper.eq(LearningReport::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(LearningReport::getUserId, userId);
+        }
     }
 }

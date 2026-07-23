@@ -13,10 +13,17 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 
+/** Redis缓存配置. <p>配置缓存管理器及序列化策略</p> */
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
+    /**
+     * 创建 Redis 缓存管理器.
+     *
+     * @param connectionFactory Redis 连接工厂
+     * @return Redis 缓存管理器
+     */
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()

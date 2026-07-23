@@ -10,10 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * 认证控制器
- * 提供用户登录、注册等认证相关接口
- */
+/** 认证控制器. <p>提供用户登录、注册等认证相关接口</p> */
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "认证接口", description = "用户登录、注册等认证相关接口")

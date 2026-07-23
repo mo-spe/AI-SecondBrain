@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/** 对话上下文缓存服务实现类. <p>对话上下文缓存服务实现</p> */
 @Service
 public class ChatContextServiceImpl implements ChatContextService {
 
@@ -27,6 +28,13 @@ public class ChatContextServiceImpl implements ChatContextService {
         this.cacheService = cacheService;
     }
 
+    /**
+     * 缓存对话上下文.
+     *
+     * @param chatId 对话ID
+     * @param content 上下文内容
+     * @return void
+     */
     @Override
     public void cacheChatContext(String chatId, String content) {
         String key = CHAT_CONTEXT_PREFIX + chatId;
@@ -34,6 +42,12 @@ public class ChatContextServiceImpl implements ChatContextService {
         log.debug("缓存对话上下文，chatId：{}，长度：{}", chatId, content.length());
     }
 
+    /**
+     * 获取对话上下文.
+     *
+     * @param chatId 对话ID
+     * @return 上下文内容
+     */
     @Override
     public String getChatContext(String chatId) {
         String key = CHAT_CONTEXT_PREFIX + chatId;
@@ -44,6 +58,13 @@ public class ChatContextServiceImpl implements ChatContextService {
         return context;
     }
 
+    /**
+     * 缓存提取的知识点.
+     *
+     * @param chatId 对话ID
+     * @param knowledgeList 知识点列表
+     * @return void
+     */
     @Override
     public void cacheExtractedKnowledge(String chatId, List<KnowledgeDTO> knowledgeList) {
         String key = EXTRACTED_KNOWLEDGE_PREFIX + chatId;
@@ -52,6 +73,12 @@ public class ChatContextServiceImpl implements ChatContextService {
         log.debug("缓存提取的知识点，chatId：{}，数量：{}", chatId, knowledgeList.size());
     }
 
+    /**
+     * 获取缓存的知识点.
+     *
+     * @param chatId 对话ID
+     * @return 知识点列表
+     */
     @Override
     public List<KnowledgeDTO> getCachedKnowledge(String chatId) {
         String key = EXTRACTED_KNOWLEDGE_PREFIX + chatId;
@@ -63,6 +90,12 @@ public class ChatContextServiceImpl implements ChatContextService {
         return null;
     }
 
+    /**
+     * 清除对话上下文缓存.
+     *
+     * @param chatId 对话ID
+     * @return void
+     */
     @Override
     public void clearChatContext(String chatId) {
         String contextKey = CHAT_CONTEXT_PREFIX + chatId;

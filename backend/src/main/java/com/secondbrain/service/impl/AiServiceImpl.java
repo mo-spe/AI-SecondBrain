@@ -63,11 +63,24 @@ public class AiServiceImpl implements AiService {
         throw new IllegalStateException("API Key 未配置");
     }
 
+    /**
+     * 从文本内容提取知识点.
+     *
+     * @param content 文本内容
+     * @return 知识点列表
+     */
     @Override
     public List<KnowledgeDTO> extractKnowledge(String content) {
         return extractKnowledge(content, null);
     }
 
+    /**
+     * 从文本内容提取知识点.
+     *
+     * @param content 文本内容
+     * @param userApiKey 用户API Key
+     * @return 知识点列表
+     */
     @Override
     public List<KnowledgeDTO> extractKnowledge(String content, String userApiKey) {
         try {
@@ -98,11 +111,24 @@ public class AiServiceImpl implements AiService {
         }
     }
 
+    /**
+     * 根据提示词生成问题.
+     *
+     * @param prompt 提示词
+     * @return 生成的问题
+     */
     @Override
     public String generateQuestion(String prompt) {
         return generateQuestion(prompt, null);
     }
 
+    /**
+     * 根据提示词生成问题.
+     *
+     * @param prompt 提示词
+     * @param userApiKey 用户API Key
+     * @return 生成的问题
+     */
     @Override
     public String generateQuestion(String prompt, String userApiKey) {
         try {
@@ -130,11 +156,24 @@ public class AiServiceImpl implements AiService {
         }
     }
 
+    /**
+     * 根据提示词生成答案.
+     *
+     * @param prompt 提示词
+     * @return 生成的答案
+     */
     @Override
     public String generateAnswer(String prompt) {
         return generateAnswer(prompt, null);
     }
 
+    /**
+     * 根据提示词生成答案.
+     *
+     * @param prompt 提示词
+     * @param userApiKey 用户API Key
+     * @return 生成的答案
+     */
     @Override
     public String generateAnswer(String prompt, String userApiKey) {
         try {
@@ -158,10 +197,17 @@ public class AiServiceImpl implements AiService {
             return result;
         } catch (Exception e) {
             log.error("答案生成失败", e);
-            throw new IllegalStateException("答案生成失败：" + e.getMessage());
+            throw new IllegalStateException("答案生成失败", e);
         }
     }
 
+    /**
+     * 多轮对话.
+     *
+     * @param messages 消息列表
+     * @param userApiKey 用户API Key
+     * @return 对话结果
+     */
     @Override
     public String chat(List<Message> messages, String userApiKey) {
         try {

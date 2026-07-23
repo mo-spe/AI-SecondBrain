@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 异步任务响应DTO.
- */
+/** 异步任务响应DTO. <p>用于异步任务状态查询返回结果</p> */
 @Getter
 @Setter
 public class AsyncTaskResponse {

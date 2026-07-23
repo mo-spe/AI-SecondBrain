@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * DeerFlow研究请求DTO.
- */
+/** DeerFlow研究请求DTO. <p>用于深度学习研究请求参数封装</p> */
 @Getter
 @Setter
 public class DeerFlowResearchRequest {

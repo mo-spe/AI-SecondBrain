@@ -49,9 +49,28 @@ public class JwtUtil {
      * @return JWT Token
      */
     public String generateToken(Long userId, String username) {
+        return generateToken(userId, username, null, null);
+    }
+
+    /**
+     * 生成JWT Token（含角色和工作区信息）.
+     *
+     * @param userId 用户ID
+     * @param username 用户名
+     * @param role 平台角色（super_admin/user）
+     * @param currentWsId 当前选中的工作区ID
+     * @return JWT Token
+     */
+    public String generateToken(Long userId, String username, String role, Long currentWsId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        if (role != null) {
+            claims.put("role", role);
+        }
+        if (currentWsId != null) {
+            claims.put("currentWsId", currentWsId);
+        }
         return createToken(claims, username);
     }
 
@@ -108,6 +127,35 @@ public class JwtUtil {
     public Long getUserIdFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("userId", Long.class);
+    }
+
+    /**
+     * 从Token中获取平台角色.
+     *
+     * @param token JWT Token
+     * @return 平台角色
+     */
+    public String getRoleFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("role", String.class);
+    }
+
+    /**
+     * 从Token中获取当前工作区ID.
+     *
+     * @param token JWT Token
+     * @return 当前工作区ID
+     */
+    public Long getCurrentWsIdFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        Object wsId = claims.get("currentWsId");
+        if (wsId == null) {
+            return null;
+        }
+        if (wsId instanceof Integer) {
+            return ((Integer) wsId).longValue();
+        }
+        return (Long) wsId;
     }
 
     /**

@@ -4,9 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 对话采集请求DTO.
- */
+/** 对话采集请求DTO. <p>用于对话采集的请求参数封装</p> */
 @Getter
 @Setter
 public class ChatCollectRequest {

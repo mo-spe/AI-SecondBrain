@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 异步任务请求DTO.
- */
+/** 异步任务请求DTO. <p>用于异步任务创建请求参数封装</p> */
 @Getter
 @Setter
 public class AsyncTaskRequest {

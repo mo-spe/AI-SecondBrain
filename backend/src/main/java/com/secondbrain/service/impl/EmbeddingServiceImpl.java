@@ -43,16 +43,37 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 .build();
     }
 
+    /**
+     * 生成文本向量.
+     *
+     * @param text 文本
+     * @return 向量
+     */
     @Override
     public List<Float> generateEmbedding(String text) {
         return generateEmbedding(text, defaultModel);
     }
 
+    /**
+     * 生成文本向量.
+     *
+     * @param text  文本
+     * @param model 模型
+     * @return 向量
+     */
     @Override
     public List<Float> generateEmbedding(String text, String model) {
         return generateEmbedding(text, model, null);
     }
 
+    /**
+     * 生成文本向量.
+     *
+     * @param text       文本
+     * @param model      模型
+     * @param userApiKey 用户API Key
+     * @return 向量
+     */
     @Override
     public List<Float> generateEmbedding(String text, String model, String userApiKey) {
         String effectiveApiKey = userApiKey;

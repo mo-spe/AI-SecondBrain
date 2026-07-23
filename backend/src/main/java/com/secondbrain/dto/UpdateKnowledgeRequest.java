@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 更新知识点请求DTO.
- */
+/** 更新知识请求DTO. <p>用于更新知识节点信息的请求参数</p> */
 @Getter
 @Setter
 public class UpdateKnowledgeRequest {

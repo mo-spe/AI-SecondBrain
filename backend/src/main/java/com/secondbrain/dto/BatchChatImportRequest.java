@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * 批量对话导入请求DTO.
- */
+/** 批量对话导入请求DTO. <p>用于批量导入对话记录的请求参数封装</p> */
 @Getter
 @Setter
 public class BatchChatImportRequest {

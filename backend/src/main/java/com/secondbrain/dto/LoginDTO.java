@@ -4,9 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 用户登录请求DTO.
- */
+/** 登录请求DTO. <p>用于接收用户登录信息</p> */
 @Getter
 @Setter
 public class LoginDTO {

@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 知识关系请求DTO.
- */
+/** 知识关系请求DTO. <p>用于创建知识节点关系的请求参数</p> */
 @Getter
 @Setter
 public class KnowledgeRelationRequest {

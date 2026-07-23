@@ -12,10 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/**
- * 用户服务实现类
- * 提供用户信息查询、更新、密码修改等功能
- */
+/** 用户服务实现类. <p>用户服务实现，提供用户信息查询、更新、密码修改</p> */
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -55,7 +52,7 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 更新用户基本信息
+     * 更新用户基本信息.
      *
      * @param userId   用户ID
      * @param username 用户名
@@ -63,6 +60,7 @@ public class UserServiceImpl implements UserService {
      * @param phone    手机号
      * @param bio      个人简介
      * @param apiKey   API Key
+     * @return void
      */
     @Override
     @Transactional
@@ -81,11 +79,12 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 更新用户密码
+     * 更新用户密码.
      *
      * @param userId      用户ID
      * @param oldPassword 原密码
      * @param newPassword 新密码
+     * @return void
      */
     @Override
     @Transactional
@@ -107,9 +106,10 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 更新用户最后登录时间
+     * 更新用户最后登录时间.
      *
      * @param userId 用户ID
+     * @return void
      */
     @Override
     @Transactional
@@ -121,10 +121,11 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 更新用户头像
+     * 更新用户头像.
      *
      * @param userId    用户ID
      * @param avatarUrl 头像URL
+     * @return void
      */
     @Override
     @Transactional

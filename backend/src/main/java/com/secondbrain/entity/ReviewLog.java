@@ -32,6 +32,11 @@ public class ReviewLog {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 复习结果（correct-正确，incorrect-错误）
      */
     private String result;

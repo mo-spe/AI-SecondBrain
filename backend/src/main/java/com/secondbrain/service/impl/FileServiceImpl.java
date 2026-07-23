@@ -14,10 +14,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
-/**
- * 文件服务实现类
- * 提供头像上传、文件删除等OSS文件操作功能
- */
+/** 文件服务实现类. <p>文件服务实现，提供OSS头像上传与删除</p> */
 @Service
 public class FileServiceImpl implements FileService {
 
@@ -69,9 +66,10 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * 删除OSS上的文件
+     * 删除OSS上的文件.
      *
      * @param fileUrl 文件URL
+     * @return void
      */
     @Override
     public void deleteFile(String fileUrl) {

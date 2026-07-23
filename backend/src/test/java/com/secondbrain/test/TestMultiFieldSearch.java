@@ -18,7 +18,7 @@ public class TestMultiFieldSearch {
     public void testMultiFieldSearch() {
         System.out.println("=== 测试多字段搜索 ===");
         try {
-            List<KnowledgeNodeVO> results = knowledgeService.multiFieldSearch("Python", 5L);
+            List<KnowledgeNodeVO> results = knowledgeService.multiFieldSearch("Python", 5L, 1L);
             System.out.println("搜索结果数: " + results.size());
             for (int i = 0; i < Math.min(5, results.size()); i++) {
                 System.out.println("  " + (i+1) + ". " + results.get(i).getTitle());

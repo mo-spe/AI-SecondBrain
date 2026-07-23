@@ -1,9 +1,3 @@
-/**
- * HTTP请求日志拦截器
- *
- * 拦截RestTemplate发出的HTTP请求，记录请求和响应的详细信息，
- * 用于调试和监控外部API调用。
- */
 package com.secondbrain.config;
 
 import org.slf4j.Logger;
@@ -18,6 +12,7 @@ import org.springframework.util.StreamUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+/** HTTP请求日志拦截器. <p>拦截RestTemplate发出的HTTP请求并记录日志</p> */
 @Component
 public class LoggingInterceptor implements ClientHttpRequestInterceptor {
 

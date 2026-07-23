@@ -23,7 +23,7 @@ public class TestAllSearchMethods {
         
         System.out.println("\n1. 关键词搜索");
         try {
-            List<KnowledgeNodeVO> results = knowledgeService.search(keyword, userId);
+            List<KnowledgeNodeVO> results = knowledgeService.search(keyword, userId, 1L);
             System.out.println("   结果数: " + results.size());
             for (int i = 0; i < Math.min(3, results.size()); i++) {
                 System.out.println("   " + (i+1) + ". " + results.get(i).getTitle());
@@ -34,7 +34,7 @@ public class TestAllSearchMethods {
         
         System.out.println("\n2. 多字段搜索");
         try {
-            List<KnowledgeNodeVO> results = knowledgeService.multiFieldSearch(keyword, userId);
+            List<KnowledgeNodeVO> results = knowledgeService.multiFieldSearch(keyword, userId, 1L);
             System.out.println("   结果数: " + results.size());
             for (int i = 0; i < Math.min(3, results.size()); i++) {
                 System.out.println("   " + (i+1) + ". " + results.get(i).getTitle());
@@ -45,7 +45,7 @@ public class TestAllSearchMethods {
         
         System.out.println("\n3. 语义搜索");
         try {
-            List<KnowledgeNodeVO> results = knowledgeService.semanticSearch(keyword, userId, 10);
+            List<KnowledgeNodeVO> results = knowledgeService.semanticSearch(keyword, userId, 10, 1L);
             System.out.println("   结果数: " + results.size());
             for (int i = 0; i < Math.min(3, results.size()); i++) {
                 System.out.println("   " + (i+1) + ". " + results.get(i).getTitle());

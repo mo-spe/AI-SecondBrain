@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
+/** 缓存服务实现类. <p>缓存服务实现，封装Redis操作</p> */
 @Service
 public class CacheServiceImpl implements CacheService {
 
@@ -19,6 +20,15 @@ public class CacheServiceImpl implements CacheService {
         this.redisTemplate = redisTemplate;
     }
 
+    /**
+     * 设置缓存.
+     *
+     * @param key 缓存键
+     * @param value 缓存值
+     * @param timeout 过期时间
+     * @param unit 时间单位
+     * @return void
+     */
     @Override
     public void set(String key, Object value, long timeout, TimeUnit unit) {
         try {
@@ -29,6 +39,14 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 获取缓存.
+     *
+     * @param key 缓存键
+     * @param clazz 值类型
+     * @return 缓存值
+     * @param <T> 值类型
+     */
     @Override
     public <T> T get(String key, Class<T> clazz) {
         try {
@@ -45,6 +63,12 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 删除缓存.
+     *
+     * @param key 缓存键
+     * @return void
+     */
     @Override
     public void delete(String key) {
         try {
@@ -55,6 +79,12 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 检查缓存是否存在.
+     *
+     * @param key 缓存键
+     * @return 是否存在
+     */
     @Override
     public boolean exists(String key) {
         try {
@@ -66,6 +96,14 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 设置缓存过期时间.
+     *
+     * @param key 缓存键
+     * @param timeout 过期时间
+     * @param unit 时间单位
+     * @return void
+     */
     @Override
     public void expire(String key, long timeout, TimeUnit unit) {
         try {
@@ -76,6 +114,13 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 获取缓存过期时间.
+     *
+     * @param key 缓存键
+     * @param unit 时间单位
+     * @return 过期时间
+     */
     @Override
     public long getExpire(String key, TimeUnit unit) {
         try {
@@ -87,6 +132,17 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 获取缓存，未命中则加载.
+     *
+     * @param key 缓存键
+     * @param clazz 值类型
+     * @param timeout 过期时间
+     * @param unit 时间单位
+     * @param loader 缓存加载器
+     * @return 缓存值
+     * @param <T> 值类型
+     */
     @Override
     public <T> T getOrLoad(String key, Class<T> clazz, long timeout, TimeUnit unit, CacheLoader<T> loader) {
         try {
@@ -106,6 +162,12 @@ public class CacheServiceImpl implements CacheService {
         }
     }
 
+    /**
+     * 按模式批量删除缓存.
+     *
+     * @param pattern 键模式
+     * @return void
+     */
     @Override
     public void deletePattern(String pattern) {
         try {

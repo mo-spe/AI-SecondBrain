@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 知识图谱节点DTO.
- */
+/** 知识图谱节点DTO. <p>表示知识图谱中的节点数据</p> */
 @Getter
 @Setter
 public class GraphNode {

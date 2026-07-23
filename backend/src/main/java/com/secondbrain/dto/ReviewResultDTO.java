@@ -4,9 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 复习结果DTO.
- */
+/** 复习结果DTO. <p>用于接收复习答题结果</p> */
 @Getter
 @Setter
 public class ReviewResultDTO {

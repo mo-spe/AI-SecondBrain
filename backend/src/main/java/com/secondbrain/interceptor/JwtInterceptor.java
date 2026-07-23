@@ -8,9 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/**
- * JWT 拦截器，用于验证请求中的 JWT Token 并提取用户 ID。
- */
+/** JWT拦截器. <p>用于验证请求中的 JWT Token 并提取用户信息</p> */
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
@@ -18,47 +16,53 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     private final JwtUtil jwtUtil;
 
+    /**
+     * 构造器注入 JwtUtil.
+     *
+     * @param jwtUtil JWT 工具类
+     */
     public JwtInterceptor(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
     }
 
     /**
-     * 在请求处理之前进行 JWT 验证。
+     * 请求预处理，解析 JWT Token 并将用户信息存入请求属性.
      *
      * @param request  HTTP 请求
      * @param response HTTP 响应
      * @param handler  处理器
-     * @return 是否继续处理请求
-     * @throws Exception 处理异常
+     * @return 始终返回 true 以放行请求
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String token = request.getHeader("Authorization");
-        
-        log.info("JWT拦截器检查，request URI: {}, Authorization header: {}", 
-            request.getRequestURI(), 
-            token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null");
-        
+
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
-            
+
             try {
                 Long userId = jwtUtil.getUserIdFromToken(token);
-                log.info("JWT 解析结果，userId: {}", userId);
                 if (userId != null) {
                     request.setAttribute("userId", userId);
-                    log.info("JWT 验证成功，userId: {}", userId);
-                    return true;
-                } else {
-                    log.warn("JWT 解析成功但 userId 为 null");
+
+                    String role = jwtUtil.getRoleFromToken(token);
+                    if (role != null) {
+                        request.setAttribute("role", role);
+                    }
+
+                    Long currentWsId = jwtUtil.getCurrentWsIdFromToken(token);
+                    if (currentWsId != null) {
+                        request.setAttribute("currentWsId", currentWsId);
+                        request.setAttribute("workspaceId", currentWsId);
+                    }
+
+                    log.debug("jwt_parsed userId={} role={} currentWsId={}", userId, role, currentWsId);
                 }
             } catch (Exception e) {
-                log.error("JWT 验证失败：{}", e.getMessage(), e);
+                log.error("JWT 解析失败：{}", e.getMessage());
             }
-        } else {
-            log.warn("没有找到有效的 Authorization header");
         }
-        
+
         return true;
     }
 }

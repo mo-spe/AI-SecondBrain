@@ -27,6 +27,11 @@ public class ResearchHistory {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 研究类型（LEARNING_REPORT/LEARNING_PATH/KNOWLEDGE_BLIND_SPOT）
      */
     private String type;

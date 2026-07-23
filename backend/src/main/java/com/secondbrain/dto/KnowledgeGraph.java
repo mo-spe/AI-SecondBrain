@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * 知识图谱DTO.
- */
+/** 知识图谱DTO. <p>包含节点和边的完整知识图谱数据</p> */
 @Getter
 @Setter
 public class KnowledgeGraph {

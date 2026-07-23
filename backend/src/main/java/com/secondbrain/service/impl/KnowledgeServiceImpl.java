@@ -62,26 +62,23 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         this.knowledgeVectorService = knowledgeVectorService;
     }
 
+    /**
+     * 分页查询知识节点列表.
+     *
+     * @param current       当前页
+     * @param size          每页数量
+     * @param keyword       关键词
+     * @param userId        用户ID
+     * @param importance    重要性
+     * @param masteryLevel  掌握程度
+     * @param workspaceId   工作区ID
+     * @return 知识节点分页结果
+     */
     @Override
-    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel) {
-        String cacheKey = String.format("%slist:%d:%d:%s:%d", KNOWLEDGE_CACHE_PREFIX, current, size, keyword != null ? keyword : "", userId);
-        if (importance != null) {
-            cacheKey += ":imp-" + importance;
-        }
-        if (masteryLevel != null) {
-            cacheKey += ":mas-" + masteryLevel;
-        }
-        
-        Page<KnowledgeNodeVO> cached = cacheService.get(cacheKey, Page.class);
-        if (cached != null) {
-            log.debug("命中知识列表缓存，key：{}", cacheKey);
-            return cached;
-        }
-
+    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId) {
         Page<KnowledgeNode> page = new Page<>(current, size);
 
-        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeNode::getUserId, userId);
+        LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.and(w -> w.like(KnowledgeNode::getTitle, keyword)
                     .or()
@@ -107,113 +104,138 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 .collect(Collectors.toList());
         voPage.setRecords(voList);
 
-        cacheService.set(cacheKey, voPage, 30, TimeUnit.MINUTES);
-        
         return voPage;
     }
 
+    /**
+     * 根据ID获取知识节点.
+     *
+     * @param id          知识节点ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 知识节点VO
+     */
     @Override
-    public KnowledgeNodeVO getById(Long id, Long userId) {
-        String cacheKey = KNOWLEDGE_CACHE_PREFIX + id;
-        
-        KnowledgeNodeVO cached = cacheService.get(cacheKey, KnowledgeNodeVO.class);
-        if (cached != null) {
-            log.debug("命中知识点缓存，key：{}", cacheKey);
-            return cached;
-        }
-
+    public KnowledgeNodeVO getById(Long id, Long userId, Long workspaceId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
-        if (node != null && !node.getUserId().equals(userId)) {
+        if (node != null && !hasAccess(node, userId, workspaceId)) {
             throw new IllegalStateException("无权访问此知识点");
         }
-        KnowledgeNodeVO vo = convertToVO(node);
-        
-        if (vo != null) {
-            cacheService.set(cacheKey, vo, 30, TimeUnit.MINUTES);
-        }
-        
-        return vo;
+        return convertToVO(node);
     }
 
+    /**
+     * 根据ID删除知识节点.
+     *
+     * @param id          知识节点ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
+     */
     @Override
-    public void deleteById(Long id, Long userId) {
+    public void deleteById(Long id, Long userId, Long workspaceId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node == null) {
             throw new IllegalStateException("知识点不存在");
         }
-        if (!node.getUserId().equals(userId)) {
+        if (!hasAccess(node, userId, workspaceId)) {
             throw new IllegalStateException("无权删除此知识点");
         }
-        
+
         knowledgeNodeMapper.deleteById(id);
-        String cacheKey = KNOWLEDGE_CACHE_PREFIX + id;
-        cacheService.delete(cacheKey);
-        
+
         if (elasticsearchService != null) {
             elasticsearchService.deleteKnowledgeNode(id);
         }
-        
-        log.info("删除知识点并清除缓存，id：{}", id);
+
+        log.info("删除知识点，id：{}", id);
     }
 
+    /**
+     * 更新知识节点重要性.
+     *
+     * @param id          知识节点ID
+     * @param importance  重要性
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
+     */
     @Override
-    public void updateImportance(Long id, Integer importance, Long userId) {
+    public void updateImportance(Long id, Integer importance, Long userId, Long workspaceId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node == null) {
             throw new IllegalStateException("知识点不存在");
         }
-        if (!node.getUserId().equals(userId)) {
+        if (!hasAccess(node, userId, workspaceId)) {
             throw new IllegalStateException("无权更新此知识点");
         }
-        
+
         KnowledgeNode updateNode = new KnowledgeNode();
         updateNode.setId(id);
         updateNode.setImportance(importance);
         knowledgeNodeMapper.updateById(updateNode);
-        
-        String cacheKey = KNOWLEDGE_CACHE_PREFIX + id;
-        cacheService.delete(cacheKey);
-        log.info("更新知识点重要性并清除缓存，id：{}", id);
+
+        log.info("更新知识点重要性，id：{}", id);
     }
 
+    /**
+     * 更新知识节点内容.
+     *
+     * @param id          知识节点ID
+     * @param title       标题
+     * @param summary     摘要
+     * @param contentMd   Markdown内容
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
+     */
     @Override
-    public void updateKnowledge(Long id, String title, String summary, String contentMd, Long userId) {
+    public void updateKnowledge(Long id, String title, String summary, String contentMd, Long userId, Long workspaceId) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(id);
         if (node == null) {
             throw new IllegalStateException("知识点不存在");
         }
 
-        if (!node.getUserId().equals(userId)) {
+        if (!hasAccess(node, userId, workspaceId)) {
             throw new IllegalStateException("无权更新此知识点");
         }
-        
+
         KnowledgeNode updateNode = new KnowledgeNode();
         updateNode.setId(id);
         updateNode.setTitle(title);
         updateNode.setSummary(summary);
         updateNode.setContentMd(contentMd);
         knowledgeNodeMapper.updateById(updateNode);
-        
-        String cacheKey = KNOWLEDGE_CACHE_PREFIX + id;
-        cacheService.delete(cacheKey);
-        
+
         if (elasticsearchService != null) {
             KnowledgeNode updatedNode = knowledgeNodeMapper.selectById(id);
             elasticsearchService.syncKnowledgeNode(updatedNode);
         }
-        
+
         if (knowledgeVectorService != null) {
             KnowledgeNode nodeForVector = knowledgeNodeMapper.selectById(id);
             triggerVectorGenerationAsync(nodeForVector);
         }
-        
-        log.info("更新知识点内容并清除缓存，id：{}", id);
+
+        log.info("更新知识点内容，id：{}", id);
     }
 
+    /**
+     * 创建知识节点.
+     *
+     * @param title       标题
+     * @param summary     摘要
+     * @param contentMd   Markdown内容
+     * @param importance  重要性
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 创建后的知识节点VO
+     */
     @Override
-    public KnowledgeNodeVO create(String title, String summary, String contentMd, Integer importance, Long userId) {
+    public KnowledgeNodeVO create(String title, String summary, String contentMd, Integer importance, Long userId, Long workspaceId) {
         KnowledgeNode node = new KnowledgeNode();
         node.setUserId(userId);
+        node.setWorkspaceId(workspaceId);
         node.setTitle(title);
         node.setSummary(summary);
         node.setContentMd(contentMd);
@@ -222,24 +244,31 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         node.setReviewCount(0);
         node.setNextReviewTime(ebbinghausService.calculateNextReviewTime(LocalDateTime.now(), 0, true));
         knowledgeNodeMapper.insert(node);
-        
+
         if (elasticsearchService != null) {
             elasticsearchService.syncKnowledgeNode(node);
         }
-        
+
         if (relationRecommendationService != null) {
             triggerRelationRecommendationAsync(node.getId(), userId);
         }
-        
+
         if (knowledgeVectorService != null) {
             triggerVectorGenerationAsync(node);
         }
-        
-        log.info("创建知识点成功，id：{}，userId：{}", node.getId(), userId);
-        
+
+        log.info("创建知识点成功，id：{}，userId：{}，workspaceId：{}", node.getId(), userId, workspaceId);
+
         return convertToVO(node);
     }
 
+    /**
+     * 异步触发关系推荐.
+     *
+     * @param knowledgeId 知识节点ID
+     * @param userId      用户ID
+     * @return void
+     */
     @Async
     public void triggerRelationRecommendationAsync(Long knowledgeId, Long userId) {
         try {
@@ -250,6 +279,12 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
     }
 
+    /**
+     * 异步触发向量生成.
+     *
+     * @param node 知识节点
+     * @return void
+     */
     @Async
     public void triggerVectorGenerationAsync(KnowledgeNode node) {
         try {
@@ -260,56 +295,83 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
     }
 
+    /**
+     * 关键词搜索知识节点.
+     *
+     * @param keyword     关键词
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 知识节点列表
+     */
     @Override
-    public List<KnowledgeNodeVO> search(String keyword, Long userId) {
-        log.info("关键词搜索，keyword：{}，userId：{}", keyword, userId);
-        
-        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeNode::getUserId, userId);
+    public List<KnowledgeNodeVO> search(String keyword, Long userId, Long workspaceId) {
+        log.info("关键词搜索，keyword：{}，userId：{}，workspaceId：{}", keyword, userId, workspaceId);
+
+        LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
         wrapper.like(KnowledgeNode::getTitle, keyword);
         wrapper.orderByDesc(KnowledgeNode::getCreateTime);
-        
+
         List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
-        return nodes.stream()
-                .map(this::convertToVO)
-                .collect(Collectors.toList());
+        return nodes.stream().map(this::convertToVO).collect(Collectors.toList());
     }
 
+    /**
+     * 多字段搜索知识节点.
+     *
+     * @param keyword     关键词
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 知识节点列表
+     */
     @Override
-    public List<KnowledgeNodeVO> multiFieldSearch(String keyword, Long userId) {
-        log.info("多字段搜索，keyword：{}，userId：{}", keyword, userId);
-        
-        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeNode::getUserId, userId);
+    public List<KnowledgeNodeVO> multiFieldSearch(String keyword, Long userId, Long workspaceId) {
+        log.info("多字段搜索，keyword：{}，userId：{}，workspaceId：{}", keyword, userId, workspaceId);
+
+        LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
         wrapper.and(w -> w.like(KnowledgeNode::getTitle, keyword)
                 .or()
                 .like(KnowledgeNode::getSummary, keyword));
         wrapper.orderByDesc(KnowledgeNode::getCreateTime);
-        
+
         List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
-        return nodes.stream()
-                .map(this::convertToVO)
-                .collect(Collectors.toList());
+        return nodes.stream().map(this::convertToVO).collect(Collectors.toList());
     }
 
+    /**
+     * 语义搜索知识节点.
+     *
+     * @param queryText   查询文本
+     * @param userId      用户ID
+     * @param topK        返回数量上限
+     * @param workspaceId 工作区ID
+     * @return 知识节点列表
+     */
     @Override
-    public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK) {
-        // 默认不传 API Key，使用平台 API Key
-        return semanticSearch(queryText, userId, topK, null);
+    public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK, Long workspaceId) {
+        return semanticSearch(queryText, userId, topK, null, workspaceId);
     }
 
+    /**
+     * 语义搜索知识节点（支持用户自定义API Key）.
+     *
+     * @param queryText   查询文本
+     * @param userId      用户ID
+     * @param topK        返回数量上限
+     * @param userApiKey  用户API Key
+     * @param workspaceId 工作区ID
+     * @return 知识节点列表
+     */
     @Override
-    public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK, String userApiKey) {
-        log.info("语义搜索，queryText：{}，userId：{}，topK：{}，使用用户 API Key：{}", 
-            queryText, userId, topK, userApiKey != null && !userApiKey.isEmpty());
-        
+    public List<KnowledgeNodeVO> semanticSearch(String queryText, Long userId, int topK, String userApiKey, Long workspaceId) {
+        log.info("语义搜索，queryText：{}，userId：{}，topK：{}，workspaceId：{}",
+            queryText, userId, topK, workspaceId);
+
         try {
-            // ✅ 传递用户 API Key 到 VectorSearchService
             List<KnowledgeReference> references = vectorSearchService.searchSimilar(queryText, userId, topK, userApiKey);
             return references.stream()
                     .map(ref -> {
                         KnowledgeNode node = knowledgeNodeMapper.selectById(ref.getKnowledgeId());
-                        if (node != null) {
+                        if (node != null && hasAccess(node, userId, workspaceId)) {
                             KnowledgeNodeVO vo = convertToVO(node);
                             vo.setScore(ref.getSimilarity());
                             return vo;
@@ -320,19 +382,84 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("向量搜索失败，降级到数据库搜索，queryText：{}，userId：{}", queryText, userId, e);
-            
-            LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(KnowledgeNode::getUserId, userId);
+
+            LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
             wrapper.and(w -> w.like(KnowledgeNode::getTitle, queryText)
                     .or()
                     .like(KnowledgeNode::getSummary, queryText));
             wrapper.orderByDesc(KnowledgeNode::getCreateTime);
             wrapper.last("LIMIT " + topK);
-            
+
             List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(wrapper);
-            return nodes.stream()
-                    .map(this::convertToVO)
-                    .collect(Collectors.toList());
+            return nodes.stream().map(this::convertToVO).collect(Collectors.toList());
+        }
+    }
+
+    /**
+     * 统计用户的知识节点数量.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 知识节点数量
+     */
+    @Override
+    public long countByUserId(Long userId, Long workspaceId) {
+        return knowledgeNodeMapper.selectCount(buildBaseWrapper(userId, workspaceId));
+    }
+
+    /**
+     * 统计用户在指定时间范围内的知识节点数量.
+     *
+     * @param userId      用户ID
+     * @param startTime   开始时间
+     * @param endTime     结束时间
+     * @param workspaceId 工作区ID
+     * @return 知识节点数量
+     */
+    @Override
+    public long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime, Long workspaceId) {
+        return knowledgeNodeMapper.selectCount(
+                buildBaseWrapper(userId, workspaceId)
+                        .ge(KnowledgeNode::getCreateTime, startTime)
+                        .lt(KnowledgeNode::getCreateTime, endTime));
+    }
+
+    /**
+     * 同步知识节点到Elasticsearch.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
+     */
+    @Override
+    public void syncToElasticsearch(Long userId, Long workspaceId) {
+        if (elasticsearchService == null) {
+            log.warn("Elasticsearch服务未启用，跳过同步");
+            return;
+        }
+
+        try {
+            log.info("开始同步知识点到Elasticsearch，userId：{}，workspaceId：{}", userId, workspaceId);
+
+            List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(buildBaseWrapper(userId, workspaceId));
+
+            int successCount = 0;
+            int failCount = 0;
+
+            for (KnowledgeNode node : nodes) {
+                try {
+                    elasticsearchService.syncKnowledgeNode(node);
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("同步知识点{}失败", node.getId(), e);
+                    failCount++;
+                }
+            }
+
+            log.info("同步完成，成功：{}，失败：{}", successCount, failCount);
+
+        } catch (Exception e) {
+            log.error("同步知识点到Elasticsearch失败", e);
         }
     }
 
@@ -345,56 +472,26 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         return vo;
     }
 
-    @Override
-    public long countByUserId(Long userId) {
-        return knowledgeNodeMapper.selectCount(
-            new LambdaQueryWrapper<KnowledgeNode>()
-                .eq(KnowledgeNode::getUserId, userId)
-        );
+    /**
+     * 构建基础查询条件：workspaceId 不为 null 时按 workspaceId 过滤，否则按 userId 过滤（向后兼容）.
+     */
+    private LambdaQueryWrapper<KnowledgeNode> buildBaseWrapper(Long userId, Long workspaceId) {
+        LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<>();
+        if (workspaceId != null) {
+            wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(KnowledgeNode::getUserId, userId);
+        }
+        return wrapper;
     }
 
-    @Override
-    public long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
-        return knowledgeNodeMapper.selectCount(
-            new LambdaQueryWrapper<KnowledgeNode>()
-                .eq(KnowledgeNode::getUserId, userId)
-                .ge(KnowledgeNode::getCreateTime, startTime)
-                .lt(KnowledgeNode::getCreateTime, endTime)
-        );
-    }
-
-    @Override
-    public void syncToElasticsearch(Long userId) {
-        if (elasticsearchService == null) {
-            log.warn("Elasticsearch服务未启用，跳过同步");
-            return;
+    /**
+     * 校验用户是否有权访问知识点.
+     */
+    private boolean hasAccess(KnowledgeNode node, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            return workspaceId.equals(node.getWorkspaceId());
         }
-
-        try {
-            log.info("开始同步用户{}的知识点到Elasticsearch", userId);
-            
-            List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(
-                new LambdaQueryWrapper<KnowledgeNode>()
-                    .eq(KnowledgeNode::getUserId, userId)
-            );
-
-            int successCount = 0;
-            int failCount = 0;
-            
-            for (KnowledgeNode node : nodes) {
-                try {
-                    elasticsearchService.syncKnowledgeNode(node);
-                    successCount++;
-                } catch (Exception e) {
-                    log.error("同步知识点{}失败", node.getId(), e);
-                    failCount++;
-                }
-            }
-            
-            log.info("同步完成，成功：{}，失败：{}", successCount, failCount);
-            
-        } catch (Exception e) {
-            log.error("同步知识点到Elasticsearch失败", e);
-        }
+        return node.getUserId().equals(userId);
     }
 }

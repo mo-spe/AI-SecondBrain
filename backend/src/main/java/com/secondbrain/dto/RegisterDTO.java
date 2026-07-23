@@ -5,9 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 用户注册请求DTO.
- */
+/** 注册请求DTO. <p>用于接收用户注册信息</p> */
 @Getter
 @Setter
 public class RegisterDTO {

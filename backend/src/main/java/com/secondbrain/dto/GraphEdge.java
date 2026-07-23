@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 知识图谱边DTO.
- */
+/** 知识图谱边DTO. <p>表示知识节点之间的关系</p> */
 @Getter
 @Setter
 public class GraphEdge {

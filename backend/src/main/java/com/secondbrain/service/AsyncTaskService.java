@@ -14,10 +14,11 @@ public interface AsyncTaskService {
      *
      * @param taskType 任务类型
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @param parameters 任务参数
      * @return 任务响应
      */
-    AsyncTaskResponse createTask(String taskType, Long userId, Object parameters);
+    AsyncTaskResponse createTask(String taskType, Long userId, Long workspaceId, Object parameters);
 
     /**
      * 查询任务状态.

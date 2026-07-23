@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 更新用户信息请求DTO.
- */
+/** 更新用户信息DTO. <p>用于接收用户信息更新请求</p> */
 @Getter
 @Setter
 public class UpdateUserDTO {

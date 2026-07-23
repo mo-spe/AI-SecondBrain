@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 聊天会话服务实现类.
@@ -92,16 +91,24 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         throw new IllegalStateException("API Key 未配置");
     }
 
+    /**
+     * AI聊天对话.
+     *
+     * @param request     聊天请求（内容、模型、会话ID）
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @return AI回复内容
+     */
     @Override
-    public ChatResponseDTO chat(ChatRequestDTO request, Long userId) {
+    public ChatResponseDTO chat(ChatRequestDTO request, Long userId, Long workspaceId) {
         long startTime = System.currentTimeMillis();
 
         String apiKey = getApiKey(userId);
         String model = request.getModel() != null ? request.getModel() : "gpt-4o-mini";
 
-        log.info("开始聊天，userId：{}，model：{}", userId, model);
+        log.info("开始聊天，userId：{}，workspaceId：{}，model：{}", userId, workspaceId, model);
 
-        ChatSession session = getOrCreateSession(request.getSessionId(), userId);
+        ChatSession session = getOrCreateSession(request.getSessionId(), userId, workspaceId);
         List<ChatMessage> history = getHistoryMessages(session.getId());
 
         List<Message> messages = new ArrayList<>();
@@ -126,8 +133,8 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         ChatCompletionResponse response = client.chatCompletion(chatCompletion);
         String aiResponse = response.getChoices().get(0).getMessage().getContent();
 
-        saveMessage(session.getId(), "user", request.getContent());
-        saveMessage(session.getId(), "assistant", aiResponse);
+        saveMessage(session.getId(), workspaceId, "user", request.getContent());
+        saveMessage(session.getId(), workspaceId, "assistant", aiResponse);
 
         long endTime = System.currentTimeMillis();
         log.info("聊天完成，耗时：{}ms", endTime - startTime);
@@ -139,22 +146,33 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         return result;
     }
 
+    /**
+     * 带知识库检索的AI聊天.
+     *
+     * @param request     聊天请求
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @return AI回复内容
+     */
     @Override
-    public ChatResponseDTO chatWithKnowledge(ChatRequestDTO request, Long userId) {
+    public ChatResponseDTO chatWithKnowledge(ChatRequestDTO request, Long userId, Long workspaceId) {
         long startTime = System.currentTimeMillis();
 
         String apiKey = getApiKey(userId);
         String model = request.getModel() != null ? request.getModel() : "gpt-4o-mini";
 
-        log.info("开始带知识检索的聊天，userId：{}，model：{}", userId, model);
+        log.info("开始带知识检索的聊天，userId：{}，workspaceId：{}，model：{}", userId, workspaceId, model);
 
-        ChatSession session = getOrCreateSession(request.getSessionId(), userId);
+        ChatSession session = getOrCreateSession(request.getSessionId(), userId, workspaceId);
 
-        List<KnowledgeNode> knowledgeNodes = knowledgeNodeMapper.selectList(
-            new LambdaQueryWrapper<KnowledgeNode>()
-                .eq(KnowledgeNode::getUserId, userId)
-                .eq(KnowledgeNode::getDeleted, 0)
-        );
+        LambdaQueryWrapper<KnowledgeNode> nodeWrapper = new LambdaQueryWrapper<KnowledgeNode>()
+                .eq(KnowledgeNode::getDeleted, 0);
+        if (workspaceId != null) {
+            nodeWrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+        } else {
+            nodeWrapper.eq(KnowledgeNode::getUserId, userId);
+        }
+        List<KnowledgeNode> knowledgeNodes = knowledgeNodeMapper.selectList(nodeWrapper);
 
         StringBuilder knowledgeContext = new StringBuilder();
         for (KnowledgeNode node : knowledgeNodes) {
@@ -184,8 +202,8 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         ChatCompletionResponse response = client.chatCompletion(chatCompletion);
         String aiResponse = response.getChoices().get(0).getMessage().getContent();
 
-        saveMessage(session.getId(), "user", request.getContent());
-        saveMessage(session.getId(), "assistant", aiResponse);
+        saveMessage(session.getId(), workspaceId, "user", request.getContent());
+        saveMessage(session.getId(), workspaceId, "assistant", aiResponse);
 
         long endTime = System.currentTimeMillis();
         log.info("带知识检索的聊天完成，耗时：{}ms", endTime - startTime);
@@ -197,17 +215,37 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         return result;
     }
 
+    /**
+     * 分页查询会话列表.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param current     当前页
+     * @param size        每页大小
+     * @return 会话分页
+     */
     @Override
-    public Page<ChatSession> getSessionList(Long userId, Integer current, Integer size) {
+    public Page<ChatSession> getSessionList(Long userId, Long workspaceId, Integer current, Integer size) {
         Page<ChatSession> page = new Page<>(current, size);
-        return chatSessionMapper.selectPage(
-            page,
-            new LambdaQueryWrapper<ChatSession>()
-                .eq(ChatSession::getUserId, userId)
-                .orderByDesc(ChatSession::getUpdateTime)
-        );
+        LambdaQueryWrapper<ChatSession> wrapper = new LambdaQueryWrapper<>();
+        if (workspaceId != null) {
+            wrapper.eq(ChatSession::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(ChatSession::getUserId, userId);
+        }
+        wrapper.orderByDesc(ChatSession::getUpdateTime);
+        return chatSessionMapper.selectPage(page, wrapper);
     }
 
+    /**
+     * 分页查询会话消息列表.
+     *
+     * @param sessionId 会话ID
+     * @param userId    用户ID
+     * @param current   当前页
+     * @param size      每页大小
+     * @return 消息分页
+     */
     @Override
     public Page<ChatMessage> getMessageList(Long sessionId, Long userId, Integer current, Integer size) {
         Page<ChatMessage> page = new Page<>(current, size);
@@ -219,32 +257,52 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         );
     }
 
+    /**
+     * 创建会话.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @param title       会话标题
+     * @return 会话实体
+     */
     @Override
-    public ChatSession createSession(Long userId, String title) {
+    public ChatSession createSession(Long userId, Long workspaceId, String title) {
         ChatSession session = new ChatSession();
         session.setUserId(userId);
+        session.setWorkspaceId(workspaceId);
         session.setTitle(title);
         chatSessionMapper.insert(session);
         return session;
     }
 
+    /**
+     * 删除会话.
+     *
+     * @param sessionId   会话ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @return void
+     */
     @Override
-    public void deleteSession(Long sessionId, Long userId) {
-        chatSessionMapper.delete(
-            new LambdaQueryWrapper<ChatSession>()
-                .eq(ChatSession::getId, sessionId)
-                .eq(ChatSession::getUserId, userId)
-        );
+    public void deleteSession(Long sessionId, Long userId, Long workspaceId) {
+        LambdaQueryWrapper<ChatSession> wrapper = new LambdaQueryWrapper<ChatSession>()
+                .eq(ChatSession::getId, sessionId);
+        if (workspaceId != null) {
+            wrapper.eq(ChatSession::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(ChatSession::getUserId, userId);
+        }
+        chatSessionMapper.delete(wrapper);
     }
 
-    private ChatSession getOrCreateSession(Long sessionId, Long userId) {
+    private ChatSession getOrCreateSession(Long sessionId, Long userId, Long workspaceId) {
         if (sessionId != null) {
             ChatSession session = chatSessionMapper.selectById(sessionId);
-            if (session != null && session.getUserId().equals(userId)) {
+            if (session != null && hasAccess(session, userId, workspaceId)) {
                 return session;
             }
         }
-        return createSession(userId, "新对话");
+        return createSession(userId, workspaceId, "新对话");
     }
 
     private List<ChatMessage> getHistoryMessages(Long sessionId) {
@@ -256,11 +314,23 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         );
     }
 
-    private void saveMessage(Long sessionId, String role, String content) {
+    private void saveMessage(Long sessionId, Long workspaceId, String role, String content) {
         ChatMessage message = new ChatMessage();
         message.setSessionId(sessionId);
+        message.setWorkspaceId(workspaceId);
         message.setRole(role);
         message.setContent(content);
         chatMessageMapper.insert(message);
+    }
+
+    /**
+     * 检查会话访问权限.
+     * workspaceId 不为 null 时按工作区校验，否则按 userId 校验.
+     */
+    private boolean hasAccess(ChatSession session, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            return workspaceId.equals(session.getWorkspaceId());
+        }
+        return session.getUserId().equals(userId);
     }
 }

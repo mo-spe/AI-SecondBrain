@@ -28,6 +28,12 @@ public class DocumentCaptureServiceImpl implements DocumentCaptureService {
         this.kafkaProducerService = kafkaProducerService;
     }
 
+    /**
+     * 提取文档内容.
+     *
+     * @param file 上传的文件
+     * @return 提取的文本内容
+     */
     @Override
     public String extractContent(MultipartFile file) {
         log.info("开始提取文档内容，文件名：{}", file.getOriginalFilename());
@@ -36,6 +42,14 @@ public class DocumentCaptureServiceImpl implements DocumentCaptureService {
         return content;
     }
 
+    /**
+     * 发送内容到采集处理.
+     *
+     * @param content 文本内容
+     * @param userId  用户ID
+     * @param source  来源
+     * @return void
+     */
     @Override
     public void sendToCapture(String content, Long userId, String source) {
         log.info("发送内容到采集处理，userId：{}，source：{}，内容长度：{}", userId, source, content.length());

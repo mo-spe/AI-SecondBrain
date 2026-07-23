@@ -77,6 +77,20 @@ public class Result<T> implements Serializable {
     }
 
     /**
+     * 成功响应（带消息）.
+     *
+     * @param message 消息
+     * @param <T> 数据类型
+     * @return 响应结果
+     */
+    public static <T> Result<T> success(String message) {
+        Result<T> result = new Result<>();
+        result.setCode(200);
+        result.setMessage(message);
+        return result;
+    }
+
+    /**
      * 错误响应（带消息）.
      *
      * @param message 错误消息

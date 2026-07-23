@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * 知识节点视图对象.
- */
+/** 知识节点视图对象. <p>用于向前端返回知识节点详情数据</p> */
 @Getter
 @Setter
 public class KnowledgeNodeVO {

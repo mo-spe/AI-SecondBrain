@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 关系推荐DTO.
- */
+/** 关系推荐DTO. <p>用于返回知识关系推荐结果</p> */
 @Getter
 @Setter
 public class RelationRecommendation {

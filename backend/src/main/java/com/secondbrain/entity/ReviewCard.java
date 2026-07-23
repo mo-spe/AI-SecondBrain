@@ -32,6 +32,11 @@ public class ReviewCard {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 题目内容
      */
     private String question;

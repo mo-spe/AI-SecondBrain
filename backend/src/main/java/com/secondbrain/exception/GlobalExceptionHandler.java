@@ -31,6 +31,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理非法状态异常（如重复操作、配额超限）.
+     *
+     * @param e 非法状态异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public Result<?> handleIllegalStateException(IllegalStateException e) {
+        log.error("非法状态异常：{}", e.getMessage());
+        return Result.error(400, e.getMessage());
+    }
+
+    /**
+     * 处理非法参数异常.
+     *
+     * @param e 非法参数异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<?> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.error("非法参数异常：{}", e.getMessage());
+        return Result.error(400, e.getMessage());
+    }
+
+    /**
      * 处理参数校验异常（@Valid）.
      *
      * @param e 参数校验异常

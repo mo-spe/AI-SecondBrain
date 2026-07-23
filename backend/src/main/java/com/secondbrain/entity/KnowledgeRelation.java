@@ -27,6 +27,11 @@ public class KnowledgeRelation {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 源知识点ID
      */
     private Long fromKnowledgeId;

@@ -27,6 +27,11 @@ public class RawChatRecord {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 来源平台（wechat/chatgpt/other）
      */
     private String platform;

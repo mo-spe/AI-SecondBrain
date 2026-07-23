@@ -13,10 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-/**
- * 认证服务实现类
- * 提供用户注册、登录及Token生成功能
- */
+/** 认证服务实现类. <p>认证服务实现，提供注册、登录及Token生成</p> */
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -33,9 +30,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * 用户注册
+     * 用户注册.
      *
      * @param registerDTO 注册信息
+     * @return void
      */
     @Override
     public void register(RegisterDTO registerDTO) {
@@ -71,7 +69,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("密码错误");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole(), null);
 
         LoginResponseDTO response = new LoginResponseDTO();
         response.setToken(token);
@@ -82,6 +80,7 @@ public class AuthServiceImpl implements AuthService {
         userInfo.setEmail(user.getEmail());
         userInfo.setPhone(user.getPhone());
         userInfo.setBio(user.getBio());
+        userInfo.setRole(user.getRole());
         response.setUserInfo(userInfo);
 
         return response;

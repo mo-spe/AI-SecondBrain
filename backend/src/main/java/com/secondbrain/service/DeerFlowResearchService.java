@@ -57,6 +57,15 @@ public class DeerFlowResearchService {
         this.kafkaProducerService = kafkaProducerService;
     }
 
+    /**
+     * 生成深度学习报告.
+     *
+     * @param learningData 学习数据
+     * @param topic 主题
+     * @param depth 深度
+     * @param userApiKey 用户API Key
+     * @return 学习报告内容
+     */
     public String generateDeepLearningReport(String learningData, String topic, String depth, String userApiKey) {
         try {
             log.info("调用DeerFlow研究服务生成深度学习报告，主题：{}，深度：{}，使用用户API Key：{}", 
@@ -97,6 +106,15 @@ public class DeerFlowResearchService {
         }
     }
 
+    /**
+     * 生成学习路径.
+     *
+     * @param topic 主题
+     * @param currentLevel 当前水平
+     * @param targetLevel 目标水平
+     * @param userApiKey 用户API Key
+     * @return 学习路径内容
+     */
     public String generateLearningPath(String topic, String currentLevel, String targetLevel, String userApiKey) {
         try {
             log.info("生成学习路径，主题：{}，当前水平：{}，目标水平：{}，使用用户API Key：{}", 
@@ -156,6 +174,14 @@ public class DeerFlowResearchService {
         }
     }
 
+    /**
+     * 分析知识盲区.
+     *
+     * @param userKnowledge 用户已掌握的知识点
+     * @param targetTopic 目标主题
+     * @param userApiKey 用户API Key
+     * @return 知识盲区分析结果
+     */
     public String researchKnowledgeGap(java.util.List<String> userKnowledge, String targetTopic, String userApiKey) {
         try {
             log.info("调用DeerFlow研究服务分析知识盲区，目标主题：{}，知识点数量：{}，使用用户API Key：{}", 
@@ -204,6 +230,11 @@ public class DeerFlowResearchService {
         }
     }
 
+    /**
+     * 检查DeerFlow服务健康状态.
+     *
+     * @return 是否健康
+     */
     public boolean checkHealth() {
         try {
             ResponseEntity<Map> response = restTemplate.getForEntity(
@@ -227,33 +258,61 @@ public class DeerFlowResearchService {
         }
     }
 
+    /**
+     * 异步生成深度学习报告.
+     *
+     * @param learningData 学习数据
+     * @param topic 主题
+     * @param depth 深度
+     * @return 学习报告内容异步结果
+     */
     @Async("deerFlowTaskExecutor")
     public CompletableFuture<String> generateDeepLearningReportAsync(String learningData, String topic, String depth) {
         return CompletableFuture.completedFuture(generateDeepLearningReport(learningData, topic, depth, null));
     }
 
-    public AsyncTaskResponse generateLearningReportAsync(Long userId, String topic, String depth, String userApiKey) {
-        log.info("异步生成学习报告，用户ID：{}，主题：{}，深度：{}，使用用户API Key：{}", 
-                 userId, topic, depth, userApiKey != null && !userApiKey.isEmpty());
-        
+    /**
+     * 异步生成学习报告（创建异步任务）.
+     *
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param topic 主题
+     * @param depth 深度
+     * @param userApiKey 用户API Key
+     * @return 异步任务响应
+     */
+    public AsyncTaskResponse generateLearningReportAsync(Long userId, Long workspaceId, String topic, String depth, String userApiKey) {
+        log.info("异步生成学习报告，用户ID：{}，workspaceId：{}，主题：{}，深度：{}",
+                 userId, workspaceId, topic, depth);
+
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("topic", topic);
         parameters.put("depth", depth);
         if (userApiKey != null && !userApiKey.isEmpty()) {
             parameters.put("api_key", userApiKey);
         }
-        
-        AsyncTaskResponse task = asyncTaskService.createTask("LEARNING_REPORT", userId, parameters);
+
+        AsyncTaskResponse task = asyncTaskService.createTask("LEARNING_REPORT", userId, workspaceId, parameters);
         
         log.info("创建异步任务，taskNumber：{}，消息已发送到Kafka", task.getTaskId());
         
         return task;
     }
 
-    public AsyncTaskResponse generateLearningPathAsync(Long userId, String topic, String currentLevel, String targetLevel, String userApiKey) {
-        log.info("异步生成学习路径，用户ID：{}，主题：{}，使用用户API Key：{}", 
-                 userId, topic, userApiKey != null && !userApiKey.isEmpty());
-        
+    /**
+     * 异步生成学习路径（创建异步任务）.
+     *
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param topic 主题
+     * @param currentLevel 当前水平
+     * @param targetLevel 目标水平
+     * @param userApiKey 用户API Key
+     * @return 异步任务响应
+     */
+    public AsyncTaskResponse generateLearningPathAsync(Long userId, Long workspaceId, String topic, String currentLevel, String targetLevel, String userApiKey) {
+        log.info("异步生成学习路径，用户ID：{}，workspaceId：{}，主题：{}", userId, workspaceId, topic);
+
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("topic", topic);
         parameters.put("current_level", currentLevel);
@@ -261,41 +320,71 @@ public class DeerFlowResearchService {
         if (userApiKey != null && !userApiKey.isEmpty()) {
             parameters.put("api_key", userApiKey);
         }
-        
-        AsyncTaskResponse task = asyncTaskService.createTask("LEARNING_PATH", userId, parameters);
+
+        AsyncTaskResponse task = asyncTaskService.createTask("LEARNING_PATH", userId, workspaceId, parameters);
         
         log.info("创建异步任务，taskNumber：{}，消息已发送到Kafka", task.getTaskId());
         
         return task;
     }
     
+    /**
+     * 查询异步任务状态.
+     *
+     * @param taskId 任务ID
+     * @return 异步任务响应
+     */
     public AsyncTaskResponse getTaskStatus(String taskId) {
         return asyncTaskService.getTaskStatus(taskId);
     }
 
-    public AsyncTaskResponse researchKnowledgeGapAsync(Long userId, java.util.List<String> userKnowledge, String targetTopic, String userApiKey) {
-        log.info("异步分析知识盲区，用户ID：{}，目标主题：{}，使用用户API Key：{}", 
-                 userId, targetTopic, userApiKey != null && !userApiKey.isEmpty());
-        
+    /**
+     * 异步分析知识盲区（创建异步任务）.
+     *
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param userKnowledge 用户已掌握的知识点
+     * @param targetTopic 目标主题
+     * @param userApiKey 用户API Key
+     * @return 异步任务响应
+     */
+    public AsyncTaskResponse researchKnowledgeGapAsync(Long userId, Long workspaceId, java.util.List<String> userKnowledge, String targetTopic, String userApiKey) {
+        log.info("异步分析知识盲区，用户ID：{}，workspaceId：{}，目标主题：{}", userId, workspaceId, targetTopic);
+
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("user_knowledge", userKnowledge);
         parameters.put("topic", targetTopic);
         if (userApiKey != null && !userApiKey.isEmpty()) {
             parameters.put("api_key", userApiKey);
         }
-        
-        AsyncTaskResponse task = asyncTaskService.createTask("KNOWLEDGE_BLIND_SPOT", userId, parameters);
+
+        AsyncTaskResponse task = asyncTaskService.createTask("KNOWLEDGE_BLIND_SPOT", userId, workspaceId, parameters);
         
         log.info("创建异步任务，taskNumber：{}，消息已发送到Kafka", task.getTaskId());
         
         return task;
     }
 
+    /**
+     * 异步生成学习路径.
+     *
+     * @param topic 主题
+     * @param currentLevel 当前水平
+     * @param targetLevel 目标水平
+     * @return 学习路径内容异步结果
+     */
     @Async("deerFlowTaskExecutor")
     public CompletableFuture<String> generateLearningPathAsync(String topic, String currentLevel, String targetLevel) {
         return CompletableFuture.completedFuture(generateLearningPath(topic, currentLevel, targetLevel, null));
     }
 
+    /**
+     * 异步分析知识盲区.
+     *
+     * @param userKnowledge 用户已掌握的知识点
+     * @param targetTopic 目标主题
+     * @return 知识盲区分析结果异步结果
+     */
     @Async("deerFlowTaskExecutor")
     public CompletableFuture<String> researchKnowledgeGapAsync(java.util.List<String> userKnowledge, String targetTopic) {
         return CompletableFuture.completedFuture(researchKnowledgeGap(userKnowledge, targetTopic, null));

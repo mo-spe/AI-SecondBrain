@@ -33,10 +33,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * 导出服务实现类
- * 支持将知识节点导出为Markdown、PDF、Word、JSON、CSV等多种格式
- */
+/** 导出服务实现类. <p>导出服务实现，支持Markdown/PDF/Word/JSON/CSV</p> */
 @Service
 public class ExportServiceImpl implements ExportService {
 
@@ -53,16 +50,21 @@ public class ExportServiceImpl implements ExportService {
     /**
      * 导出知识节点为Markdown格式
      *
-     * @param userId   用户ID
-     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
-     * @param response HTTP响应
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param ids         指定导出的知识节点ID列表（可为空表示全部）
+     * @param response    HTTP响应
      */
     @Override
-    public void exportToMarkdown(Long userId, List<Long> ids, HttpServletResponse response) {
+    public void exportToMarkdown(Long userId, Long workspaceId, List<Long> ids, HttpServletResponse response) {
         try {
             LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<KnowledgeNode>()
-                    .eq(KnowledgeNode::getUserId, userId)
                     .orderByDesc(KnowledgeNode::getCreateTime);
+            if (workspaceId != null) {
+                wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+            } else {
+                wrapper.eq(KnowledgeNode::getUserId, userId);
+            }
             
             if (ids != null && !ids.isEmpty()) {
                 wrapper.in(KnowledgeNode::getId, ids);
@@ -102,18 +104,24 @@ public class ExportServiceImpl implements ExportService {
     }
 
     /**
-     * 导出知识节点为PDF格式
+     * 导出知识节点为PDF格式.
      *
-     * @param userId   用户ID
-     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
-     * @param response HTTP响应
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param ids         指定导出的知识节点ID列表（可为空表示全部）
+     * @param response    HTTP响应
+     * @return void
      */
     @Override
-    public void exportToPDF(Long userId, List<Long> ids, HttpServletResponse response) {
+    public void exportToPDF(Long userId, Long workspaceId, List<Long> ids, HttpServletResponse response) {
         try {
             LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<KnowledgeNode>()
-                    .eq(KnowledgeNode::getUserId, userId)
                     .orderByDesc(KnowledgeNode::getCreateTime);
+            if (workspaceId != null) {
+                wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+            } else {
+                wrapper.eq(KnowledgeNode::getUserId, userId);
+            }
             
             if (ids != null && !ids.isEmpty()) {
                 wrapper.in(KnowledgeNode::getId, ids);
@@ -183,18 +191,24 @@ public class ExportServiceImpl implements ExportService {
     }
 
     /**
-     * 导出知识节点为Word格式
+     * 导出知识节点为Word格式.
      *
-     * @param userId   用户ID
-     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
-     * @param response HTTP响应
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param ids         指定导出的知识节点ID列表（可为空表示全部）
+     * @param response    HTTP响应
+     * @return void
      */
     @Override
-    public void exportToWord(Long userId, List<Long> ids, HttpServletResponse response) {
+    public void exportToWord(Long userId, Long workspaceId, List<Long> ids, HttpServletResponse response) {
         try {
             LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<KnowledgeNode>()
-                    .eq(KnowledgeNode::getUserId, userId)
                     .orderByDesc(KnowledgeNode::getCreateTime);
+            if (workspaceId != null) {
+                wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+            } else {
+                wrapper.eq(KnowledgeNode::getUserId, userId);
+            }
             
             if (ids != null && !ids.isEmpty()) {
                 wrapper.in(KnowledgeNode::getId, ids);
@@ -249,18 +263,24 @@ public class ExportServiceImpl implements ExportService {
     }
 
     /**
-     * 导出知识节点为JSON格式
+     * 导出知识节点为JSON格式.
      *
-     * @param userId   用户ID
-     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
-     * @param response HTTP响应
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param ids         指定导出的知识节点ID列表（可为空表示全部）
+     * @param response    HTTP响应
+     * @return void
      */
     @Override
-    public void exportToJSON(Long userId, List<Long> ids, HttpServletResponse response) {
+    public void exportToJSON(Long userId, Long workspaceId, List<Long> ids, HttpServletResponse response) {
         try {
             LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<KnowledgeNode>()
-                    .eq(KnowledgeNode::getUserId, userId)
                     .orderByDesc(KnowledgeNode::getCreateTime);
+            if (workspaceId != null) {
+                wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+            } else {
+                wrapper.eq(KnowledgeNode::getUserId, userId);
+            }
             
             if (ids != null && !ids.isEmpty()) {
                 wrapper.in(KnowledgeNode::getId, ids);
@@ -312,18 +332,24 @@ public class ExportServiceImpl implements ExportService {
     }
 
     /**
-     * 导出知识节点为CSV格式
+     * 导出知识节点为CSV格式.
      *
-     * @param userId   用户ID
-     * @param ids      指定导出的知识节点ID列表（可为空表示全部）
-     * @param response HTTP响应
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @param ids         指定导出的知识节点ID列表（可为空表示全部）
+     * @param response    HTTP响应
+     * @return void
      */
     @Override
-    public void exportToCSV(Long userId, List<Long> ids, HttpServletResponse response) {
+    public void exportToCSV(Long userId, Long workspaceId, List<Long> ids, HttpServletResponse response) {
         try {
             LambdaQueryWrapper<KnowledgeNode> wrapper = new LambdaQueryWrapper<KnowledgeNode>()
-                    .eq(KnowledgeNode::getUserId, userId)
                     .orderByDesc(KnowledgeNode::getCreateTime);
+            if (workspaceId != null) {
+                wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+            } else {
+                wrapper.eq(KnowledgeNode::getUserId, userId);
+            }
             
             if (ids != null && !ids.isEmpty()) {
                 wrapper.in(KnowledgeNode::getId, ids);

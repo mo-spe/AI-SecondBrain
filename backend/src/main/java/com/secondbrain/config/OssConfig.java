@@ -2,71 +2,46 @@ package com.secondbrain.config;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/** 阿里云OSS配置. <p>配置OSS客户端连接参数</p> */
 @Configuration
 @ConfigurationProperties(prefix = "aliyun.oss")
+@Getter
+@Setter
 public class OssConfig {
 
+    /** OSS 服务端点. */
     private String endpoint;
 
+    /** OSS 访问密钥ID. */
     private String accessKeyId;
 
+    /** OSS 访问密钥. */
     private String accessKeySecret;
 
+    /** OSS 存储桶名称. */
     private String bucketName;
 
+    /** 头像存储路径. */
     private String avatarPath = "avatar/";
 
+    /**
+     * 创建 OSS 客户端.
+     *
+     * @return OSS 客户端实例，参数缺失时返回 null
+     */
     @Bean
     public OSS ossClient() {
-        if (endpoint == null || endpoint.isEmpty() || 
-            accessKeyId == null || accessKeyId.isEmpty() || 
+        if (endpoint == null || endpoint.isEmpty() ||
+            accessKeyId == null || accessKeyId.isEmpty() ||
             accessKeySecret == null || accessKeySecret.isEmpty()) {
             return null;
         }
         return new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
-    }
-
-    public String getEndpoint() {
-        return endpoint;
-    }
-
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    public String getAccessKeyId() {
-        return accessKeyId;
-    }
-
-    public void setAccessKeyId(String accessKeyId) {
-        this.accessKeyId = accessKeyId;
-    }
-
-    public String getAccessKeySecret() {
-        return accessKeySecret;
-    }
-
-    public void setAccessKeySecret(String accessKeySecret) {
-        this.accessKeySecret = accessKeySecret;
-    }
-
-    public String getBucketName() {
-        return bucketName;
-    }
-
-    public void setBucketName(String bucketName) {
-        this.bucketName = bucketName;
-    }
-
-    public String getAvatarPath() {
-        return avatarPath;
-    }
-
-    public void setAvatarPath(String avatarPath) {
-        this.avatarPath = avatarPath;
     }
 }

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+/** WebSocket消息推送服务实现类. <p>WebSocket消息推送服务实现</p> */
 @Service
 public class WebSocketServiceImpl implements WebSocketService {
 
@@ -18,6 +19,13 @@ public class WebSocketServiceImpl implements WebSocketService {
         this.messagingTemplate = messagingTemplate;
     }
 
+    /**
+     * 发送任务更新消息.
+     *
+     * @param userId       用户ID
+     * @param taskResponse 任务响应
+     * @return void
+     */
     @Override
     public void sendTaskUpdate(String userId, AsyncTaskResponse taskResponse) {
         try {
@@ -28,6 +36,14 @@ public class WebSocketServiceImpl implements WebSocketService {
         }
     }
 
+    /**
+     * 发送任务进度消息.
+     *
+     * @param userId     用户ID
+     * @param taskNumber 任务编号
+     * @param progress   进度
+     * @return void
+     */
     @Override
     public void sendTaskProgress(String userId, String taskNumber, Integer progress) {
         try {
@@ -35,7 +51,7 @@ public class WebSocketServiceImpl implements WebSocketService {
             response.setTaskId(taskNumber);
             response.setProgress(progress);
             response.setStatus("PROCESSING");
-            
+
             messagingTemplate.convertAndSend("/topic/tasks/" + userId, response);
             log.debug("发送任务进度，userId：{}，taskNumber：{}，progress：{}", userId, taskNumber, progress);
         } catch (Exception e) {
@@ -43,6 +59,14 @@ public class WebSocketServiceImpl implements WebSocketService {
         }
     }
 
+    /**
+     * 发送任务完成消息.
+     *
+     * @param userId     用户ID
+     * @param taskNumber 任务编号
+     * @param result     任务结果
+     * @return void
+     */
     @Override
     public void sendTaskComplete(String userId, String taskNumber, Object result) {
         try {
@@ -51,7 +75,7 @@ public class WebSocketServiceImpl implements WebSocketService {
             response.setStatus("COMPLETED");
             response.setProgress(100);
             response.setResult(result);
-            
+
             messagingTemplate.convertAndSend("/topic/tasks/" + userId, response);
             log.info("发送任务完成通知，userId：{}，taskNumber：{}", userId, taskNumber);
         } catch (Exception e) {
@@ -59,6 +83,14 @@ public class WebSocketServiceImpl implements WebSocketService {
         }
     }
 
+    /**
+     * 发送任务失败消息.
+     *
+     * @param userId       用户ID
+     * @param taskNumber   任务编号
+     * @param errorMessage 错误消息
+     * @return void
+     */
     @Override
     public void sendTaskFailed(String userId, String taskNumber, String errorMessage) {
         try {

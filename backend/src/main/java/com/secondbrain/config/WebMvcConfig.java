@@ -1,20 +1,27 @@
 package com.secondbrain.config;
 
 import com.secondbrain.interceptor.JwtInterceptor;
+import com.secondbrain.interceptor.WorkspaceInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/**
- * Web MVC 配置类，用于注册拦截器。
- */
+/** Web MVC配置类. <p>用于注册拦截器</p> */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
+    private final WorkspaceInterceptor workspaceInterceptor;
 
-    public WebMvcConfig(JwtInterceptor jwtInterceptor) {
+    /**
+     * 构造器注入 JWT 拦截器和工作区拦截器.
+     *
+     * @param jwtInterceptor       JWT 拦截器
+     * @param workspaceInterceptor 工作区拦截器
+     */
+    public WebMvcConfig(JwtInterceptor jwtInterceptor, WorkspaceInterceptor workspaceInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
+        this.workspaceInterceptor = workspaceInterceptor;
     }
 
     /**
@@ -25,7 +32,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**", "/async-task/**")
+                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**", "/async-task/**", "/workspace/**")
                 .excludePathPatterns("/auth/**", "/health/**");
+
+        registry.addInterceptor(workspaceInterceptor)
+                .addPathPatterns("/workspace/**");
     }
 }

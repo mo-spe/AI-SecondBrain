@@ -13,10 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * RAG（检索增强生成）服务实现类
- * 结合向量检索与AI生成，为用户提供基于知识库的智能问答
- */
+/** RAG检索增强生成服务实现类. <p>RAG检索增强生成服务实现</p> */
 @Service
 public class RagServiceImpl implements RagService {
 

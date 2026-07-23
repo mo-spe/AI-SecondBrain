@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 知识引用信息DTO.
- */
+/** 知识引用DTO. <p>表示知识点的引用来源信息</p> */
 @Getter
 @Setter
 public class KnowledgeReference {

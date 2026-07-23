@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * RAG问答请求DTO.
- */
+/** RAG问答请求DTO. <p>用于知识库问答的请求参数封装</p> */
 @Getter
 @Setter
 public class RagRequest {

@@ -17,9 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * 复习任务定时作业，负责自动生成复习卡片、发送每日复习提醒和生成每周复习报告。
- */
+/** 复习任务定时作业. <p>负责自动生成复习卡片并触发复习提醒</p> */
 @Component
 public class ReviewJob extends QuartzJobBean {
 
@@ -31,6 +29,14 @@ public class ReviewJob extends QuartzJobBean {
     private final ReviewCardMapper reviewCardMapper;
     private final NotificationService notificationService;
 
+    /**
+     * 构造器注入依赖.
+     *
+     * @param reviewCardService   复习卡片服务
+     * @param knowledgeNodeMapper 知识点 Mapper
+     * @param reviewCardMapper    复习卡片 Mapper
+     * @param notificationService 通知服务
+     */
     public ReviewJob(ReviewCardService reviewCardService,
                      KnowledgeNodeMapper knowledgeNodeMapper,
                      ReviewCardMapper reviewCardMapper,
@@ -41,6 +47,13 @@ public class ReviewJob extends QuartzJobBean {
         this.notificationService = notificationService;
     }
 
+    /**
+     * 执行复习任务调度.
+     *
+     * @param context 作业执行上下文
+     * @return void
+     * @throws JobExecutionException 作业执行异常
+     */
     @Override
     protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
         log.info("开始执行复习任务调度，当前时间：{}", LocalDateTime.now());

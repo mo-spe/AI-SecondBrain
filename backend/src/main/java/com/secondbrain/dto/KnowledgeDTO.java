@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * 知识点DTO.
- */
+/** 知识点DTO. <p>用于知识点数据传输</p> */
 @Getter
 @Setter
 public class KnowledgeDTO {

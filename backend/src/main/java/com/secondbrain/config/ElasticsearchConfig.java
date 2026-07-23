@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 
+/** Elasticsearch配置. <p>启用 ES 仓储扫描</p> */
 @Configuration
 @EnableElasticsearchRepositories(basePackages = "com.secondbrain.elasticsearch")
 @ConditionalOnProperty(name = "spring.elasticsearch.enabled", havingValue = "true", matchIfMissing = false)

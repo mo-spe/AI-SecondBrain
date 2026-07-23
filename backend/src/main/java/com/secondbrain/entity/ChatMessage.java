@@ -27,6 +27,11 @@ public class ChatMessage {
     private Long sessionId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 消息角色（user/assistant/system）
      */
     private String role;

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+/** 艾宾浩斯遗忘曲线计算服务实现类. <p>艾宾浩斯遗忘曲线计算服务实现</p> */
 @Service
 public class EbbinghausServiceImpl implements EbbinghausService {
 
@@ -24,6 +25,12 @@ public class EbbinghausServiceImpl implements EbbinghausService {
 
     private static final int MAX_REVIEW_COUNT = 5;
 
+    /**
+     * 计算记忆保留率.
+     *
+     * @param reviewCount 复习次数
+     * @return 记忆保留率
+     */
     @Override
     public double calculateRetentionRate(int reviewCount) {
         if (reviewCount < 0) {
@@ -34,6 +41,13 @@ public class EbbinghausServiceImpl implements EbbinghausService {
         return RETENTION_RATES[index];
     }
 
+    /**
+     * 计算下次复习间隔.
+     *
+     * @param reviewCount 复习次数
+     * @param isCorrect   本次回答是否正确
+     * @return 下次复习间隔（分钟）
+     */
     @Override
     public long calculateNextReviewInterval(int reviewCount, boolean isCorrect) {
         if (reviewCount < 0) {
@@ -49,6 +63,14 @@ public class EbbinghausServiceImpl implements EbbinghausService {
         }
     }
 
+    /**
+     * 计算下次复习时间.
+     *
+     * @param lastReviewTime 上次复习时间
+     * @param reviewCount    复习次数
+     * @param isCorrect      本次回答是否正确
+     * @return 下次复习时间
+     */
     @Override
     public LocalDateTime calculateNextReviewTime(LocalDateTime lastReviewTime, int reviewCount, boolean isCorrect) {
         long intervalMinutes = calculateNextReviewInterval(reviewCount, isCorrect);
@@ -61,6 +83,13 @@ public class EbbinghausServiceImpl implements EbbinghausService {
         return nextReviewTime;
     }
 
+    /**
+     * 计算掌握程度.
+     *
+     * @param reviewCount     复习次数
+     * @param averageAccuracy 平均正确率
+     * @return 掌握程度等级
+     */
     @Override
     public int calculateMasteryLevel(int reviewCount, double averageAccuracy) {
         if (reviewCount == 0) {
@@ -83,6 +112,13 @@ public class EbbinghausServiceImpl implements EbbinghausService {
         }
     }
 
+    /**
+     * 计算记忆强度.
+     *
+     * @param reviewCount     复习次数
+     * @param averageAccuracy 平均正确率
+     * @return 记忆强度
+     */
     @Override
     public double calculateMemoryStrength(int reviewCount, double averageAccuracy) {
         if (reviewCount == 0) {

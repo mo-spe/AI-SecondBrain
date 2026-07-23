@@ -13,12 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * 数据捕捉控制器
- *
- * 负责处理文档上传和笔记提交的数据捕捉请求，
- * 将多渠道内容提取并送入知识管理系统。
- */
+/** 数据捕捉控制器. <p>负责处理文档上传和笔记提交的数据捕捉请求</p> */
 @RestController
 @RequestMapping("/capture")
 @Tag(name = "数据捕捉", description = "多渠道数据捕捉接口")

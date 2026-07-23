@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 笔记捕捉请求DTO.
- */
+/** 笔记捕捉请求DTO. <p>用于笔记捕捉的请求参数封装</p> */
 @Getter
 @Setter
 public class NoteCaptureRequest {

@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 报告请求DTO.
- */
+/** 报告请求DTO. <p>用于学习报告生成的请求参数封装</p> */
 @Getter
 @Setter
 public class ReportRequest {

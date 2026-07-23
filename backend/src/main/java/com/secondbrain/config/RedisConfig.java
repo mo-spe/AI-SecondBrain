@@ -10,9 +10,16 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+/** Redis配置. <p>配置 RedisTemplate 及序列化器</p> */
 @Configuration
 public class RedisConfig {
 
+    /**
+     * 创建 RedisTemplate 并配置序列化器.
+     *
+     * @param connectionFactory Redis 连接工厂
+     * @return 配置好的 RedisTemplate
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();

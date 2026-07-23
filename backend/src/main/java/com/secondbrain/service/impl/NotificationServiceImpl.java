@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/** 邮件通知服务实现类. <p>邮件通知服务实现</p> */
 @Service
 public class NotificationServiceImpl implements NotificationService {
 
@@ -34,6 +35,13 @@ public class NotificationServiceImpl implements NotificationService {
         this.userMapper = userMapper;
     }
 
+    /**
+     * 发送每日复习提醒邮件.
+     *
+     * @param userId       用户ID
+     * @param pendingCount 待复习卡片数
+     * @return void
+     */
     @Override
     public void sendDailyReviewNotification(Long userId, int pendingCount) {
         if (!mailEnabled) {
@@ -64,6 +72,14 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    /**
+     * 发送复习提醒邮件.
+     *
+     * @param userId          用户ID
+     * @param title           复习标题
+     * @param nextReviewTime  下次复习时间
+     * @return void
+     */
     @Override
     public void sendReviewReminder(Long userId, String title, String nextReviewTime) {
         if (!mailEnabled) {
@@ -94,6 +110,15 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    /**
+     * 发送每周复习报告邮件.
+     *
+     * @param userId           用户ID
+     * @param totalReviews     总复习次数
+     * @param averageAccuracy  平均准确率
+     * @param masteredCards    已掌握卡片数
+     * @return void
+     */
     @Override
     public void sendWeeklyReport(Long userId, int totalReviews, double averageAccuracy, int masteredCards) {
         if (!mailEnabled) {

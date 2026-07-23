@@ -42,6 +42,14 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         this.userMapper = userMapper;
     }
 
+    /**
+     * 生成高质量复习卡片.
+     *
+     * @param node     知识节点
+     * @param cardType 卡片类型
+     * @param userId   用户ID
+     * @return 复习卡片
+     */
     @Override
     public ReviewCard generateHighQualityQuestion(KnowledgeNode node, String cardType, Long userId) {
         ReviewCard card = new ReviewCard();
@@ -101,6 +109,13 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         return card;
     }
 
+    /**
+     * 生成选择题.
+     *
+     * @param node   知识节点
+     * @param userId 用户ID
+     * @return 选择题文本
+     */
     @Override
     public String generateChoiceQuestion(KnowledgeNode node, Long userId) {
         try {
@@ -683,6 +698,13 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         return null;
     }
 
+    /**
+     * 生成填空题.
+     *
+     * @param node   知识节点
+     * @param userId 用户ID
+     * @return 填空题文本
+     */
     @Override
     public String generateFillQuestion(KnowledgeNode node, Long userId) {
         try {
@@ -782,6 +804,13 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         );
     }
 
+    /**
+     * 生成简答题.
+     *
+     * @param node   知识节点
+     * @param userId 用户ID
+     * @return 简答题文本
+     */
     @Override
     public String generateSimpleQuestion(KnowledgeNode node, Long userId) {
         try {
@@ -881,6 +910,13 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         );
     }
 
+    /**
+     * 评估题目质量.
+     *
+     * @param question       题目
+     * @param expectedAnswer 期望答案
+     * @return 质量评分（0-1）
+     */
     @Override
     public double evaluateQuestionQuality(String question, String expectedAnswer) {
         double quality = 0.0;
@@ -1014,6 +1050,13 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         return totalWords > 0 ? (double) commonWords / totalWords : 0.0;
     }
 
+    /**
+     * 估算题目难度.
+     *
+     * @param question 题目
+     * @param node     知识节点
+     * @return 难度等级（1-3）
+     */
     @Override
     public int estimateQuestionDifficulty(String question, KnowledgeNode node) {
         if (question == null || question.isEmpty()) {
@@ -1067,6 +1110,13 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         return difficulty;
     }
 
+    /**
+     * 判断题目是否多样化.
+     *
+     * @param newQuestion        新题目
+     * @param existingQuestions  已有题目列表
+     * @return 多样化返回true，否则返回false
+     */
     @Override
     public boolean isQuestionDiverse(String newQuestion, List<String> existingQuestions) {
         if (existingQuestions == null || existingQuestions.isEmpty()) {

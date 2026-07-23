@@ -27,6 +27,11 @@ public class LearningReport {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 报告主题
      */
     private String topic;

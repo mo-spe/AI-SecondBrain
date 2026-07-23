@@ -27,6 +27,11 @@ public class ChatSession {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 会话标题
      */
     private String title;

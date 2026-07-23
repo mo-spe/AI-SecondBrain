@@ -55,13 +55,23 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         this.webSocketService = webSocketService;
     }
 
+    /**
+     * 创建异步任务.
+     *
+     * @param taskType 任务类型
+     * @param userId 用户ID
+     * @param workspaceId 工作空间ID
+     * @param parameters 任务参数
+     * @return 异步任务响应
+     */
     @Override
-    public AsyncTaskResponse createTask(String taskType, Long userId, Object parameters) {
+    public AsyncTaskResponse createTask(String taskType, Long userId, Long workspaceId, Object parameters) {
         String taskNumber = taskType + "_" + userId + "_" + UUID.randomUUID().toString().substring(0, 8);
 
         AsyncTask task = new AsyncTask();
         task.setTaskNumber(taskNumber);
         task.setUserId(userId);
+        task.setWorkspaceId(workspaceId);
         task.setTaskType(taskType);
         task.setStatus("PENDING");
         task.setProgress(0);
@@ -84,6 +94,12 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         return convertToResponse(task);
     }
 
+    /**
+     * 查询任务状态.
+     *
+     * @param taskNumber 任务编号
+     * @return 异步任务响应
+     */
     @Override
     public AsyncTaskResponse getTaskStatus(String taskNumber) {
         AsyncTask task = asyncTaskMapper.selectOne(
@@ -98,6 +114,12 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         return convertToResponse(task);
     }
 
+    /**
+     * 根据任务编号查询任务.
+     *
+     * @param taskNumber 任务编号
+     * @return 异步任务实体
+     */
     @Override
     public AsyncTask getTaskByNumber(String taskNumber) {
         return asyncTaskMapper.selectOne(
@@ -106,6 +128,12 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         );
     }
 
+    /**
+     * 处理异步任务.
+     *
+     * @param task 异步任务实体
+     * @return void
+     */
     @Override
     public void processTask(AsyncTask task) {
         try {
@@ -185,6 +213,13 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         }
     }
 
+    /**
+     * 更新任务进度.
+     *
+     * @param taskNumber 任务编号
+     * @param progress 进度
+     * @return void
+     */
     @Override
     public void updateTaskProgress(String taskNumber, Integer progress) {
         AsyncTask task = getTaskByNumber(taskNumber);
@@ -199,6 +234,13 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         }
     }
 
+    /**
+     * 完成任务.
+     *
+     * @param taskNumber 任务编号
+     * @param result 任务结果
+     * @return void
+     */
     @Override
     public void completeTask(String taskNumber, Object result) {
         AsyncTask task = getTaskByNumber(taskNumber);
@@ -276,7 +318,7 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
                     historyRequest.setType("other");
             }
             
-            researchHistoryService.save(historyRequest, task.getUserId());
+            researchHistoryService.save(historyRequest, task.getUserId(), task.getWorkspaceId());
             
             log.info("异步任务已保存到研究历史，taskNumber：{}，type：{}，topic：{}，currentLevel：{}，targetLevel：{}", 
                 task.getTaskNumber(), task.getTaskType(), historyRequest.getTopic(), currentLevel, targetLevel);
@@ -286,6 +328,13 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         }
     }
 
+    /**
+     * 标记任务失败.
+     *
+     * @param taskNumber 任务编号
+     * @param errorMessage 错误信息
+     * @return void
+     */
     @Override
     public void failTask(String taskNumber, String errorMessage) {
         AsyncTask task = getTaskByNumber(taskNumber);
@@ -302,6 +351,15 @@ public class AsyncTaskServiceImpl implements AsyncTaskService {
         }
     }
 
+    /**
+     * 更新任务状态.
+     *
+     * @param taskNumber 任务编号
+     * @param status 状态
+     * @param progress 进度
+     * @param result 结果
+     * @return void
+     */
     @Override
     public void updateTaskStatus(String taskNumber, String status, Integer progress, String result) {
         AsyncTask task = getTaskByNumber(taskNumber);

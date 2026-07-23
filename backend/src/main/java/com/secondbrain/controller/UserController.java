@@ -15,10 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * 用户管理控制器
- * 提供用户信息查询、更新、密码修改、头像上传等接口
- */
+/** 用户管理控制器. <p>提供用户信息查询、更新、密码修改、头像上传等接口</p> */
 @RestController
 @RequestMapping("/user")
 @Tag(name = "用户管理", description = "用户信息管理相关接口")

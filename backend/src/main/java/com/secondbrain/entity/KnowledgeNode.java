@@ -27,6 +27,11 @@ public class KnowledgeNode {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 知识点标题
      */
     private String title;

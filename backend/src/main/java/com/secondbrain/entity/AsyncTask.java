@@ -34,6 +34,11 @@ public class AsyncTask {
     private Long userId;
 
     /**
+     * 工作区ID
+     */
+    private Long workspaceId;
+
+    /**
      * 任务类型（LEARNING_REPORT/AI_RESEARCH/LEARNING_PATH/KNOWLEDGE_BLIND_SPOT）
      */
     private String taskType;

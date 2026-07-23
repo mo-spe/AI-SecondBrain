@@ -6,11 +6,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/** 知识点重要程度计算服务实现类. <p>知识点重要程度计算服务实现</p> */
 @Service
 public class ImportanceCalculationServiceImpl implements ImportanceCalculationService {
 
     private static final Logger log = LoggerFactory.getLogger(ImportanceCalculationServiceImpl.class);
 
+    /**
+     * 计算知识点重要程度.
+     *
+     * @param node 知识节点
+     * @return 重要程度
+     */
     @Override
     public int calculateImportance(KnowledgeNode node) {
         if (node == null) {
@@ -33,6 +40,15 @@ public class ImportanceCalculationServiceImpl implements ImportanceCalculationSe
         return calculatedImportance;
     }
 
+    /**
+     * 计算知识点重要程度.
+     *
+     * @param manualImportance     手动设置的重要程度
+     * @param contentComplexity    内容复杂度
+     * @param reviewFrequency      复习频次
+     * @param interactionFrequency 交互频次
+     * @return 重要程度
+     */
     @Override
     public int calculateImportance(int manualImportance, int contentComplexity, int reviewFrequency, int interactionFrequency) {
         double importanceScore = 0.0;

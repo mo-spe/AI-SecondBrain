@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * 对话记录DTO.
- */
+/** 对话记录DTO. <p>用于对话记录数据传输</p> */
 @Getter
 @Setter
 public class ChatRecordDTO {

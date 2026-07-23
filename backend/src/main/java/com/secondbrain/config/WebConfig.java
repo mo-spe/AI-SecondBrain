@@ -6,14 +6,17 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/**
- * Web 配置类，用于配置跨域和拦截器。
- */
+/** Web配置类. <p>用于配置跨域和拦截器</p> */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
 
+    /**
+     * 构造器注入 JWT 拦截器.
+     *
+     * @param jwtInterceptor JWT 拦截器
+     */
     public WebConfig(JwtInterceptor jwtInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
     }

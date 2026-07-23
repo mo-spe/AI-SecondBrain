@@ -10,11 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * AI服务控制器
- *
- * 提供AI相关功能的测试和调用接口，包括知识点提取等。
- */
+/** AI服务控制器. <p>提供AI相关功能的测试和调用接口，包括知识点提取等</p> */
 @RestController
 @RequestMapping("/api/ai")
 public class AiController {

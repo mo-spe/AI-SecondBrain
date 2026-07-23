@@ -16,10 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
-/**
- * 笔记捕捉服务实现类
- * 将Markdown格式的笔记解析并发送到Kafka进行后续处理
- */
+/** 笔记捕捉服务实现类. <p>笔记捕捉服务实现，解析Markdown并发送Kafka</p> */
 @Service
 public class NoteCaptureServiceImpl implements NoteCaptureService {
 

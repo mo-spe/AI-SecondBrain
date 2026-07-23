@@ -11,10 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/**
- * 知识向量管理控制器
- * 提供知识向量生成和管理相关接口
- */
+/** 知识向量管理控制器. <p>提供知识向量生成和管理相关接口</p> */
 @Tag(name = "知识向量管理", description = "知识向量生成和管理接口")
 @RestController
 @RequestMapping("/vector")

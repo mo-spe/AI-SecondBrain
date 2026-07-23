@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-/**
- * Kafka消费者服务
- * 监听聊天采集队列，将记录入库并触发知识提取
- */
+/** Kafka消费者服务. <p>监听聊天采集队列并处理知识提取</p> */
 @Service
 public class KafkaConsumerService {
 
@@ -23,6 +20,13 @@ public class KafkaConsumerService {
     private final KnowledgeCaptureService knowledgeCaptureService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 构造器注入依赖.
+     *
+     * @param rawChatRecordService    原始聊天记录服务
+     * @param knowledgeCaptureService 知识采集服务
+     * @param objectMapper            JSON 对象映射器
+     */
     public KafkaConsumerService(RawChatRecordService rawChatRecordService,
                                 KnowledgeCaptureService knowledgeCaptureService,
                                 ObjectMapper objectMapper) {
@@ -32,9 +36,10 @@ public class KafkaConsumerService {
     }
 
     /**
-     * 消费聊天采集消息
+     * 消费聊天采集消息.
      *
      * @param record 原始聊天记录
+     * @return void
      */
     @KafkaListener(topics = "chat-collect", groupId = "chat-collect-group")
     public void consumeChatCollect(RawChatRecord record) {

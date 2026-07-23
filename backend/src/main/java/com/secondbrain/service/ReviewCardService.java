@@ -6,27 +6,24 @@ import com.secondbrain.entity.ReviewCard;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 复习卡片服务接口.
- * <p>提供复习卡片的生成、查询、提交、统计等功能</p>
- */
+/** 复习卡片服务接口. <p>提供复习卡片的生成、查询、提交复习结果及统计功能</p> */
 public interface ReviewCardService {
 
     /**
      * 生成复习卡片.
      *
-     * @param nodeId 知识点ID
+     * @param nodeId 知识节点ID
      * @param cardType 卡片类型
      * @return 复习卡片
      */
     ReviewCard generateReviewCard(Long nodeId, String cardType);
 
     /**
-     * 生成复习卡片（带生成类型）.
+     * 生成复习卡片（指定生成方式）.
      *
-     * @param nodeId 知识点ID
+     * @param nodeId 知识节点ID
      * @param cardType 卡片类型
-     * @param generationType 生成类型
+     * @param generationType 生成方式
      * @return 复习卡片
      */
     ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType);
@@ -35,12 +32,13 @@ public interface ReviewCardService {
      * 获取今日待复习卡片列表.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 复习卡片列表
      */
-    List<ReviewCard> getTodayReviewCards(Long userId);
+    List<ReviewCard> getTodayReviewCards(Long userId, Long workspaceId);
 
     /**
-     * 根据ID获取复习卡片.
+     * 根据ID查询复习卡片.
      *
      * @param id 卡片ID
      * @return 复习卡片
@@ -52,7 +50,7 @@ public interface ReviewCardService {
      *
      * @param cardId 卡片ID
      * @param userAnswer 用户答案
-     * @param duration 答题时长（秒）
+     * @param duration 答题时长
      * @return 复习结果
      */
     ReviewResultDTO submitReviewResult(Long cardId, String userAnswer, Integer duration);
@@ -61,14 +59,15 @@ public interface ReviewCardService {
      * 更新复习计划.
      *
      * @param cardId 卡片ID
-     * @param isCorrect 是否正确
+     * @param isCorrect 是否答对
+     * @return void
      */
     void updateReviewSchedule(Long cardId, boolean isCorrect);
 
     /**
-     * 获取知识点的复习卡片列表.
+     * 根据知识节点ID查询复习卡片列表.
      *
-     * @param nodeId 知识点ID
+     * @param nodeId 知识节点ID
      * @return 复习卡片列表
      */
     List<ReviewCard> getReviewCardsByNodeId(Long nodeId);
@@ -77,90 +76,105 @@ public interface ReviewCardService {
      * 删除复习卡片.
      *
      * @param id 卡片ID
+     * @return void
      */
     void deleteReviewCard(Long id);
 
     /**
-     * 删除用户所有复习卡片.
+     * 删除用户全部复习卡片.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @return void
      */
-    void deleteAllReviewCards(Long userId);
+    void deleteAllReviewCards(Long userId, Long workspaceId);
 
     /**
-     * 为所有知识点生成复习卡片.
+     * 为用户所有知识节点生成复习卡片.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 生成数量
      */
-    int generateReviewCardsForAllNodes(Long userId);
+    int generateReviewCardsForAllNodes(Long userId, Long workspaceId);
 
     /**
-     * 异步为所有知识点生成复习卡片.
+     * 异步为所有知识节点生成复习卡片.
+     *
+     * @return void
      */
     void generateReviewCardsForAllNodesAsync();
 
     /**
-     * 恢复复习卡片.
+     * 恢复用户复习卡片.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 恢复数量
      */
-    int restoreReviewCards(Long userId);
+    int restoreReviewCards(Long userId, Long workspaceId);
 
     /**
-     * 更新缺失答案的卡片.
+     * 更新缺失答案的复习卡片.
+     *
+     * @return void
      */
     void updateMissingAnswers();
 
     /**
-     * 统计待复习卡片数量.
+     * 统计用户待复习卡片数量.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 待复习数量
      */
-    long countPendingByUserId(Long userId);
+    long countPendingByUserId(Long userId, Long workspaceId);
 
     /**
-     * 统计已完成卡片数量.
+     * 统计用户已完成卡片数量.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 已完成数量
      */
-    long countCompletedByUserId(Long userId);
+    long countCompletedByUserId(Long userId, Long workspaceId);
 
     /**
-     * 统计指定时间范围内的复习卡片数量.
+     * 统计指定时间范围内的卡片数量.
      *
      * @param userId 用户ID
      * @param startTime 开始时间
      * @param endTime 结束时间
-     * @return 复习卡片数量
+     * @param workspaceId 工作区ID
+     * @return 卡片数量
      */
-    long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime);
+    long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime, Long workspaceId);
 
     /**
-     * 计算连续打卡天数.
+     * 计算用户连续复习天数.
      *
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 连续天数
      */
-    int calculateStreakDays(Long userId);
+    int calculateStreakDays(Long userId, Long workspaceId);
 
     /**
-     * 记录质量反馈.
+     * 记录卡片质量反馈.
      *
      * @param cardId 卡片ID
      * @param rating 评分
      * @param comment 评论
+     * @return void
      */
     void recordQualityFeedback(Long cardId, Integer rating, String comment);
 
     /**
-     * 获取用户全局准确率.
+     * 获取用户答题准确率.
      *
      * @param userId 用户ID
-     * @return 准确率（0-100）
+     * @param workspaceId 工作区ID
+     * @return 准确率
      */
-    int getUserAccuracy(Long userId);
+    int getUserAccuracy(Long userId, Long workspaceId);
 }

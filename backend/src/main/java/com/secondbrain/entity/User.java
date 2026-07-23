@@ -84,4 +84,14 @@ public class User {
      */
     @TableField("deleted")
     private Integer deleted;
+
+    /**
+     * 平台角色（super_admin/user）
+     */
+    private String role;
+
+    /**
+     * 状态（1-正常，0-禁用）
+     */
+    private Integer status;
 }

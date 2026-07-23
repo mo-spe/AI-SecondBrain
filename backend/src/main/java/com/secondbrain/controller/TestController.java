@@ -10,10 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 测试控制器
- * 提供系统连接测试等接口
- */
+/** 测试控制器. <p>提供系统连接测试等接口</p> */
 @RestController
 @RequestMapping("/test")
 public class TestController {

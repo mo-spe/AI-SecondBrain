@@ -16,10 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * RAG知识问答控制器
- * 提供基于知识库的智能问答接口
- */
+/** RAG知识问答控制器. <p>提供基于知识库的智能问答接口</p> */
 @RestController
 @RequestMapping("/rag")
 @Tag(name = "RAG知识问答", description = "基于知识库的智能问答")

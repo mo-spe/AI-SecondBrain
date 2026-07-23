@@ -22,6 +22,12 @@ public class RawChatRecordServiceImpl implements RawChatRecordService {
         this.rawChatRecordMapper = rawChatRecordMapper;
     }
 
+    /**
+     * 保存原始对话记录.
+     *
+     * @param record 原始对话记录
+     * @return 保存后的原始对话记录
+     */
     @Override
     public RawChatRecord save(RawChatRecord record) {
         rawChatRecordMapper.insert(record);

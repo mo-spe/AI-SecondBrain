@@ -6,10 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-/**
- * Kafka生产者服务
- * 负责向Kafka发送聊天采集等消息
- */
+/** Kafka生产者服务. <p>负责向Kafka发送聊天采集等消息</p> */
 @Service
 public class KafkaProducerService {
 
@@ -17,14 +14,20 @@ public class KafkaProducerService {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
+    /**
+     * 构造器注入 KafkaTemplate.
+     *
+     * @param kafkaTemplate Kafka 模板
+     */
     public KafkaProducerService(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
     /**
-     * 发送聊天采集记录到Kafka
+     * 发送聊天采集记录到Kafka.
      *
      * @param record 原始聊天记录
+     * @return void
      */
     public void sendChatCollect(RawChatRecord record) {
         log.info("发送聊天采集记录到 Kafka，userId：{}，sourceUrl：{}", record.getUserId(), record.getSourceUrl());
@@ -48,6 +51,7 @@ public class KafkaProducerService {
      * 发送异步任务到Kafka.
      *
      * @param request 异步任务请求
+     * @return void
      */
     public void sendAsyncTask(com.secondbrain.dto.AsyncTaskRequest request) {
         log.info("发送异步任务到 Kafka，taskId：{}，type：{}", request.getTaskId(), request.getTaskType());

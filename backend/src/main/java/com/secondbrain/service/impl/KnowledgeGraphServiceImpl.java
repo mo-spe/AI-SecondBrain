@@ -21,8 +21,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 知识图谱服务实现类
- * 构建和管理用户知识图谱，包括节点、关系及可视化数据
+ * 知识图谱服务实现类.
+ * <p>提供知识图谱的构建、关系管理及自动关系生成功能</p>
  */
 @Service
 public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
@@ -43,20 +43,23 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
     }
 
     /**
-     * 获取用户的知识图谱
+     * 获取知识图谱.
      *
-     * @param userId 用户ID
-     * @return 知识图谱数据
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @return 知识图谱（节点和边）
      */
     @Override
-    public KnowledgeGraph getGraph(Long userId) {
-        log.info("获取知识图谱，userId：{}", userId);
+    public KnowledgeGraph getGraph(Long userId, Long workspaceId) {
+        log.info("获取知识图谱，userId：{}，workspaceId：{}", userId, workspaceId);
 
-        List<KnowledgeRelation> relations = relationMapper.findByUserId(userId);
-        List<KnowledgeNode> allNodes = knowledgeNodeMapper.selectList(
-            new LambdaQueryWrapper<KnowledgeNode>()
-                .eq(KnowledgeNode::getUserId, userId)
-        );
+        LambdaQueryWrapper<KnowledgeNode> nodeWrapper = new LambdaQueryWrapper<>();
+        applyNodeFilter(nodeWrapper, userId, workspaceId);
+        List<KnowledgeNode> allNodes = knowledgeNodeMapper.selectList(nodeWrapper);
+
+        LambdaQueryWrapper<KnowledgeRelation> relWrapper = new LambdaQueryWrapper<>();
+        applyRelationFilter(relWrapper, userId, workspaceId);
+        List<KnowledgeRelation> relations = relationMapper.selectList(relWrapper);
 
         Map<Long, KnowledgeNode> nodeMap = allNodes.stream()
             .collect(Collectors.toMap(KnowledgeNode::getId, node -> node));
@@ -92,18 +95,21 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
     }
 
     /**
-     * 手动添加知识关系
+     * 添加知识关系.
      *
-     * @param request 关系请求
-     * @param userId  用户ID
+     * @param request     关系请求（源节点、目标节点、关系类型等）
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
      */
     @Override
-    public void addRelation(KnowledgeRelationRequest request, Long userId) {
-        log.info("添加知识关系，fromId：{}，toId：{}，type：{}", 
+    public void addRelation(KnowledgeRelationRequest request, Long userId, Long workspaceId) {
+        log.info("添加知识关系，fromId：{}，toId：{}，type：{}",
             request.getSourceId(), request.getTargetId(), request.getRelationType());
 
         KnowledgeRelation relation = new KnowledgeRelation();
         relation.setUserId(userId);
+        relation.setWorkspaceId(workspaceId);
         relation.setFromKnowledgeId(request.getSourceId());
         relation.setToKnowledgeId(request.getTargetId());
         relation.setRelationType(request.getRelationType());
@@ -116,17 +122,19 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
     }
 
     /**
-     * 删除指定知识关系
+     * 删除知识关系.
      *
-     * @param relationId 关系ID
-     * @param userId     用户ID
+     * @param relationId  关系ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
      */
     @Override
-    public void deleteRelation(Long relationId, Long userId) {
-        log.info("删除知识关系，id：{}，userId：{}", relationId, userId);
+    public void deleteRelation(Long relationId, Long userId, Long workspaceId) {
+        log.info("删除知识关系，id：{}，userId：{}，workspaceId：{}", relationId, userId, workspaceId);
 
         KnowledgeRelation relation = relationMapper.selectById(relationId);
-        if (relation != null && relation.getUserId().equals(userId)) {
+        if (relation != null && hasRelationAccess(relation, userId, workspaceId)) {
             relationMapper.deleteById(relationId);
             log.info("知识关系删除成功");
         } else {
@@ -135,19 +143,20 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
     }
 
     /**
-     * 自动为用户生成知识关系（基于向量相似度）
+     * 自动生成知识关系.
      *
-     * @param userId 用户ID
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
      */
     @Override
-    public void autoGenerateRelations(Long userId) {
-        log.info("自动生成知识关系（使用向量嵌入），userId：{}", userId);
+    public void autoGenerateRelations(Long userId, Long workspaceId) {
+        log.info("自动生成知识关系（使用向量嵌入），userId：{}，workspaceId：{}", userId, workspaceId);
 
-        List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(
-            new LambdaQueryWrapper<KnowledgeNode>()
-                .eq(KnowledgeNode::getUserId, userId)
-                .eq(KnowledgeNode::getDeleted, 0)
-        );
+        LambdaQueryWrapper<KnowledgeNode> nodeWrapper = new LambdaQueryWrapper<KnowledgeNode>()
+                .eq(KnowledgeNode::getDeleted, 0);
+        applyNodeFilter(nodeWrapper, userId, workspaceId);
+        List<KnowledgeNode> nodes = knowledgeNodeMapper.selectList(nodeWrapper);
 
         if (nodes.isEmpty()) {
             log.warn("用户{}没有知识点，无法生成关系", userId);
@@ -159,7 +168,6 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
             return;
         }
 
-        // 获取所有知识节点的向量嵌入
         Map<Long, KnowledgeEmbedding> embeddingMap = nodes.stream()
             .map(node -> embeddingMapper.getByKnowledgeId(node.getId()))
             .filter(embedding -> embedding != null && embedding.getEmbedding() != null)
@@ -188,40 +196,34 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
                 KnowledgeNode node1 = nodes.get(i);
                 KnowledgeNode node2 = nodes.get(j);
 
-                // 优先使用向量嵌入计算相似度
                 Double similarity = calculateVectorSimilarity(node1, node2, embeddingMap);
-                
-                // 如果没有向量嵌入，使用文本相似度作为后备
                 if (similarity == null) {
                     similarity = calculateSimilarity(node1, node2);
-                    log.debug("使用文本相似度：{} vs {} = {:.3f}", node1.getTitle(), node2.getTitle(), similarity);
-                } else {
-                    log.debug("使用向量相似度：{} vs {} = {:.3f}", node1.getTitle(), node2.getTitle(), similarity);
                 }
-                
-                if (similarity > 0.3) { // 提高阈值到 0.3，因为向量相似度更准确
-                    KnowledgeRelation relation = new KnowledgeRelation();
-                    relation.setUserId(userId);
-                    relation.setFromKnowledgeId(node1.getId());
-                    relation.setToKnowledgeId(node2.getId());
-                    relation.setRelationType("related");
-                    relation.setRelationName("相关");
-                    relation.setWeight(similarity * 5);
 
+                if (similarity > 0.3) {
                     LambdaQueryWrapper<KnowledgeRelation> wrapper = new LambdaQueryWrapper<>();
-                    wrapper.eq(KnowledgeRelation::getUserId, userId);
+                    applyRelationFilter(wrapper, userId, workspaceId);
                     wrapper.eq(KnowledgeRelation::getFromKnowledgeId, node1.getId());
                     wrapper.eq(KnowledgeRelation::getToKnowledgeId, node2.getId());
-                    
+
                     if (relationMapper.selectCount(wrapper) == 0) {
+                        KnowledgeRelation relation = new KnowledgeRelation();
+                        relation.setUserId(userId);
+                        relation.setWorkspaceId(workspaceId);
+                        relation.setFromKnowledgeId(node1.getId());
+                        relation.setToKnowledgeId(node2.getId());
+                        relation.setRelationType("related");
+                        relation.setRelationName("相关");
+                        relation.setWeight(similarity * 5);
                         relationMapper.insert(relation);
                         relationsCreated++;
-                        log.info("创建关系：{} -> {}，向量相似度：{:.3f}", node1.getTitle(), node2.getTitle(), similarity);
+                        log.info("创建关系：{} -> {}，相似度：{:.3f}", node1.getTitle(), node2.getTitle(), similarity);
                     } else {
                         relationsSkipped++;
                     }
                 }
-                
+
                 if (processedPairs % 100 == 0) {
                     log.info("已处理 {}/{} 对组合", processedPairs, totalPairs);
                 }
@@ -231,6 +233,41 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
         log.info("自动生成知识关系完成，创建：{}，跳过：{}", relationsCreated, relationsSkipped);
     }
 
+    /**
+     * 应用节点过滤条件.
+     * workspaceId 为 null 时降级为 userId 过滤，兼容迁移前未分配工作区的历史数据.
+     */
+    private void applyNodeFilter(LambdaQueryWrapper<KnowledgeNode> wrapper, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            wrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(KnowledgeNode::getUserId, userId);
+        }
+    }
+
+    /**
+     * 应用关系过滤条件.
+     * workspaceId 为 null 时降级为 userId 过滤，兼容迁移前未分配工作区的历史数据.
+     */
+    private void applyRelationFilter(LambdaQueryWrapper<KnowledgeRelation> wrapper, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            wrapper.eq(KnowledgeRelation::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(KnowledgeRelation::getUserId, userId);
+        }
+    }
+
+    /**
+     * 检查关系访问权限.
+     * workspaceId 不为 null 时按工作区校验，否则按 userId 校验.
+     */
+    private boolean hasRelationAccess(KnowledgeRelation relation, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            return workspaceId.equals(relation.getWorkspaceId());
+        }
+        return relation.getUserId().equals(userId);
+    }
+
     private int calculateNodeSize(Integer importance) {
         if (importance == null) return 30;
         return 20 + importance * 5;
@@ -238,53 +275,48 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
 
     private String calculateNodeColor(Integer masteryLevel) {
         if (masteryLevel == null) return "#909399";
-        
-        switch (masteryLevel) {
-            case 5: return "#67C23A";
-            case 4: return "#95D475";
-            case 3: return "#E6A23C";
-            case 2: return "#F56C6C";
-            case 1: return "#F89898";
-            default: return "#909399";
-        }
+        return switch (masteryLevel) {
+            case 5 -> "#67C23A";
+            case 4 -> "#95D475";
+            case 3 -> "#E6A23C";
+            case 2 -> "#F56C6C";
+            case 1 -> "#F89898";
+            default -> "#909399";
+        };
     }
 
     private String getRelationTypeLabel(String relationType, String relationName) {
         if (relationName != null && !relationName.isEmpty()) {
             return relationName;
         }
-        
-        switch (relationType) {
-            case "contains": return "包含";
-            case "depends": return "依赖";
-            case "related": return "相关";
-            case "inherits": return "继承";
-            case "implements": return "实现";
-            default: return relationType;
-        }
+        return switch (relationType) {
+            case "contains" -> "包含";
+            case "depends" -> "依赖";
+            case "related" -> "相关";
+            case "inherits" -> "继承";
+            case "implements" -> "实现";
+            default -> relationType;
+        };
     }
 
-    private Double calculateVectorSimilarity(KnowledgeNode node1, KnowledgeNode node2, 
+    private Double calculateVectorSimilarity(KnowledgeNode node1, KnowledgeNode node2,
                                               Map<Long, KnowledgeEmbedding> embeddingMap) {
         KnowledgeEmbedding embedding1 = embeddingMap.get(node1.getId());
         KnowledgeEmbedding embedding2 = embeddingMap.get(node2.getId());
-        
+
         if (embedding1 == null || embedding2 == null) {
             return null;
         }
-        
+
         try {
             List<Float> vector1 = JSON.parseArray(embedding1.getEmbedding(), Float.class);
             List<Float> vector2 = JSON.parseArray(embedding2.getEmbedding(), Float.class);
-            
+
             if (vector1 == null || vector2 == null || vector1.isEmpty() || vector2.isEmpty()) {
                 return null;
             }
-            
-            double similarity = vectorSearchService.calculateSimilarity(vector1, vector2);
-            log.debug("向量余弦相似度：{} vs {} = {:.6f}", node1.getTitle(), node2.getTitle(), similarity);
-            
-            return similarity;
+
+            return vectorSearchService.calculateSimilarity(vector1, vector2);
         } catch (Exception e) {
             log.warn("解析向量嵌入失败，nodeId: {}, {}", node1.getId(), node2.getId(), e);
             return null;
@@ -305,12 +337,7 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
         double titleSimilarity = calculateTextSimilarity(title1, title2);
         double contentSimilarity = calculateTextSimilarity(text1, text2);
 
-        double combinedSimilarity = titleSimilarity * 0.6 + contentSimilarity * 0.4;
-        
-        log.debug("相似度计算：标题相似度={:.3f}，内容相似度={:.3f}，综合相似度={:.3f}", 
-                 titleSimilarity, contentSimilarity, combinedSimilarity);
-        
-        return combinedSimilarity;
+        return titleSimilarity * 0.6 + contentSimilarity * 0.4;
     }
 
     private double calculateTextSimilarity(String text1, String text2) {
@@ -388,13 +415,11 @@ public class KnowledgeGraphServiceImpl implements KnowledgeGraphService {
     private String[] extractPhrases(String text) {
         String[] words = text.split("\\s+");
         java.util.Set<String> phrases = new java.util.HashSet<>();
-        
         for (int i = 0; i < words.length - 1; i++) {
             if (words[i].length() > 1 && words[i + 1].length() > 1) {
                 phrases.add(words[i] + words[i + 1]);
             }
         }
-        
         return phrases.toArray(new String[0]);
     }
 }

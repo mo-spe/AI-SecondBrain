@@ -18,6 +18,12 @@ public class FileProcessingServiceImpl implements FileProcessingService {
 
     private static final Logger log = LoggerFactory.getLogger(FileProcessingServiceImpl.class);
 
+    /**
+     * 处理文件并提取文本内容.
+     *
+     * @param file 上传的文件
+     * @return 提取的文本内容
+     */
     @Override
     public String processFile(MultipartFile file) {
         log.info("开始处理文件：{}", file.getOriginalFilename());

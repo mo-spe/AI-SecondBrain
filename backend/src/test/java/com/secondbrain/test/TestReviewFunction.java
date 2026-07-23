@@ -151,7 +151,7 @@ public class TestReviewFunction {
 
         Long userId = 5L;
 
-        List<ReviewCard> todayCards = reviewCardService.getTodayReviewCards(userId);
+        List<ReviewCard> todayCards = reviewCardService.getTodayReviewCards(userId, 1L);
 
         System.out.println("今日待复习卡片数：" + todayCards.size());
 

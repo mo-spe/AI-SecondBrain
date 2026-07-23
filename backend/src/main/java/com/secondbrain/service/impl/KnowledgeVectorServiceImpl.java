@@ -22,36 +22,37 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 知识向量服务实现类
- * 负责为知识节点生成、保存和管理向量嵌入
+ * 知识向量服务实现类.
+ * <p>负责为知识节点生成、保存和管理向量嵌入</p>
  */
 @Service
 public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeVectorServiceImpl.class);
 
-    private static final String defaultModel = "text-embedding-v2";
+    private static final String DEFAULT_MODEL = "text-embedding-v2";
 
     private final EmbeddingService embeddingService;
     private final KnowledgeEmbeddingMapper embeddingMapper;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final UserService userService;
-
-    @Autowired(required = false)
-    private ElasticsearchService elasticsearchService;
+    private final ElasticsearchService elasticsearchService;
 
     public KnowledgeVectorServiceImpl(EmbeddingService embeddingService, KnowledgeEmbeddingMapper embeddingMapper,
-                                      KnowledgeNodeMapper knowledgeNodeMapper, UserService userService) {
+                                      KnowledgeNodeMapper knowledgeNodeMapper, UserService userService,
+                                      @Autowired(required = false) ElasticsearchService elasticsearchService) {
         this.embeddingService = embeddingService;
         this.embeddingMapper = embeddingMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.userService = userService;
+        this.elasticsearchService = elasticsearchService;
     }
 
     /**
-     * 为单个知识节点生成并保存向量
+     * 为单个知识节点生成并保存向量.
      *
      * @param node 知识节点
+     * @return void
      */
     @Override
     @Async("vectorTaskExecutor")
@@ -81,7 +82,7 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
                 }
             }
             
-            List<Float> embedding = embeddingService.generateEmbedding(contentForEmbedding, defaultModel, userApiKey);
+            List<Float> embedding = embeddingService.generateEmbedding(contentForEmbedding, DEFAULT_MODEL, userApiKey);
 
             if (embedding == null || embedding.isEmpty()) {
                 log.warn("向量生成失败，nodeId：{}", node.getId());
@@ -121,9 +122,10 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
     }
 
     /**
-     * 批量为用户生成向量
+     * 批量为用户生成向量.
      *
      * @param userId 用户ID
+     * @return void
      */
     @Override
     @Async("vectorTaskExecutor")
@@ -161,9 +163,10 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
     }
 
     /**
-     * 重新生成指定知识节点的向量
+     * 重新生成指定知识节点的向量.
      *
      * @param knowledgeId 知识节点ID
+     * @return void
      */
     @Override
     @Async("vectorTaskExecutor")

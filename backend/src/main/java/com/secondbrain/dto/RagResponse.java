@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * RAG问答响应DTO.
- */
+/** RAG问答响应DTO. <p>用于返回知识库问答结果</p> */
 @Getter
 @Setter
 public class RagResponse {

@@ -29,6 +29,12 @@ public class KnowledgeCaptureServiceImpl implements KnowledgeCaptureService {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
     }
 
+    /**
+     * 从对话记录中提取知识.
+     *
+     * @param record 对话记录
+     * @return 知识节点
+     */
     @Override
     public KnowledgeNode extractKnowledge(RawChatRecord record) {
         log.info("开始从对话记录中提取知识，recordId：{}", record.getId());

@@ -14,7 +14,6 @@ import com.secondbrain.service.QuestionGenerationService;
 import com.secondbrain.service.ReviewCardService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -23,6 +22,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * 复习卡片服务实现类.
+ * <p>提供复习卡片的生成、提交、调度及统计功能</p>
+ */
 @Service
 public class ReviewCardServiceImpl implements ReviewCardService {
 
@@ -35,7 +38,6 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     private final ImportanceCalculationService importanceCalculationService;
     private final JdbcTemplate jdbcTemplate;
 
-    @Autowired
     public ReviewCardServiceImpl(ReviewCardMapper reviewCardMapper, KnowledgeNodeMapper knowledgeNodeMapper,
                              EbbinghausService ebbinghausService, QuestionGenerationService questionGenerationService,
                              ImportanceCalculationService importanceCalculationService, JdbcTemplate jdbcTemplate) {
@@ -47,11 +49,26 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * 生成复习卡片.
+     *
+     * @param nodeId   知识节点ID
+     * @param cardType 卡片类型
+     * @return 复习卡片
+     */
     @Override
     public ReviewCard generateReviewCard(Long nodeId, String cardType) {
         return generateReviewCard(nodeId, cardType, "auto");
     }
 
+    /**
+     * 生成复习卡片（指定生成类型）.
+     *
+     * @param nodeId         知识节点ID
+     * @param cardType       卡片类型
+     * @param generationType 生成类型
+     * @return 复习卡片
+     */
     @Override
     public ReviewCard generateReviewCard(Long nodeId, String cardType, String generationType) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(nodeId);
@@ -62,6 +79,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
         ReviewCard card = questionGenerationService.generateHighQualityQuestion(node, cardType, node.getUserId());
         card.setGenerationType(generationType);
+        card.setWorkspaceId(node.getWorkspaceId());
 
         reviewCardMapper.insert(card);
         log.info("生成复习卡片成功，nodeId：{}，cardType：{}，generationType：{}，cardId：{}", 
@@ -70,26 +88,45 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         return card;
     }
 
+    /**
+     * 获取今日待复习卡片列表.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID（null 时仅按 userId 过滤）
+     * @return 待复习卡片列表
+     */
     @Override
-    public List<ReviewCard> getTodayReviewCards(Long userId) {
+    public List<ReviewCard> getTodayReviewCards(Long userId, Long workspaceId) {
         LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ReviewCard::getUserId, userId);
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
         wrapper.eq(ReviewCard::getDeleted, 0);
         wrapper.eq(ReviewCard::getStatus, 0);
         wrapper.orderByAsc(ReviewCard::getNextReviewTime);
 
         List<ReviewCard> cards = reviewCardMapper.selectList(wrapper);
-        
-        log.info("获取待复习卡片，userId：{}，卡片数：{}（包含自动和手动生成的）", userId, cards.size());
-        
+        log.info("获取待复习卡片，userId：{}，workspaceId：{}，卡片数：{}", userId, workspaceId, cards.size());
         return cards;
     }
 
+    /**
+     * 根据ID获取复习卡片.
+     *
+     * @param id 卡片ID
+     * @return 复习卡片
+     */
     @Override
     public ReviewCard getReviewCardById(Long id) {
         return reviewCardMapper.selectById(id);
     }
 
+    /**
+     * 提交复习结果.
+     *
+     * @param cardId     卡片ID
+     * @param userAnswer 用户答案
+     * @param duration   答题耗时（秒）
+     * @return 复习结果DTO
+     */
     @Override
     public ReviewResultDTO submitReviewResult(Long cardId, String userAnswer, Integer duration) {
         ReviewCard card = reviewCardMapper.selectById(cardId);
@@ -188,6 +225,18 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         }
     }
 
+    /**
+     * 应用用户或工作区过滤条件.
+     * workspaceId 为 null 时降级为 userId 过滤，兼容迁移前未分配工作区的历史数据.
+     */
+    private void applyUserOrWorkspaceFilter(LambdaQueryWrapper<ReviewCard> wrapper, Long userId, Long workspaceId) {
+        if (workspaceId != null) {
+            wrapper.eq(ReviewCard::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(ReviewCard::getUserId, userId);
+        }
+    }
+
     private void syncToKnowledgeNode(ReviewCard card) {
         KnowledgeNode node = knowledgeNodeMapper.selectById(card.getNodeId());
         if (node == null) {
@@ -198,6 +247,9 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReviewCard::getNodeId, card.getNodeId());
         wrapper.eq(ReviewCard::getDeleted, 0);
+        if (card.getWorkspaceId() != null) {
+            wrapper.eq(ReviewCard::getWorkspaceId, card.getWorkspaceId());
+        }
         List<ReviewCard> allCards = reviewCardMapper.selectList(wrapper);
 
         int totalReviewCount = allCards.stream().mapToInt(ReviewCard::getReviewCount).sum();
@@ -229,6 +281,13 @@ public class ReviewCardServiceImpl implements ReviewCardService {
                 node.getId(), totalReviewCount, overallMasteryLevel, importance, card.getNextReviewTime());
     }
 
+    /**
+     * 更新复习计划.
+     *
+     * @param cardId    卡片ID
+     * @param isCorrect 是否答对
+     * @return void
+     */
     @Override
     public void updateReviewSchedule(Long cardId, boolean isCorrect) {
         ReviewCard card = reviewCardMapper.selectById(cardId);
@@ -250,6 +309,12 @@ public class ReviewCardServiceImpl implements ReviewCardService {
                 cardId, isCorrect, nextReviewTime);
     }
 
+    /**
+     * 根据知识点ID获取复习卡片列表.
+     *
+     * @param nodeId 知识节点ID
+     * @return 复习卡片列表
+     */
     @Override
     public List<ReviewCard> getReviewCardsByNodeId(Long nodeId) {
         LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
@@ -260,6 +325,12 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         return reviewCardMapper.selectList(wrapper);
     }
 
+    /**
+     * 删除复习卡片（软删除）.
+     *
+     * @param id 卡片ID
+     * @return void
+     */
     @Override
     public void deleteReviewCard(Long id) {
         ReviewCard card = reviewCardMapper.selectById(id);
@@ -270,36 +341,70 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         }
     }
 
+    /**
+     * 删除所有复习卡片（软删除）.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return void
+     */
     @Override
-    public void deleteAllReviewCards(Long userId) {
+    public void deleteAllReviewCards(Long userId, Long workspaceId) {
         LambdaUpdateWrapper<ReviewCard> wrapper = new LambdaUpdateWrapper<>();
         wrapper.set(ReviewCard::getDeleted, 1);
         wrapper.eq(ReviewCard::getDeleted, 0);
-        wrapper.eq(ReviewCard::getUserId, userId);
+        if (workspaceId != null) {
+            wrapper.eq(ReviewCard::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(ReviewCard::getUserId, userId);
+        }
         int deletedCount = reviewCardMapper.update(null, wrapper);
         log.info("软删除所有复习卡片成功，userId：{}，共{}张", userId, deletedCount);
     }
 
+    /**
+     * 恢复已删除的复习卡片.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 恢复的卡片数量
+     */
     @Override
-    public int restoreReviewCards(Long userId) {
+    public int restoreReviewCards(Long userId, Long workspaceId) {
         // 使用 JdbcTemplate 执行原生 SQL，绕过@TableLogic 的自动处理
         // 恢复卡片：将 deleted 设为 0，同时将 is_restored 设为 1
-        String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE user_id = ? AND deleted = 1";
-        int count = jdbcTemplate.update(sql, userId);
-        
-        log.info("恢复复习卡片成功，userId：{}，共{}张", userId, count);
+        int count;
+        if (workspaceId != null) {
+            String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE workspace_id = ? AND deleted = 1";
+            count = jdbcTemplate.update(sql, workspaceId);
+        } else {
+            String sql = "UPDATE review_card SET deleted = 0, is_restored = 1 WHERE user_id = ? AND deleted = 1";
+            count = jdbcTemplate.update(sql, userId);
+        }
+
+        log.info("恢复复习卡片成功，userId：{}，workspaceId：{}，共{}张", userId, workspaceId, count);
         return count;
     }
 
+    /**
+     * 为用户的所有知识点生成复习卡片.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 生成的卡片数量
+     */
     @Override
-    public int generateReviewCardsForAllNodes(Long userId) {
-        log.info("开始为用户{}的所有知识点生成手动练习卡片", userId);
-        
-        List<KnowledgeNode> allNodes = knowledgeNodeMapper.selectList(
-                new LambdaQueryWrapper<KnowledgeNode>()
-                        .eq(KnowledgeNode::getDeleted, 0)
-                        .eq(KnowledgeNode::getUserId, userId)
-        );
+    public int generateReviewCardsForAllNodes(Long userId, Long workspaceId) {
+        log.info("开始为用户{}的所有知识点生成手动练习卡片, workspaceId={}", userId, workspaceId);
+
+        LambdaQueryWrapper<KnowledgeNode> nodeWrapper = new LambdaQueryWrapper<KnowledgeNode>()
+                .eq(KnowledgeNode::getDeleted, 0);
+        if (workspaceId != null) {
+            nodeWrapper.eq(KnowledgeNode::getWorkspaceId, workspaceId);
+        } else {
+            nodeWrapper.eq(KnowledgeNode::getUserId, userId);
+        }
+        List<KnowledgeNode> allNodes = knowledgeNodeMapper.selectList(nodeWrapper);
 
         int generatedCount = 0;
         for (KnowledgeNode node : allNodes) {
@@ -321,17 +426,27 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         return generatedCount;
     }
 
+    /**
+     * 异步生成所有知识点的复习卡片.
+     *
+     * @return void
+     */
     @Override
     @Async("vectorTaskExecutor")
     public void generateReviewCardsForAllNodesAsync() {
         log.info("异步生成所有知识点的复习卡片");
         try {
-            generateReviewCardsForAllNodes(1L);
+            generateReviewCardsForAllNodes(1L, null);
         } catch (Exception e) {
             log.error("异步生成复习卡片失败", e);
         }
     }
 
+    /**
+     * 更新缺失正确答案的复习卡片.
+     *
+     * @return void
+     */
     @Override
     public void updateMissingAnswers() {
         log.info("开始更新缺失正确答案的复习卡片");
@@ -380,40 +495,67 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         return null;
     }
 
+    /**
+     * 统计用户的待复习卡片数量.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 待复习卡片数量
+     */
     @Override
-    public long countPendingByUserId(Long userId) {
-        return reviewCardMapper.selectCount(
-            new LambdaQueryWrapper<ReviewCard>()
-                .eq(ReviewCard::getUserId, userId)
-                .eq(ReviewCard::getReviewCount, 0)
-                .eq(ReviewCard::getDeleted, 0)
-        );
+    public long countPendingByUserId(Long userId, Long workspaceId) {
+        LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        wrapper.eq(ReviewCard::getReviewCount, 0);
+        wrapper.eq(ReviewCard::getDeleted, 0);
+        return reviewCardMapper.selectCount(wrapper);
     }
 
+    /**
+     * 统计用户已完成的卡片数量.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 已完成的卡片数量
+     */
     @Override
-    public long countCompletedByUserId(Long userId) {
-        return reviewCardMapper.selectCount(
-            new LambdaQueryWrapper<ReviewCard>()
-                .eq(ReviewCard::getUserId, userId)
-                .gt(ReviewCard::getReviewCount, 0)
-                .eq(ReviewCard::getDeleted, 0)
-        );
+    public long countCompletedByUserId(Long userId, Long workspaceId) {
+        LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        wrapper.gt(ReviewCard::getReviewCount, 0);
+        wrapper.eq(ReviewCard::getDeleted, 0);
+        return reviewCardMapper.selectCount(wrapper);
     }
 
+    /**
+     * 统计用户在指定时间范围内的卡片数量.
+     *
+     * @param userId      用户ID
+     * @param startTime   开始时间
+     * @param endTime     结束时间
+     * @param workspaceId 工作区ID
+     * @return 卡片数量
+     */
     @Override
-    public long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
-        return reviewCardMapper.selectCount(
-            new LambdaQueryWrapper<ReviewCard>()
-                .eq(ReviewCard::getUserId, userId)
-                .gt(ReviewCard::getReviewCount, 0)
-                .eq(ReviewCard::getDeleted, 0)
-                .ge(ReviewCard::getNextReviewTime, startTime)
-                .lt(ReviewCard::getNextReviewTime, endTime)
-        );
+    public long countByUserIdAndDateRange(Long userId, LocalDateTime startTime, LocalDateTime endTime, Long workspaceId) {
+        LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        wrapper.gt(ReviewCard::getReviewCount, 0);
+        wrapper.eq(ReviewCard::getDeleted, 0);
+        wrapper.ge(ReviewCard::getNextReviewTime, startTime);
+        wrapper.lt(ReviewCard::getNextReviewTime, endTime);
+        return reviewCardMapper.selectCount(wrapper);
     }
 
+    /**
+     * 计算用户的连续复习天数.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 连续复习天数
+     */
     @Override
-    public int calculateStreakDays(Long userId) {
+    public int calculateStreakDays(Long userId, Long workspaceId) {
         if (userId == null) {
             return 0;
         }
@@ -425,14 +567,13 @@ public class ReviewCardServiceImpl implements ReviewCardService {
             LocalDateTime dayStart = currentDate;
             LocalDateTime dayEnd = currentDate.plusDays(1);
 
-            long count = reviewCardMapper.selectCount(
-                new LambdaQueryWrapper<ReviewCard>()
-                    .eq(ReviewCard::getUserId, userId)
-                    .gt(ReviewCard::getReviewCount, 0)
-                    .eq(ReviewCard::getDeleted, 0)
-                    .ge(ReviewCard::getLastReviewTime, dayStart)
-                    .lt(ReviewCard::getLastReviewTime, dayEnd)
-            );
+            LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
+            applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+            wrapper.gt(ReviewCard::getReviewCount, 0);
+            wrapper.eq(ReviewCard::getDeleted, 0);
+            wrapper.ge(ReviewCard::getLastReviewTime, dayStart);
+            wrapper.lt(ReviewCard::getLastReviewTime, dayEnd);
+            long count = reviewCardMapper.selectCount(wrapper);
 
             if (count > 0) {
                 streakDays++;
@@ -445,6 +586,14 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         return streakDays;
     }
 
+    /**
+     * 记录题目质量反馈.
+     *
+     * @param cardId  卡片ID
+     * @param rating  评分
+     * @param comment 评论
+     * @return void
+     */
     @Override
     public void recordQualityFeedback(Long cardId, Integer rating, String comment) {
         try {
@@ -470,15 +619,20 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         }
     }
 
+    /**
+     * 获取用户答题准确率.
+     *
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 准确率（0-100）
+     */
     @Override
-    public int getUserAccuracy(Long userId) {
-        // 统计用户所有题目的答题情况
-        List<ReviewCard> cards = reviewCardMapper.selectList(
-            new LambdaQueryWrapper<ReviewCard>()
-                .eq(ReviewCard::getUserId, userId)
-                .gt(ReviewCard::getReviewCount, 0)
-                .eq(ReviewCard::getDeleted, 0)
-        );
+    public int getUserAccuracy(Long userId, Long workspaceId) {
+        LambdaQueryWrapper<ReviewCard> wrapper = new LambdaQueryWrapper<>();
+        applyUserOrWorkspaceFilter(wrapper, userId, workspaceId);
+        wrapper.gt(ReviewCard::getReviewCount, 0);
+        wrapper.eq(ReviewCard::getDeleted, 0);
+        List<ReviewCard> cards = reviewCardMapper.selectList(wrapper);
 
         if (cards.isEmpty()) {
             return 0;

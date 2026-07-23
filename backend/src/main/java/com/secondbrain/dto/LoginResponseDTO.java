@@ -3,9 +3,7 @@ package com.secondbrain.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 用户登录响应DTO.
- */
+/** 登录响应DTO. <p>用于返回登录结果及用户信息</p> */
 @Getter
 @Setter
 public class LoginResponseDTO {
@@ -51,5 +49,10 @@ public class LoginResponseDTO {
          * 个人简介
          */
         private String bio;
+
+        /**
+         * 平台角色
+         */
+        private String role;
     }
 }

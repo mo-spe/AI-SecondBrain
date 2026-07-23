@@ -85,7 +85,7 @@ public class ReviewMechanismTest {
     public void testReviewCardRetention() {
         System.out.println("=== 测试4：题目保留机制 ===");
         
-        List<ReviewCard> pendingCards = reviewCardService.getTodayReviewCards(1L);
+        List<ReviewCard> pendingCards = reviewCardService.getTodayReviewCards(1L, 1L);
         
         System.out.println("待复习卡片数量: " + pendingCards.size());
         System.out.println("包含类型:");

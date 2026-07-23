@@ -5,9 +5,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * 研究历史请求DTO.
- */
+/** 研究历史请求DTO. <p>用于研究历史查询的请求参数封装</p> */
 @Getter
 @Setter
 public class ResearchHistoryRequest {

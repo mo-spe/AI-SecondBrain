@@ -13,47 +13,53 @@ public interface ResearchHistoryService {
     /**
      * 保存研究历史.
      *
-     * @param request 请求信息
+     * @param request 研究历史请求
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 研究历史
      */
-    ResearchHistory save(ResearchHistoryRequest request, Long userId);
+    ResearchHistory save(ResearchHistoryRequest request, Long userId, Long workspaceId);
 
     /**
-     * 分页获取研究历史列表.
+     * 分页查询研究历史列表.
      *
-     * @param current 当前页码
+     * @param current 当前页
      * @param size 每页大小
      * @param userId 用户ID
-     * @return 分页结果
+     * @param workspaceId 工作区ID
+     * @return 研究历史分页
      */
-    IPage<ResearchHistory> getList(int current, int size, Long userId);
+    IPage<ResearchHistory> getList(int current, int size, Long userId, Long workspaceId);
 
     /**
-     * 分页获取研究历史列表（按类型）.
+     * 分页查询研究历史列表（按类型）.
      *
-     * @param current 当前页码
+     * @param current 当前页
      * @param size 每页大小
      * @param userId 用户ID
-     * @param type 研究类型
-     * @return 分页结果
+     * @param workspaceId 工作区ID
+     * @param type 类型
+     * @return 研究历史分页
      */
-    IPage<ResearchHistory> getList(int current, int size, Long userId, String type);
+    IPage<ResearchHistory> getList(int current, int size, Long userId, Long workspaceId, String type);
 
     /**
-     * 根据ID获取研究历史.
+     * 根据ID查询研究历史.
      *
-     * @param id 记录ID
+     * @param id 研究历史ID
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
      * @return 研究历史
      */
-    ResearchHistory getById(Long id, Long userId);
+    ResearchHistory getById(Long id, Long userId, Long workspaceId);
 
     /**
-     * 删除研究历史.
+     * 根据ID删除研究历史.
      *
-     * @param id 记录ID
+     * @param id 研究历史ID
      * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @return void
      */
-    void deleteById(Long id, Long userId);
+    void deleteById(Long id, Long userId, Long workspaceId);
 }
