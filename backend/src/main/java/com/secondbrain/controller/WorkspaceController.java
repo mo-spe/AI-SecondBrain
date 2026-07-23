@@ -248,4 +248,24 @@ public class WorkspaceController {
         log.info("workspace_switched userId={} workspaceId={}", userId, id);
         return Result.success("工作区切换成功", result);
     }
+
+    /**
+     * 切换到个人空间.
+     *
+     * @param httpRequest HTTP请求对象
+     * @return 切换结果，包含不含workspaceId的新token
+     */
+    @PutMapping("/personal")
+    @Operation(summary = "切换到个人空间")
+    public Result<Map<String, Object>> switchToPersonal(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        User user = userMapper.selectById(userId);
+        String newToken = jwtUtil.generateToken(userId, user.getUsername(), user.getRole(), null);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", newToken);
+
+        log.info("workspace_switched_to_personal userId={}", userId);
+        return Result.success("已切换到个人空间", result);
+    }
 }
