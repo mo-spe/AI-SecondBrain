@@ -85,6 +85,21 @@ public class WorkspaceInterceptor implements HandlerInterceptor {
         }
 
         String method = request.getMethod();
+
+        // pending 成员确认加入工作区时，允许跳过写权限校验
+        if (requestUri.matches("/api/workspace/\\d+/members/accept") && "pending".equals(member.getStatus())) {
+            request.setAttribute("workspaceId", workspaceId);
+            request.setAttribute("memberRole", member.getRole());
+            return true;
+        }
+
+        // 已确认成员切换工作区（签发新JWT，非数据变更），允许所有已确认成员访问
+        if (requestUri.matches("/api/workspace/\\d+/switch") && "accepted".equals(member.getStatus())) {
+            request.setAttribute("workspaceId", workspaceId);
+            request.setAttribute("memberRole", member.getRole());
+            return true;
+        }
+
         if (isWriteMethod(method) && !WorkspaceRole.isAdmin(member.getRole())) {
             response.setStatus(403);
             response.setContentType("application/json;charset=UTF-8");
