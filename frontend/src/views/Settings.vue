@@ -121,19 +121,6 @@
                       />
                     </div>
                   </div>
-                  <div class="form-item">
-                    <label class="form-label">API Key</label>
-                    <div class="form-input-wrapper">
-                      <el-icon size="14" color="#94a3b8"><Key /></el-icon>
-                      <input
-                        type="password"
-                        v-model="settingsForm.apiKey"
-                        placeholder="请输入API Key"
-                        class="form-input"
-                      />
-                      <el-icon size="14" color="#94a3b8" class="eye-icon"><View /></el-icon>
-                    </div>
-                  </div>
                   <div class="form-item full-width">
                     <label class="form-label">个人简介</label>
                     <textarea
@@ -142,6 +129,88 @@
                       rows="3"
                       class="form-textarea"
                     ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-header">
+                <div class="section-icon blue">
+                  <el-icon size="16" color="white"><Cpu /></el-icon>
+                </div>
+                <h3 class="section-title">AI 模型配置</h3>
+              </div>
+              <div class="section-body">
+                <div v-if="!aiConfigured" class="ai-config-notice">
+                  <el-icon size="18"><WarningFilled /></el-icon>
+                  <span>您还没有配置 AI 模型，配置后即可使用所有 AI 功能</span>
+                </div>
+                <div class="ai-scenario-list">
+                  <div v-for="code in scenarioCodes" :key="code" class="ai-scenario-card">
+                    <div class="scenario-header">
+                      <span class="scenario-label">{{ scenarioLabels[code] }}</span>
+                      <el-tag v-if="!getScenarioConfig(code)" size="small" type="danger" effect="dark">未配置</el-tag>
+                      <el-tag v-else size="small" type="success" effect="dark">已配置</el-tag>
+                    </div>
+                    <div class="scenario-fields">
+                      <div class="scenario-field">
+                        <label class="field-label">服务商</label>
+                        <el-select
+                          v-model="scenarioConfigs[code].providerId"
+                          placeholder="选择服务商"
+                          size="small"
+                          style="width: 100%"
+                          @change="(val) => handleScenarioProviderChange(code, val)"
+                        >
+                          <el-option
+                            v-for="p in aiProviders"
+                            :key="p.id"
+                            :label="p.name"
+                            :value="p.id"
+                          />
+                        </el-select>
+                      </div>
+                      <div class="scenario-field">
+                        <label class="field-label">模型</label>
+                        <el-select
+                          v-model="scenarioConfigs[code].modelName"
+                          placeholder="选择或输入模型"
+                          size="small"
+                          style="width: 100%"
+                          filterable
+                          allow-create
+                          default-first-option
+                        >
+                          <el-option
+                            v-for="m in scenarioModels[code]"
+                            :key="m.modelName"
+                            :label="m.displayName || m.modelName"
+                            :value="m.modelName"
+                          />
+                        </el-select>
+                      </div>
+                      <div class="scenario-field">
+                        <label class="field-label">API Key</label>
+                        <el-input
+                          v-model="scenarioConfigs[code].apiKey"
+                          placeholder="输入API Key"
+                          size="small"
+                          type="password"
+                          show-password
+                        />
+                      </div>
+                      <div class="scenario-field scenario-actions">
+                    <el-button
+                      type="primary"
+                      size="small"
+                      @click="handleSaveScenarioConfig(code)"
+                      :loading="scenarioSaving[code]"
+                    >
+                      保存
+                    </el-button>
+                  </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -284,6 +353,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { userAPI } from "@/api/user";
 import { workspaceAPI } from "@/api/workspace";
+import { aiAPI } from "@/api/ai";
 import {
   User,
   Edit,
@@ -301,6 +371,7 @@ import {
   Cpu,
   Monitor,
   DataLine,
+  WarningFilled,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -359,6 +430,27 @@ const passwordRules = {
     },
   ],
 };
+
+// AI 模型配置
+const aiProviders = ref([]);
+const scenarioLabels = {
+  chat: "对话",
+  extraction: "知识提取",
+  question_gen: "题目生成",
+  embedding: "Embedding向量化",
+  research: "研究报告",
+};
+const scenarioCodes = Object.keys(scenarioLabels);
+const scenarioConfigs = ref(
+  Object.fromEntries(scenarioCodes.map((code) => [code, { providerId: null, modelName: "", apiKey: "" }]))
+);
+const scenarioModels = ref(
+  Object.fromEntries(scenarioCodes.map((code) => [code, []]))
+);
+const scenarioSaving = ref(
+  Object.fromEntries(scenarioCodes.map((code) => [code, false]))
+);
+const aiConfigured = ref(false);
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";
@@ -499,9 +591,93 @@ const goToMembers = (id) => {
   router.push(`/workspace/${id}/members`);
 };
 
+// AI 配置方法
+const loadAiProvidersForSettings = async () => {
+  try {
+    const data = await aiAPI.getProviders();
+    aiProviders.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("加载服务商列表失败:", error);
+  }
+};
+
+const loadAiConfigForSettings = async () => {
+  try {
+    const data = await aiAPI.getUserAiConfig();
+    const configs = Array.isArray(data) ? data : [];
+    if (configs.length > 0) {
+      aiConfigured.value = true;
+      for (const config of configs) {
+        const code = config.scenarioCode;
+        if (scenarioConfigs.value[code]) {
+          scenarioConfigs.value[code] = {
+            providerId: config.providerId,
+            modelName: config.modelName || "",
+            apiKey: config.apiKey || "",
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("加载AI配置失败:", error);
+  }
+};
+
+const loadAiModelsForScenario = async (code, providerId) => {
+  if (!providerId) {
+    scenarioModels.value[code] = [];
+    return;
+  }
+  try {
+    const data = await aiAPI.getModels(providerId);
+    scenarioModels.value[code] = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("加载模型列表失败:", error);
+    scenarioModels.value[code] = [];
+  }
+};
+
+const handleScenarioProviderChange = async (code, providerId) => {
+  scenarioConfigs.value[code].modelName = "";
+  await loadAiModelsForScenario(code, providerId);
+};
+
+const getScenarioConfig = (code) => {
+  const config = scenarioConfigs.value[code];
+  if (!config || !config.providerId) return null;
+  return config;
+};
+
+const handleSaveScenarioConfig = async (code) => {
+  const config = scenarioConfigs.value[code];
+  if (!config.providerId) {
+    ElMessage.warning("请选择服务商");
+    return;
+  }
+  scenarioSaving.value[code] = true;
+  try {
+    await aiAPI.saveUserAiConfig([
+      {
+        scenarioCode: code,
+        providerId: config.providerId,
+        modelName: config.modelName,
+        apiKey: config.apiKey,
+      },
+    ]);
+    ElMessage.success(`${scenarioLabels[code]} 配置已保存`);
+    aiConfigured.value = true;
+  } catch (error) {
+    ElMessage.error("保存失败: " + (error.message || "未知错误"));
+  } finally {
+    scenarioSaving.value[code] = false;
+  }
+};
+
 onMounted(async () => {
   loadUserInfo();
   await workspaceStore.fetchWorkspaces();
+  loadAiProvidersForSettings();
+  loadAiConfigForSettings();
 });
 </script>
 
@@ -1034,5 +1210,70 @@ onMounted(async () => {
     gap: var(--spacing-md);
     text-align: center;
   }
+
+  .scenario-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ai-config-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: #92400e;
+  margin-bottom: var(--spacing-lg);
+}
+
+.ai-scenario-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.ai-scenario-card {
+  padding: var(--spacing-lg);
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-lighter);
+}
+
+.scenario-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.scenario-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.scenario-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: var(--spacing-md);
+  align-items: end;
+}
+
+.scenario-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scenario-actions {
+  justify-content: flex-end;
+}
+
+.field-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
 }
 </style>

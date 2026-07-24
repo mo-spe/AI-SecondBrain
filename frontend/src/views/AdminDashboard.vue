@@ -205,9 +205,149 @@
               </el-table-column>
             </el-table>
           </el-tab-pane>
+
+          <el-tab-pane label="AI服务商管理" name="aiProviders">
+            <div class="ai-provider-header">
+              <el-button type="primary" @click="showProviderDialog = true; editingProvider = null; providerForm = {}">
+                新增服务商
+              </el-button>
+            </div>
+            <el-table :data="aiProviders" border stripe style="margin-top: 16px">
+              <el-table-column prop="id" label="ID" width="60" />
+              <el-table-column prop="name" label="名称" width="140" />
+              <el-table-column prop="code" label="标识" width="120" />
+              <el-table-column prop="apiType" label="API类型" width="160" />
+              <el-table-column label="状态" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.isEnabled === 1 ? 'success' : 'info'" size="small">
+                    {{ row.isEnabled === 1 ? '启用' : '禁用' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="sortOrder" label="排序" width="60" />
+              <el-table-column label="操作" width="280">
+                <template #default="{ row }">
+                  <el-button size="small" @click="loadAiModels(row)">模型</el-button>
+                  <el-button size="small" type="primary" @click="editProvider(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="handleDeleteProvider(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <!-- 模型管理（展开） -->
+            <div v-if="selectedProvider" class="ai-model-section">
+              <h3>{{ selectedProvider.name }} — 模型列表</h3>
+              <el-button type="primary" size="small" @click="showModelDialog = true; editingModel = null; modelForm = {}">
+                新增模型
+              </el-button>
+              <el-table :data="aiModels" border stripe style="margin-top: 12px">
+                <el-table-column prop="id" label="ID" width="60" />
+                <el-table-column prop="displayName" label="显示名称" width="160" />
+                <el-table-column prop="modelName" label="模型标识" width="180" />
+                <el-table-column label="状态" width="80">
+                  <template #default="{ row2 }">
+                    <el-tag :type="row2.isEnabled === 1 ? 'success' : 'info'" size="small">
+                      {{ row2.isEnabled === 1 ? '启用' : '禁用' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="适用场景" min-width="240">
+                  <template #default="{ row: row2 }">
+                    <el-tag
+                      v-for="sc in parseScenarios(row2.supportedScenarios)"
+                      :key="sc"
+                      size="small"
+                      style="margin-right: 4px"
+                    >
+                      {{ scenarioLabel(sc) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="140">
+                  <template #default="{ row: row2 }">
+                    <el-button size="small" type="primary" @click="editModel(row2)">编辑</el-button>
+                    <el-button size="small" type="danger" @click="handleDeleteModel(row2)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
         </el-tabs>
       </div>
     </div>
+
+    <!-- 服务商编辑弹窗 -->
+    <el-dialog
+      v-model="showProviderDialog"
+      :title="editingProvider ? '编辑服务商' : '新增服务商'"
+      width="520px"
+      destroy-on-close
+    >
+      <el-form :model="providerForm" label-width="100px">
+        <el-form-item label="标识" required>
+          <el-input v-model="providerForm.code" placeholder="如 openai, qwen" />
+        </el-form-item>
+        <el-form-item label="名称" required>
+          <el-input v-model="providerForm.name" placeholder="如 OpenAI, 千问" />
+        </el-form-item>
+        <el-form-item label="API 地址">
+          <el-input v-model="providerForm.baseUrl" placeholder="如 https://api.openai.com/v1" />
+        </el-form-item>
+        <el-form-item label="API 类型">
+          <el-select v-model="providerForm.apiType" style="width: 100%">
+            <el-option label="OpenAI 兼容" value="openai_compatible" />
+            <el-option label="Anthropic" value="anthropic" />
+            <el-option label="Gemini" value="gemini" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Logo URL">
+          <el-input v-model="providerForm.logoUrl" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="providerForm.sortOrder" :min="0" :max="999" />
+        </el-form-item>
+        <el-form-item label="启用">
+          <el-switch v-model="providerForm.isEnabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showProviderDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveProvider">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 模型编辑弹窗 -->
+    <el-dialog
+      v-model="showModelDialog"
+      :title="editingModel ? '编辑模型' : '新增模型'"
+      width="520px"
+      destroy-on-close
+    >
+      <el-form :model="modelForm" label-width="100px">
+        <el-form-item label="模型标识" required>
+          <el-input v-model="modelForm.modelName" placeholder="如 gpt-4o, deepseek-chat" />
+        </el-form-item>
+        <el-form-item label="显示名称">
+          <el-input v-model="modelForm.displayName" placeholder="如 GPT-4o" />
+        </el-form-item>
+        <el-form-item label="适用场景">
+          <el-input
+            v-model="modelForm.supportedScenarios"
+            placeholder="多个用逗号分隔：chat,extraction,question_gen,embedding,research"
+          />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="modelForm.sortOrder" :min="0" :max="999" />
+        </el-form-item>
+        <el-form-item label="启用">
+          <el-switch v-model="modelForm.isEnabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showModelDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveModel">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -239,6 +379,52 @@ const reportPagination = reactive({ current: 1, size: 10, total: 0 });
 
 const sensitiveWords = ref([]);
 const newSensitiveWord = ref("");
+
+// AI 服务商管理
+const aiProviders = ref([]);
+const aiModels = ref([]);
+const selectedProvider = ref(null);
+const showProviderDialog = ref(false);
+const showModelDialog = ref(false);
+const editingProvider = ref(null);
+const editingModel = ref(null);
+const providerForm = reactive({
+  code: "",
+  name: "",
+  baseUrl: "",
+  apiType: "openai_compatible",
+  logoUrl: "",
+  isEnabled: 1,
+  sortOrder: 0,
+});
+const modelForm = reactive({
+  modelName: "",
+  displayName: "",
+  isEnabled: 1,
+  supportedScenarios: "",
+  sortOrder: 0,
+});
+
+const scenarioLabel = (code) => {
+  const map = {
+    chat: "对话",
+    extraction: "知识提取",
+    question_gen: "题目生成",
+    embedding: "Embedding向量化",
+    research: "研究报告",
+  };
+  return map[code] || code;
+};
+
+const parseScenarios = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return [];
+  }
+};
 
 const reportStatusType = (status) => {
   if (status === "pending") return "warning";
@@ -400,6 +586,7 @@ const onTabChange = (name) => {
   else if (name === "workspaces") loadAdminWorkspaces();
   else if (name === "reports") loadReports();
   else if (name === "sensitiveWords") loadSensitiveWords();
+  else if (name === "aiProviders") loadAiProviders();
 };
 
 const loadSensitiveWords = async () => {
@@ -443,6 +630,153 @@ const handleDeleteSensitiveWord = async (row) => {
     await loadSensitiveWords();
   } catch (error) {
     ElMessage.error("删除失败: " + (error.message || "未知错误"));
+  }
+};
+
+// AI 服务商管理方法
+const loadAiProviders = async () => {
+  try {
+    const data = await adminAPI.getAiProviders();
+    aiProviders.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    ElMessage.error("加载服务商列表失败");
+  }
+};
+
+const loadAiModels = async (provider) => {
+  selectedProvider.value = provider;
+  try {
+    const data = await adminAPI.getAiModels(provider.id);
+    aiModels.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    ElMessage.error("加载模型列表失败");
+  }
+};
+
+const editProvider = (row) => {
+  editingProvider.value = row;
+  Object.assign(providerForm, {
+    code: row.code,
+    name: row.name,
+    baseUrl: row.baseUrl || "",
+    apiType: row.apiType || "openai_compatible",
+    logoUrl: row.logoUrl || "",
+    isEnabled: row.isEnabled ?? 1,
+    sortOrder: row.sortOrder ?? 0,
+  });
+  showProviderDialog.value = true;
+};
+
+const handleDeleteProvider = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除服务商「${row.name}」吗？关联模型也会被删除。`, "删除服务商", {
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+  try {
+    await adminAPI.deleteAiProvider(row.id);
+    ElMessage.success("服务商已删除");
+    await loadAiProviders();
+    if (selectedProvider.value?.id === row.id) {
+      selectedProvider.value = null;
+      aiModels.value = [];
+    }
+  } catch (error) {
+    ElMessage.error("删除失败: " + (error.message || "未知错误"));
+  }
+};
+
+const handleSaveProvider = async () => {
+  if (!providerForm.code || !providerForm.name) {
+    ElMessage.warning("请填写服务商标识和名称");
+    return;
+  }
+  try {
+    if (editingProvider.value) {
+      await adminAPI.updateAiProvider(editingProvider.value.id, { ...providerForm });
+      ElMessage.success("服务商已更新");
+    } else {
+      await adminAPI.saveAiProvider({ ...providerForm });
+      ElMessage.success("服务商已创建");
+    }
+    showProviderDialog.value = false;
+    await loadAiProviders();
+  } catch (error) {
+    ElMessage.error("保存失败: " + (error.message || "未知错误"));
+  }
+};
+
+const editModel = (row) => {
+  editingModel.value = row;
+  Object.assign(modelForm, {
+    modelName: row.modelName,
+    displayName: row.displayName || "",
+    isEnabled: row.isEnabled ?? 1,
+    supportedScenarios: Array.isArray(row.supportedScenarios)
+      ? row.supportedScenarios.join(",")
+      : (row.supportedScenarios || ""),
+    sortOrder: row.sortOrder ?? 0,
+  });
+  showModelDialog.value = true;
+};
+
+const handleDeleteModel = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除模型「${row.displayName || row.modelName}」吗？`, "删除模型", {
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+  try {
+    await adminAPI.deleteAiModel(row.id);
+    ElMessage.success("模型已删除");
+    if (selectedProvider.value) {
+      await loadAiModels(selectedProvider.value);
+    }
+  } catch (error) {
+    ElMessage.error("删除失败: " + (error.message || "未知错误"));
+  }
+};
+
+const handleSaveModel = async () => {
+  if (!modelForm.modelName) {
+    ElMessage.warning("请填写模型标识");
+    return;
+  }
+  if (!selectedProvider.value && !editingModel.value) {
+    ElMessage.warning("请先选择服务商");
+    return;
+  }
+  try {
+    const payload = {
+      modelName: modelForm.modelName,
+      displayName: modelForm.displayName || modelForm.modelName,
+      isEnabled: modelForm.isEnabled,
+      supportedScenarios: modelForm.supportedScenarios
+        ? modelForm.supportedScenarios.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
+      sortOrder: modelForm.sortOrder,
+    };
+    if (editingModel.value) {
+      await adminAPI.updateAiModel(editingModel.value.id, payload);
+      ElMessage.success("模型已更新");
+    } else {
+      await adminAPI.saveAiModel(selectedProvider.value.id, payload);
+      ElMessage.success("模型已创建");
+    }
+    showModelDialog.value = false;
+    if (selectedProvider.value) {
+      await loadAiModels(selectedProvider.value);
+    }
+  } catch (error) {
+    ElMessage.error("保存失败: " + (error.message || "未知错误"));
   }
 };
 
@@ -564,5 +898,26 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.ai-provider-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.ai-model-section {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-lighter);
+}
+
+.ai-model-section h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 </style>

@@ -1,11 +1,31 @@
 import axios from "axios";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { useUserStore } from "@/stores/user";
+import router from "@/router";
 
 const request = axios.create({
   baseURL: "/api",
   timeout: 300000,
 });
+
+// 检查是否为AI未配置错误，若是则弹窗引导用户前往设置页
+function handleAiNotConfigured(message) {
+  if (message && message.includes("请先在设置页配置")) {
+    ElMessageBox.confirm(
+      message + "\n\n是否前往个人设置页配置AI服务商和模型？",
+      "AI 未配置",
+      {
+        confirmButtonText: "前往设置",
+        cancelButtonText: "稍后再说",
+        type: "warning",
+      }
+    ).then(() => {
+      router.push("/settings");
+    }).catch(() => {});
+    return true;
+  }
+  return false;
+}
 
 request.interceptors.request.use(
   (config) => {
@@ -31,7 +51,9 @@ request.interceptors.response.use(
     if (res.code === 200) {
       return res.data;
     } else {
-      ElMessage.error(res.message || "请求失败");
+      if (!handleAiNotConfigured(res.message)) {
+        ElMessage.error(res.message || "请求失败");
+      }
       return Promise.reject(new Error(res.message || "请求失败"));
     }
   },

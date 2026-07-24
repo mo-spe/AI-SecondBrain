@@ -77,4 +77,65 @@ export const adminAPI = {
       method: "delete",
     });
   },
+
+  // ===== AI 服务商管理 =====
+  getAiProviders() {
+    return request({
+      url: "/admin/ai/providers",
+      method: "get",
+    });
+  },
+
+  saveAiProvider(data) {
+    return request({
+      url: "/admin/ai/providers",
+      method: "post",
+      data,
+    });
+  },
+
+  updateAiProvider(id, data) {
+    return request({
+      url: `/admin/ai/providers/${id}`,
+      method: "put",
+      data,
+    });
+  },
+
+  deleteAiProvider(id) {
+    return request({
+      url: `/admin/ai/providers/${id}`,
+      method: "delete",
+    });
+  },
+
+  getAiModels(providerId) {
+    return request({
+      url: `/admin/ai/providers/${providerId}/models`,
+      method: "get",
+    });
+  },
+
+  saveAiModel(providerId, data) {
+    return request({
+      url: `/admin/ai/providers/${providerId}/models`,
+      method: "post",
+      data,
+    });
+  },
+
+  updateAiModel(id, data) {
+    return request({
+      url: `/admin/ai/models/${id}`,
+      method: "put",
+      data,
+    });
+  },
+
+  deleteAiModel(id) {
+    return request({
+      url: `/admin/ai/models/${id}`,
+      method: "delete",
+    });
+  },
 };
