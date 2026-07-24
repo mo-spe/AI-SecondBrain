@@ -3,6 +3,8 @@ package com.secondbrain.service.impl;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.secondbrain.dto.AiCallConfig;
+import com.secondbrain.service.AiService;
 import com.secondbrain.service.EmbeddingService;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -17,15 +19,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Embedding向量生成服务实现.
- * <p>调用阿里云通义千问Embedding API生成文本向量</p>
+ * <p>调用阿里云通义千问Embedding API生成文本向量。
+ * 新方法通过 userId 从数据库获取用户配置的API Key</p>
  */
 @Service
 public class EmbeddingServiceImpl implements EmbeddingService {
 
     private static final Logger log = LoggerFactory.getLogger(EmbeddingServiceImpl.class);
-
-    @Value("${ai.qwen.embedding.api-key:}")
-    private String apiKey;
 
     @Value("${ai.qwen.embedding.url:https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding}")
     private String apiUrl;
@@ -34,8 +34,10 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     private String defaultModel;
 
     private final OkHttpClient client;
+    private final AiService aiService;
 
-    public EmbeddingServiceImpl() {
+    public EmbeddingServiceImpl(AiService aiService) {
+        this.aiService = aiService;
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
@@ -63,31 +65,41 @@ public class EmbeddingServiceImpl implements EmbeddingService {
      */
     @Override
     public List<Float> generateEmbedding(String text, String model) {
-        return generateEmbedding(text, model, null);
+        return doGenerateEmbedding(text, model, null);
     }
 
     /**
-     * 生成文本向量.
+     * 使用数据库驱动的用户配置生成Embedding.
      *
-     * @param text       文本
-     * @param model      模型
-     * @param userApiKey 用户API Key
+     * @param text   文本
+     * @param userId 用户ID
      * @return 向量
      */
     @Override
+    public List<Float> generateEmbedding(String text, Long userId) {
+        AiCallConfig config = aiService.resolveConfig(userId, "embedding");
+        String model = config.getModelName() != null ? config.getModelName() : defaultModel;
+        return doGenerateEmbedding(text, model, config.getApiKey());
+    }
+
+    /**
+     * 生成文本向量（指定模型和API Key）.
+     *
+     * @deprecated 使用 {@link #generateEmbedding(String, Long)} 替代
+     */
+    @Deprecated
+    @Override
     public List<Float> generateEmbedding(String text, String model, String userApiKey) {
-        String effectiveApiKey = userApiKey;
-        
-        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
-            effectiveApiKey = apiKey;
-        }
-        
+        return doGenerateEmbedding(text, model, userApiKey);
+    }
+
+    private List<Float> doGenerateEmbedding(String text, String model, String effectiveApiKey) {
         if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
             log.error("阿里云API Key未配置，无法生成Embedding");
             throw new IllegalStateException("阿里云API Key未配置，无法生成Embedding。请前往个人设置添加API Key。");
         }
 
-        log.info("生成Embedding，使用API Key来源：{}", userApiKey != null && !userApiKey.isEmpty() ? "用户API Key" : "平台API Key");
+        log.info("生成Embedding，模型：{}", model);
 
         try {
             String processedText = preprocessText(text);
@@ -95,7 +107,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
             JSONObject requestBody = new JSONObject();
             requestBody.put("model", model);
-            
+
             JSONObject input = new JSONObject();
             JSONArray texts = new JSONArray();
             texts.add(processedText);
@@ -125,17 +137,17 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                     if (embeddings != null && !embeddings.isEmpty()) {
                         JSONObject embeddingObj = embeddings.getJSONObject(0);
                         JSONArray embeddingArray = embeddingObj.getJSONArray("embedding");
-                        
+
                         List<Float> embedding = new ArrayList<>();
                         for (int i = 0; i < embeddingArray.size(); i++) {
                             embedding.add(embeddingArray.getFloatValue(i));
                         }
-                        
+
                         log.info("Embedding生成成功，维度: {}, 模型: {}", embedding.size(), model);
                         return embedding;
                     }
                 }
-                
+
                 log.error("Embedding生成失败，响应格式错误: {}", responseBody);
                 throw new IllegalStateException("Embedding生成失败，响应格式错误");
             }

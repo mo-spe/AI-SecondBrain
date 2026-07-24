@@ -39,7 +39,7 @@ public class KnowledgeCaptureServiceImpl implements KnowledgeCaptureService {
     public KnowledgeNode extractKnowledge(RawChatRecord record) {
         log.info("开始从对话记录中提取知识，recordId：{}", record.getId());
         try {
-            List<KnowledgeDTO> knowledgeList = aiService.extractKnowledge(record.getContent());
+            List<KnowledgeDTO> knowledgeList = aiService.extractKnowledge(record.getUserId(), "extraction", record.getContent());
             if (knowledgeList != null && !knowledgeList.isEmpty()) {
                 KnowledgeDTO dto = knowledgeList.get(0);
                 KnowledgeNode node = new KnowledgeNode();

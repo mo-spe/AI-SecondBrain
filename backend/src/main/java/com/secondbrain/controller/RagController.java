@@ -7,7 +7,6 @@ import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.service.KnowledgeVectorService;
 import com.secondbrain.service.RagService;
-import com.secondbrain.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,13 +25,11 @@ public class RagController {
     private final RagService ragService;
     private final KnowledgeVectorService knowledgeVectorService;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
-    private final UserService userService;
 
-    public RagController(RagService ragService, KnowledgeVectorService knowledgeVectorService, KnowledgeNodeMapper knowledgeNodeMapper, UserService userService) {
+    public RagController(RagService ragService, KnowledgeVectorService knowledgeVectorService, KnowledgeNodeMapper knowledgeNodeMapper) {
         this.ragService = ragService;
         this.knowledgeVectorService = knowledgeVectorService;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
-        this.userService = userService;
     }
 
     /**
@@ -49,18 +46,8 @@ public class RagController {
             HttpServletRequest httpRequest) {
         
         Long userId = (Long) httpRequest.getAttribute("userId");
-        
-        String userApiKey = null;
-        try {
-            com.secondbrain.entity.User user = userService.getUserById(userId);
-            if (user != null) {
-                userApiKey = user.getApiKey();
-            }
-        } catch (RuntimeException e) {
-            log.warn("获取用户API Key失败：{}", e.getMessage());
-        }
-        
-        RagResponse response = ragService.answer(request, userId, userApiKey);
+
+        RagResponse response = ragService.answer(request, userId);
         
         return Result.success(response);
     }

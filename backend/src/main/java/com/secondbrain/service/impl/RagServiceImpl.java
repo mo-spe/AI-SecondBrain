@@ -30,7 +30,7 @@ public class RagServiceImpl implements RagService {
     }
 
     /**
-     * 回答用户问题（使用默认API Key）
+     * 回答用户问题.
      *
      * @param request RAG请求
      * @param userId  用户ID
@@ -38,63 +38,54 @@ public class RagServiceImpl implements RagService {
      */
     @Override
     public RagResponse answer(RagRequest request, Long userId) {
-        return answer(request, userId, null);
-    }
-
-    /**
-     * 回答用户问题（支持用户自定义API Key）
-     *
-     * @param request    RAG请求
-     * @param userId     用户ID
-     * @param userApiKey 用户API Key
-     * @return RAG响应
-     */
-    @Override
-    public RagResponse answer(RagRequest request, Long userId, String userApiKey) {
         long startTime = System.currentTimeMillis();
-        
+
         String question = request.getQuestion();
         int topK = request.getTopK() != null ? request.getTopK() : 3;
-        
-        log.info("开始RAG问答，问题：'{}'，topK：{}，userId：{}，使用用户API Key：{}", 
-                 question, topK, userId, userApiKey != null && !userApiKey.isEmpty());
+
+        log.info("开始RAG问答，问题：'{}'，topK：{}，userId：{}", question, topK, userId);
 
         RagResponse response = new RagResponse();
 
         try {
             long retrievalStart = System.currentTimeMillis();
-            
-            List<KnowledgeReference> references = retrieveKnowledge(question, userId, topK, userApiKey);
-            
+
+            List<KnowledgeReference> references = retrieveKnowledge(question, userId, topK);
+
             long retrievalEnd = System.currentTimeMillis();
             response.setRetrievalTime(retrievalEnd - retrievalStart);
-            
+
             log.info("检索到{}条相关知识，耗时{}ms", references.size(), response.getRetrievalTime());
 
             if (references.isEmpty()) {
-                response.setAnswer("抱歉，我在您的知识库中没有找到相关的知识。这可能是因为：\n1. 您还没有添加相关的知识点\n2. 知识点还没有生成向量索引\n3. API Key配置有问题\n\n您可以先添加一些相关的知识点，然后等待向量索引生成，或者检查API Key配置。");
+                response.setAnswer("抱歉，我在您的知识库中没有找到相关的知识。这可能是因为：\n1. 您还没有添加相关的知识点\n2. 知识点还没有生成向量索引\n\n您可以先添加一些相关的知识点，然后等待向量索引生成。");
                 response.setReferences(new ArrayList<>());
                 return response;
             }
 
             long generationStart = System.currentTimeMillis();
-            
-            String answer = generateAnswer(question, references, userApiKey);
-            
+
+            String answer = generateAnswer(question, references, userId);
+
             long generationEnd = System.currentTimeMillis();
             response.setGenerationTime(generationEnd - generationStart);
-            
+
             response.setAnswer(answer);
             response.setReferences(request.getIncludeReferences() ? references : new ArrayList<>());
-            
+
             log.info("RAG问答完成，答案长度：{}，生成耗时：{}ms", answer.length(), response.getGenerationTime());
-            
+
         } catch (RuntimeException e) {
             log.error("RAG问答失败", e);
-            if (e.getMessage().contains("API Key")) {
-                response.setAnswer("抱歉，AI服务不可用。请前往【个人设置】配置有效的API Key。错误信息：" + e.getMessage());
+            String fullMessage = e.getMessage();
+            Throwable cause = e.getCause();
+            if (cause != null && cause.getMessage() != null) {
+                fullMessage = fullMessage + "：" + cause.getMessage();
+            }
+            if (fullMessage.contains("API Key") || fullMessage.contains("API Key未配置") || fullMessage.contains("请先在设置页配置")) {
+                response.setAnswer("抱歉，AI服务不可用。请前往【个人设置】配置有效的API Key。错误信息：" + fullMessage);
             } else {
-                response.setAnswer("抱歉，回答问题时出现错误：" + e.getMessage());
+                response.setAnswer("抱歉，回答问题时出现错误：" + fullMessage);
             }
         } catch (Exception e) {
             log.error("RAG问答失败", e);
@@ -104,10 +95,10 @@ public class RagServiceImpl implements RagService {
         return response;
     }
 
-    private List<KnowledgeReference> retrieveKnowledge(String question, Long userId, int topK, String userApiKey) {
+    private List<KnowledgeReference> retrieveKnowledge(String question, Long userId, int topK) {
         log.info("开始检索知识，问题：'{}'，topK：{}", question, topK);
 
-        List<KnowledgeReference> references = vectorSearchService.searchSimilar(question, userId, topK, userApiKey);
+        List<KnowledgeReference> references = vectorSearchService.searchSimilar(question, userId, topK);
         
         log.info("从向量检索到{}个文档", references.size());
 
@@ -166,19 +157,19 @@ public class RagServiceImpl implements RagService {
         return content;
     }
 
-    private String generateAnswer(String question, List<KnowledgeReference> references, String userApiKey) {
+    private String generateAnswer(String question, List<KnowledgeReference> references, Long userId) {
         StringBuilder context = new StringBuilder();
-        
+
         for (int i = 0; i < references.size(); i++) {
             KnowledgeReference ref = references.get(i);
             context.append("\n【知识").append(i + 1).append("】\n");
             context.append("标题：").append(ref.getTitle()).append("\n");
             context.append("内容：").append(ref.getMatchedContent()).append("\n");
         }
-        
+
         String prompt = buildPrompt(question, context.toString());
-        
-        return aiService.generateAnswer(prompt, userApiKey);
+
+        return aiService.generateAnswer(userId, "chat", prompt);
     }
 
     private String buildPrompt(String question, String context) {

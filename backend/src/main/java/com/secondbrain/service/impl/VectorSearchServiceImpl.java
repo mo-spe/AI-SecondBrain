@@ -63,7 +63,7 @@ public class VectorSearchServiceImpl implements VectorSearchService {
     public List<KnowledgeReference> searchSimilar(String question, Long userId, int topK, String userApiKey) {
         log.info("开始向量检索，问题：'{}'，userId：{}，topK：{}", question, userId, topK);
 
-        List<Float> questionEmbedding = embeddingService.generateEmbedding(question, DEFAULT_MODEL, userApiKey);
+        List<Float> questionEmbedding = embeddingService.generateEmbedding(question, userId);
         
         if (questionEmbedding == null || questionEmbedding.isEmpty()) {
             log.error("问题向量化失败，无法进行检索");

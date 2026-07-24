@@ -4,13 +4,11 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.secondbrain.entity.KnowledgeEmbedding;
 import com.secondbrain.entity.KnowledgeNode;
-import com.secondbrain.entity.User;
 import com.secondbrain.mapper.KnowledgeEmbeddingMapper;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.EmbeddingService;
 import com.secondbrain.service.KnowledgeVectorService;
-import com.secondbrain.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,16 +33,14 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
     private final EmbeddingService embeddingService;
     private final KnowledgeEmbeddingMapper embeddingMapper;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
-    private final UserService userService;
     private final ElasticsearchService elasticsearchService;
 
     public KnowledgeVectorServiceImpl(EmbeddingService embeddingService, KnowledgeEmbeddingMapper embeddingMapper,
-                                      KnowledgeNodeMapper knowledgeNodeMapper, UserService userService,
+                                      KnowledgeNodeMapper knowledgeNodeMapper,
                                       @Autowired(required = false) ElasticsearchService elasticsearchService) {
         this.embeddingService = embeddingService;
         this.embeddingMapper = embeddingMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
-        this.userService = userService;
         this.elasticsearchService = elasticsearchService;
     }
 
@@ -68,21 +64,7 @@ public class KnowledgeVectorServiceImpl implements KnowledgeVectorService {
 
             String contentForEmbedding = prepareContentForEmbedding(node);
             
-            // 获取用户 API Key
-            String userApiKey = null;
-            if (userId != null) {
-                try {
-                    User user = userService.getUserById(userId);
-                    if (user != null) {
-                        userApiKey = user.getApiKey();
-                        log.info("获取用户 API Key，userId：{}，API Key：{}", userId, userApiKey != null ? userApiKey.substring(0, Math.min(10, userApiKey.length())) + "..." : "null");
-                    }
-                } catch (Exception e) {
-                    log.warn("获取用户 API Key 失败，userId：{}", userId, e);
-                }
-            }
-            
-            List<Float> embedding = embeddingService.generateEmbedding(contentForEmbedding, DEFAULT_MODEL, userApiKey);
+            List<Float> embedding = embeddingService.generateEmbedding(contentForEmbedding, userId);
 
             if (embedding == null || embedding.isEmpty()) {
                 log.warn("向量生成失败，nodeId：{}", node.getId());

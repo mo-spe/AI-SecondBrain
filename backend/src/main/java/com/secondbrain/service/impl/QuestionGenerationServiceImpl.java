@@ -121,7 +121,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         try {
             int targetDifficulty = calculateTargetDifficulty(node);
             String prompt = buildChoiceQuestionPrompt(node, targetDifficulty);
-            String aiResponse = aiService.generateQuestion(prompt, getUserApiKey(userId));
+                        String aiResponse = aiService.generateQuestion(userId, "question_gen", prompt);
 
             String question = parseChoiceQuestion(aiResponse);
             
@@ -141,7 +141,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
     private String generateChoiceQuestion(KnowledgeNode node, int targetDifficulty, List<String> existingQuestions, Long userId) {
         try {
             String prompt = buildChoiceQuestionPrompt(node, targetDifficulty, existingQuestions);
-            String aiResponse = aiService.generateQuestion(prompt, getUserApiKey(userId));
+                        String aiResponse = aiService.generateQuestion(userId, "question_gen", prompt);
 
             String question = parseChoiceQuestion(aiResponse);
             
@@ -709,7 +709,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
     public String generateFillQuestion(KnowledgeNode node, Long userId) {
         try {
             String prompt = buildFillQuestionPrompt(node);
-            String aiResponse = aiService.generateQuestion(prompt, getUserApiKey(userId));
+                        String aiResponse = aiService.generateQuestion(userId, "question_gen", prompt);
 
             String question = parseFillQuestion(aiResponse);
             
@@ -815,7 +815,7 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
     public String generateSimpleQuestion(KnowledgeNode node, Long userId) {
         try {
             String prompt = buildSimpleQuestionPrompt(node);
-            String aiResponse = aiService.generateQuestion(prompt, getUserApiKey(userId));
+                        String aiResponse = aiService.generateQuestion(userId, "question_gen", prompt);
 
             String question = parseSimpleQuestion(aiResponse);
             

@@ -622,6 +622,7 @@ public class SquareServiceImpl implements SquareService {
     /**
      * 获取敏感词缓存（首次访问时从数据库加载）.
      */
+    /// todo: 敏感词缓存现在还没有做，后续可以考虑使用 Redis 或其他缓存方案来优化性能，尤其是在敏感词列表较长的情况下。
     private List<SensitiveWord> getSensitiveWordCache() {
         if (sensitiveWordCache == null) {
             synchronized (this) {

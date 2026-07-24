@@ -17,14 +17,4 @@ public interface RagService {
      * @return 问答响应
      */
     RagResponse answer(RagRequest request, Long userId);
-
-    /**
-     * 回答用户问题（带API Key）.
-     *
-     * @param request 问答请求
-     * @param userId 用户ID
-     * @param userApiKey 用户API Key
-     * @return 问答响应
-     */
-    RagResponse answer(RagRequest request, Long userId, String userApiKey);
 }

@@ -1,72 +1,97 @@
 package com.secondbrain.service;
 
+import com.secondbrain.dto.AiCallConfig;
 import com.secondbrain.dto.KnowledgeDTO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * AI服务接口.
- * <p>提供知识提取、题目生成、答案生成等AI能力</p>
+ * <p>提供知识提取、题目生成、答案生成、对话等AI能力。
+ * 新方法使用 userId + scenarioCode 从数据库动态获取配置，
+ * 旧方法（带 userApiKey 参数）标记为 @Deprecated 保留兼容</p>
  */
 public interface AiService {
 
-    /**
-     * 提取知识.
-     *
-     * @param content 内容
-     * @return 知识列表
-     */
-    List<KnowledgeDTO> extractKnowledge(String content);
-    
-    /**
-     * 生成题目.
-     *
-     * @param prompt 提示词
-     * @return 题目内容
-     */
-    String generateQuestion(String prompt);
-    
-    /**
-     * 生成答案.
-     *
-     * @param prompt 提示词
-     * @return 答案内容
-     */
-    String generateAnswer(String prompt);
-    
-    /**
-     * 提取知识（带API Key）.
-     *
-     * @param content 内容
-     * @param userApiKey 用户API Key
-     * @return 知识列表
-     */
-    List<KnowledgeDTO> extractKnowledge(String content, String userApiKey);
-    
-    /**
-     * 生成题目（带API Key）.
-     *
-     * @param prompt 提示词
-     * @param userApiKey 用户API Key
-     * @return 题目内容
-     */
-    String generateQuestion(String prompt, String userApiKey);
-    
-    /**
-     * 生成答案（带API Key）.
-     *
-     * @param prompt 提示词
-     * @param userApiKey 用户API Key
-     * @return 答案内容
-     */
-    String generateAnswer(String prompt, String userApiKey);
+    // ========== 新接口（数据库驱动配置） ==========
 
     /**
-     * 执行多轮对话.
+     * 解析用户在某场景下的AI调用配置.
      *
-     * @param messages 消息列表
-     * @param userApiKey 用户API Key
-     * @return AI的回复内容
+     * @param userId       用户ID
+     * @param scenarioCode 场景代码
+     * @return AI调用配置，未配置时抛出 BusinessException
      */
-    String chat(java.util.List<com.unfbx.chatgpt.entity.chat.Message> messages, String userApiKey);
+    AiCallConfig resolveConfig(Long userId, String scenarioCode);
+
+    /**
+     * 使用用户配置生成答案.
+     *
+     * @param userId       用户ID
+     * @param scenarioCode 场景代码
+     * @param prompt       提示词
+     * @return 答案内容
+     */
+    String generateAnswer(Long userId, String scenarioCode, String prompt);
+
+    /**
+     * 使用用户配置生成题目.
+     *
+     * @param userId       用户ID
+     * @param scenarioCode 场景代码
+     * @param prompt       提示词
+     * @return 题目内容
+     */
+    String generateQuestion(Long userId, String scenarioCode, String prompt);
+
+    /**
+     * 使用用户配置提取知识.
+     *
+     * @param userId       用户ID
+     * @param scenarioCode 场景代码
+     * @param content      内容
+     * @return 知识列表
+     */
+    List<KnowledgeDTO> extractKnowledge(Long userId, String scenarioCode, String content);
+
+    /**
+     * 使用用户配置执行多轮对话.
+     *
+     * @param userId       用户ID
+     * @param scenarioCode 场景代码
+     * @param messages     消息列表，每个元素包含 role 和 content
+     * @return AI回复内容
+     */
+    String chat(Long userId, String scenarioCode, List<Map<String, String>> messages);
+
+    // ========== 旧接口（保留兼容，逐步迁移） ==========
+
+    /** @deprecated 使用 {@link #extractKnowledge(Long, String, String)} 替代 */
+    @Deprecated
+    List<KnowledgeDTO> extractKnowledge(String content);
+
+    /** @deprecated 使用 {@link #extractKnowledge(Long, String, String)} 替代 */
+    @Deprecated
+    List<KnowledgeDTO> extractKnowledge(String content, String userApiKey);
+
+    /** @deprecated 使用 {@link #generateQuestion(Long, String, String)} 替代 */
+    @Deprecated
+    String generateQuestion(String prompt);
+
+    /** @deprecated 使用 {@link #generateQuestion(Long, String, String)} 替代 */
+    @Deprecated
+    String generateQuestion(String prompt, String userApiKey);
+
+    /** @deprecated 使用 {@link #generateAnswer(Long, String, String)} 替代 */
+    @Deprecated
+    String generateAnswer(String prompt);
+
+    /** @deprecated 使用 {@link #generateAnswer(Long, String, String)} 替代 */
+    @Deprecated
+    String generateAnswer(String prompt, String userApiKey);
+
+    /** @deprecated 使用 {@link #chat(Long, String, List)} 替代 */
+    @Deprecated
+    String chat(List<com.unfbx.chatgpt.entity.chat.Message> messages, String userApiKey);
 }
