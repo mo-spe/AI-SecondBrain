@@ -99,7 +99,21 @@ knife4j:
     language: zh_cn
   production: false
 
+# ============================================================
+# AI 服务商配置（@Deprecated — 已迁移到数据库驱动）
+# 新架构下用户通过「个人设置」页配置服务商、模型和API Key，
+# 配置存储在 ai_provider / ai_model / user_ai_config 表中。
+# 以下 application.yml 配置仅作为旧调用方的兜底，逐步移除。
+# ============================================================
 ai:
+  # AES-256-GCM 密钥，用于加密数据库中存储的用户 API Key
+  encryption:
+    key: ai-secondbrain-dev-key-32bytes!!
+
+  # 是否使用数据库驱动的用户AI配置（true=新架构，false=旧application.yml配置）
+  use-new-config: ${AI_USE_NEW_CONFIG:true}
+
+  # ---- 以下配置已弃用，仅用于旧代码兼容 ----
   provider: ${AI_PROVIDER:qwen}
   deepseek:
     api-key: ${DEEPSEEK_API_KEY:}
