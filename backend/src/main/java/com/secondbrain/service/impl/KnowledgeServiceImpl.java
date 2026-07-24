@@ -10,6 +10,7 @@ import com.secondbrain.service.CacheService;
 import com.secondbrain.service.EbbinghausService;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.KnowledgeService;
+import com.secondbrain.service.GamificationService;
 import com.secondbrain.service.KnowledgeVectorService;
 import com.secondbrain.service.RelationRecommendationService;
 import com.secondbrain.service.VectorSearchService;
@@ -44,6 +45,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final ElasticsearchService elasticsearchService;
     private final RelationRecommendationService relationRecommendationService;
     private final KnowledgeVectorService knowledgeVectorService;
+    private final GamificationService gamificationService;
 
     @Autowired
     public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper,
@@ -52,7 +54,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                                 VectorSearchService vectorSearchService,
                                 @Autowired(required = false) ElasticsearchService elasticsearchService,
                                 @Autowired(required = false) RelationRecommendationService relationRecommendationService,
-                                @Autowired(required = false) KnowledgeVectorService knowledgeVectorService) {
+                                @Autowired(required = false) KnowledgeVectorService knowledgeVectorService,
+                                GamificationService gamificationService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.cacheService = cacheService;
         this.ebbinghausService = ebbinghausService;
@@ -60,6 +63,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         this.elasticsearchService = elasticsearchService;
         this.relationRecommendationService = relationRecommendationService;
         this.knowledgeVectorService = knowledgeVectorService;
+        this.gamificationService = gamificationService;
     }
 
     /**
@@ -244,6 +248,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         node.setReviewCount(0);
         node.setNextReviewTime(ebbinghausService.calculateNextReviewTime(LocalDateTime.now(), 0, true));
         knowledgeNodeMapper.insert(node);
+
+        // 游戏化积分奖励 — 失败不影响知识创建主流程
+        gamificationService.awardCreatePoints(userId, node.getId());
 
         if (elasticsearchService != null) {
             elasticsearchService.syncKnowledgeNode(node);
