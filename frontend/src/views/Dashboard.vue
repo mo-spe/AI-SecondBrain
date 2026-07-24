@@ -45,6 +45,9 @@
             <span>编辑个人资料</span>
           </button>
         </div>
+
+        <GamificationWidget />
+        <StreakCalendar :months="3" style="margin-top: 16px" />
       </aside>
 
       <main class="main-panel">
@@ -215,6 +218,8 @@ import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { statisticsAPI } from "@/api/statistics";
 import { reviewAPI } from "@/api/review";
+import GamificationWidget from "@/components/GamificationWidget.vue";
+import StreakCalendar from "@/components/StreakCalendar.vue";
 import {
   User,
   Key,

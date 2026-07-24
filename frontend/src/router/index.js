@@ -92,6 +92,18 @@ const routes = [
         component: () => import("@/views/AdminDashboard.vue"),
         meta: { title: "平台管理", requiresAdmin: true },
       },
+      {
+        path: "achievements",
+        name: "Achievements",
+        component: () => import("@/views/Achievements.vue"),
+        meta: { title: "成就殿堂" },
+      },
+      {
+        path: "leaderboard",
+        name: "Leaderboard",
+        component: () => import("@/views/Leaderboard.vue"),
+        meta: { title: "排行榜" },
+      },
     ],
   },
   {

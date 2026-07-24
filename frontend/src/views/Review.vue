@@ -6,6 +6,7 @@
         <p class="page-subtitle">科学复习，高效记忆，持续巩固你的知识</p>
       </div>
       <div class="header-right">
+        <CheckInButton />
         <el-button type="text" @click="handleReviewSettings">
           <el-icon size="16"><Setting /></el-icon>
           <span>复习设置</span>
@@ -556,6 +557,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { reviewAPI } from "@/api/review";
 import { statisticsAPI } from "@/api/statistics";
+import CheckInButton from "@/components/CheckInButton.vue";
 import {
   Setting,
   Clock,
