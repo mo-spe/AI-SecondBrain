@@ -88,4 +88,43 @@ export const reviewAPI = {
       method: "get",
     });
   },
+
+  // ========== 题目池接口 ==========
+
+  getPoolList(workspaceId) {
+    return request({
+      url: "/review/pool",
+      method: "get",
+      params: { workspaceId },
+    });
+  },
+
+  getPoolDetail(poolId) {
+    return request({
+      url: `/review/pool/${poolId}`,
+      method: "get",
+    });
+  },
+
+  joinPool(poolId) {
+    return request({
+      url: `/review/pool/${poolId}/join`,
+      method: "post",
+    });
+  },
+
+  deletePoolItem(poolId) {
+    return request({
+      url: `/review/pool/${poolId}`,
+      method: "delete",
+    });
+  },
+
+  updatePoolItem(poolId, data) {
+    return request({
+      url: `/review/pool/${poolId}`,
+      method: "put",
+      data,
+    });
+  },
 };

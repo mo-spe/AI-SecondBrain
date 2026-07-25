@@ -246,6 +246,36 @@
             size="large"
           />
         </el-form-item>
+
+        <el-divider />
+
+        <el-form-item label="目标工作区">
+          <el-select
+            v-model="collectForm.workspaceId"
+            placeholder="个人空间"
+            size="large"
+            style="width: 100%"
+            clearable
+          >
+            <el-option label="个人空间" :value="null" />
+            <el-option
+              v-for="ws in workspaceStore.workspaces"
+              :key="ws.id"
+              :label="ws.name"
+              :value="ws.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="提取知识点">
+          <el-switch v-model="collectForm.extractKnowledge" size="large" />
+          <span class="switch-hint">AI 将从对话内容中提取关键知识点，待确认后入库</span>
+        </el-form-item>
+
+        <el-form-item v-if="collectForm.extractKnowledge" label="生成复习卡片">
+          <el-switch v-model="collectForm.generateCards" size="large" />
+          <span class="switch-hint">确认入库时自动生成复习卡片</span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCollectDialog = false">取消</el-button>
@@ -295,6 +325,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { chatAPI } from "@/api/chat";
 import { captureAPI } from "@/api/capture";
 import { userAPI } from "@/api/user";
+import { useWorkspaceStore } from "@/stores/workspace";
 import {
   ChatDotRound,
   Search,
@@ -305,6 +336,7 @@ import {
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
+const workspaceStore = useWorkspaceStore();
 
 const loading = ref(false);
 const collectLoading = ref(false);
@@ -325,6 +357,9 @@ const collectForm = ref({
   platform: "",
   content: "",
   sourceUrl: "",
+  workspaceId: null,
+  extractKnowledge: true,
+  generateCards: false,
 });
 
 const collectRules = {
@@ -456,7 +491,7 @@ const handleCollect = async () => {
     await chatAPI.collect(collectForm.value);
     ElMessage.success("采集成功");
     showCollectDialog.value = false;
-    collectForm.value = { platform: "", content: "", sourceUrl: "" };
+    collectForm.value = { platform: "", content: "", sourceUrl: "", workspaceId: null, extractKnowledge: true, generateCards: false };
     loadChatList();
   } catch (error) {
     if (error !== false) {
@@ -905,6 +940,12 @@ const editChat = () => {
   color: var(--text-regular);
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.switch-hint {
+  margin-left: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
 }
 
 @media (max-width: 1200px) {

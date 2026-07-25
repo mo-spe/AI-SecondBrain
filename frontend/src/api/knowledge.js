@@ -70,4 +70,37 @@ export const knowledgeAPI = {
       data,
     });
   },
+
+  // ========== 待确认知识点 ==========
+
+  getPendingKnowledge(params) {
+    return request({
+      url: "/knowledge/pending",
+      method: "get",
+      params,
+    });
+  },
+
+  confirmPendingKnowledge(data) {
+    return request({
+      url: "/knowledge/pending/confirm",
+      method: "post",
+      data,
+    });
+  },
+
+  discardPendingKnowledge(id) {
+    return request({
+      url: `/knowledge/pending/${id}`,
+      method: "delete",
+    });
+  },
+
+  addPendingKnowledge(data) {
+    return request({
+      url: "/knowledge/pending/add",
+      method: "post",
+      data,
+    });
+  },
 };

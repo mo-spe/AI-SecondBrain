@@ -105,7 +105,14 @@
       </div>
     </div>
 
-    <div class="main-content">
+    <div class="review-tabs">
+      <el-tabs v-model="activeTab" @tab-change="onTabChange">
+        <el-tab-pane label="我的复习计划" name="myPlan" />
+        <el-tab-pane v-if="currentWorkspaceId" label="工作区题目池" name="pool" />
+      </el-tabs>
+    </div>
+
+    <div v-if="activeTab === 'myPlan'" class="main-content">
       <aside class="plan-sidebar">
         <div class="plan-card">
           <div class="card-header">
@@ -301,6 +308,55 @@
           <span class="view-all">查看全部 {{ reviewList.length }} 个卡片</span>
         </div>
       </main>
+    </div>
+
+    <!-- 工作区题目池 -->
+    <div v-if="activeTab === 'pool'" class="pool-content" v-loading="poolLoading">
+      <div class="pool-header">
+        <div class="pool-title-row">
+          <span class="pool-title">题目池</span>
+          <span class="pool-count">{{ poolList.length }} 道题目</span>
+        </div>
+      </div>
+
+      <div v-if="poolList.length > 0" class="pool-list">
+        <div v-for="item in poolList" :key="item.id" class="pool-card">
+          <div class="pool-card-body">
+            <div class="pool-card-top">
+              <el-tag size="small" type="info">{{ getCardTypeText(item.cardType) }}</el-tag>
+              <el-rate :model-value="item.difficulty" disabled :max="5" size="small" />
+              <span v-if="item.communityLabel" class="community-tag">
+                <span :class="'community-dot ' + item.communityLabel"></span>
+                {{ item.communityText }}
+              </span>
+              <span class="member-count">{{ item.memberCount || 0 }}人复习</span>
+            </div>
+            <div class="pool-question">{{ item.questionPreview }}</div>
+            <div class="pool-card-bottom">
+              <span class="pool-meta">来自: {{ item.nodeTitle || '未知知识点' }}</span>
+              <div class="pool-actions">
+                <el-button
+                  v-if="!item.isJoined"
+                  type="primary"
+                  size="small"
+                  @click="handleJoinPool(item)"
+                >加入复习</el-button>
+                <template v-else>
+                  <el-tag type="success" size="small">已加入</el-tag>
+                  <el-button
+                    type="warning"
+                    size="small"
+                    text
+                    @click="handleRejoinPool(item)"
+                  >重新加入</el-button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <el-empty v-else description="题目池暂无题目，确认知识点入库并选择生成卡片后会自动加入池子" />
     </div>
 
     <el-dialog
@@ -558,6 +614,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { reviewAPI } from "@/api/review";
 import { statisticsAPI } from "@/api/statistics";
 import CheckInButton from "@/components/CheckInButton.vue";
+import { useWorkspaceStore } from "@/stores/workspace";
 import {
   Setting,
   Clock,
@@ -605,6 +662,13 @@ const totalAccuracy = ref(72);
 const streakDays = ref(28);
 const maxStreak = ref(56);
 const memoryRetention = ref(85);
+
+// 工作区题目池
+const workspaceStore = useWorkspaceStore();
+const activeTab = ref("myPlan");
+const poolList = ref([]);
+const poolLoading = ref(false);
+const currentWorkspaceId = computed(() => workspaceStore.currentId);
 
 let timerInterval = null;
 let startTime = null;
@@ -1156,6 +1220,54 @@ const generateReviewCards = async () => {
     }
   } finally {
     generating.value = false;
+  }
+};
+
+// ========== 题目池操作 ==========
+
+const onTabChange = (tabName) => {
+  if (tabName === "pool") {
+    loadPoolList();
+  } else {
+    loadReviewCards();
+  }
+};
+
+const loadPoolList = async () => {
+  if (!currentWorkspaceId.value) return;
+  try {
+    poolLoading.value = true;
+    const data = await reviewAPI.getPoolList(currentWorkspaceId.value);
+    poolList.value = data || [];
+  } catch (e) {
+    ElMessage.error("加载题目池失败");
+  } finally {
+    poolLoading.value = false;
+  }
+};
+
+const handleJoinPool = async (item) => {
+  try {
+    await reviewAPI.joinPool(item.id);
+    ElMessage.success("已加入复习计划");
+    item.isJoined = true;
+    loadReviewCards();
+  } catch (e) {
+    ElMessage.error("加入失败");
+  }
+};
+
+const handleRejoinPool = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      "重新加入将创建一份全新的复习副本，旧进度会保留为历史记录。",
+      "确认重新加入",
+      { confirmButtonText: "确定", cancelButtonText: "取消", type: "info" }
+    );
+    await reviewAPI.joinPool(item.id);
+    ElMessage.success("已重新加入");
+  } catch (e) {
+    if (e !== "cancel") ElMessage.error("操作失败");
   }
 };
 
@@ -2296,5 +2408,129 @@ onUnmounted(() => {
   .banner-right {
     margin-top: var(--spacing-lg);
   }
+}
+
+/* ========== 题目池样式 ========== */
+
+.review-tabs {
+  max-width: 1200px;
+  margin: 0 auto var(--spacing-lg);
+  padding: 0 var(--spacing-lg);
+}
+
+.review-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
+}
+
+.pool-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg) var(--spacing-2xl);
+}
+
+.pool-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.pool-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pool-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pool-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.pool-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.pool-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s;
+}
+
+.pool-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.pool-card-body {
+  padding: var(--spacing-lg);
+}
+
+.pool-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.community-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.community-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.community-dot.green {
+  background: #22c55e;
+}
+
+.community-dot.yellow {
+  background: #eab308;
+}
+
+.community-dot.red {
+  background: #ef4444;
+}
+
+.member-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.pool-question {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-sm);
+}
+
+.pool-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pool-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.pool-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 </style>

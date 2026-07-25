@@ -30,6 +30,126 @@
       </div>
     </div>
 
+    <div class="tab-section">
+      <div class="tabs-nav">
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'all' }"
+          @click="handleTabChange('all')"
+        >
+          <el-icon size="16"><Grid /></el-icon>
+          <span>全部</span>
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'pending' }"
+          @click="handleTabChange('pending')"
+        >
+          <el-icon size="16"><Clock /></el-icon>
+          <span>待确认</span>
+          <span v-if="pendingCount > 0" class="tab-badge">{{ pendingCount }}</span>
+        </button>
+      </div>
+    </div>
+
+    <template v-if="activeTab === 'pending'">
+
+    <div class="pending-section">
+      <div class="pending-header">
+        <div class="pending-header-left">
+          <el-icon size="18"><EditPen /></el-icon>
+          <span class="pending-header-title">待确认知识点 — 来自对话采集</span>
+        </div>
+        <div class="pending-header-right">
+          <span class="pending-workspace-hint">请在确认前编辑完善知识点内容</span>
+        </div>
+      </div>
+
+      <div v-if="pendingItems.length === 0" class="pending-empty">
+        <el-empty description="暂无待确认的知识点" :image-size="120" />
+        <p class="pending-empty-hint">采集对话时开启"提取知识点"，AI 提取的内容会出现在这里</p>
+      </div>
+
+      <div v-else class="pending-list">
+        <div
+          v-for="(item, index) in pendingItems"
+          :key="index"
+          class="pending-card"
+        >
+          <div class="pending-card-header">
+            <span class="pending-card-index">知识点 {{ index + 1 }}</span>
+            <el-button
+              type="danger"
+              link
+              size="small"
+              @click="removePendingItem(index)"
+            >
+              <el-icon size="14"><Delete /></el-icon>
+              <span>删除</span>
+            </el-button>
+          </div>
+          <div class="pending-card-body">
+            <div class="pending-field">
+              <label class="pending-label">标题</label>
+              <el-input
+                v-model="item.title"
+                placeholder="请输入知识点标题"
+                maxlength="200"
+                show-word-limit
+              />
+            </div>
+            <div class="pending-field">
+              <label class="pending-label">摘要</label>
+              <el-input
+                v-model="item.summary"
+                type="textarea"
+                :rows="2"
+                placeholder="请输入摘要"
+                maxlength="500"
+                show-word-limit
+              />
+            </div>
+            <div class="pending-field">
+              <label class="pending-label">详细内容</label>
+              <el-input
+                v-model="item.content"
+                type="textarea"
+                :rows="5"
+                placeholder="请输入详细内容，支持 Markdown"
+                maxlength="10000"
+                show-word-limit
+              />
+            </div>
+          </div>
+        </div>
+
+        <button class="pending-add-btn" @click="addEmptyPendingItem">
+          <el-icon size="16"><Plus /></el-icon>
+          <span>新增知识点</span>
+        </button>
+      </div>
+
+      <div v-if="pendingItems.length > 0" class="pending-footer">
+        <el-checkbox v-model="pendingGenerateCards" size="large">
+          确认入库时同时生成复习卡片
+        </el-checkbox>
+        <div class="pending-footer-actions">
+          <el-button @click="discardAllPending" size="large">
+            <el-icon><Delete /></el-icon>
+            <span>全部删除</span>
+          </el-button>
+          <el-button type="primary" @click="confirmPending" size="large">
+            <el-icon><Check /></el-icon>
+            <span>确认入库</span>
+          </el-button>
+        </div>
+      </div>
+    </div>
+
+    </template>
+
+    <template v-else>
+
     <div class="filter-section">
       <div class="search-box">
         <el-icon size="16" color="#94a3b8"><Search /></el-icon>
@@ -221,9 +341,25 @@
               <el-tag :type="getSystemTagType(knowledge.systemId)" size="small" effect="light">
                 {{ getSystemName(knowledge.systemId) }}
               </el-tag>
-              <button class="card-menu" @click.stop="showCardMenu(knowledge, $event)">
-                <el-icon size="14"><MoreFilled /></el-icon>
-              </button>
+              <span @click.stop>
+                <el-dropdown trigger="click" @command="(cmd) => handleCardCommand(cmd, knowledge)">
+                  <button class="card-menu">
+                    <el-icon size="14"><MoreFilled /></el-icon>
+                  </button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="generate">
+                        <el-icon><MagicStick /></el-icon>
+                        生成复习卡片
+                      </el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>
+                        <el-icon><Delete /></el-icon>
+                        删除知识点
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </span>
             </div>
             <h3 class="card-title">{{ knowledge.title }}</h3>
             <p class="card-summary">{{ knowledge.summary }}</p>
@@ -267,6 +403,9 @@
             </div>
             <div class="card-footer">
               <span class="creator">newuser 创建于 {{ formatDate(knowledge.createTime) }}</span>
+              <el-button type="primary" size="small" text @click.stop="handleGenerateCard(knowledge)">
+                纳入复习
+              </el-button>
             </div>
           </div>
 
@@ -502,6 +641,8 @@
       :can-rollback="true"
       @rollback-success="onRollbackSuccess"
     />
+
+    </template>
   </div>
 </template>
 
@@ -523,7 +664,6 @@ import {
   Star,
   CircleCheck,
   Cherry,
-  Failed,
   List,
   MoreFilled,
   Timer,
@@ -542,6 +682,9 @@ import {
   Notebook,
   Folder,
   Share,
+  EditPen,
+  Delete,
+  MagicStick,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -557,6 +700,7 @@ const filterTag = ref("");
 const selectedSystem = ref("");
 const viewMode = ref("grid");
 const sortBy = ref("newest");
+const activeTab = ref("all"); // 'all' | 'pending'
 const showDetailDialog = ref(false);
 const showEditDialog = ref(false);
 const showVersionHistory = ref(false);
@@ -572,6 +716,11 @@ const lockStatusMap = ref({});
 
 // 分享相关
 const showShareDialog = ref(false);
+
+// 待确认知识点
+const pendingItems = ref([]);
+const pendingCount = ref(0);
+const pendingGenerateCards = ref(false);
 const shareForm = ref({ expireType: "permanent" });
 const shareLink = ref("");
 const shareLoading = ref(false);
@@ -870,8 +1019,39 @@ const handleAdvancedFilter = () => {
   ElMessage.info("高级筛选功能开发中");
 };
 
-const showCardMenu = (knowledge, event) => {
-  ElMessage.info("卡片菜单");
+const handleGenerateCard = async (knowledge) => {
+  try {
+    await reviewAPI.generateReviewCard({ nodeId: knowledge.id, cardType: "choice" });
+    ElMessage.success(`已为"${knowledge.title}"生成复习卡片`);
+  } catch (e) {
+    ElMessage.error("生成失败：" + (e.message || "未知错误"));
+  }
+};
+
+const handleCardCommand = async (command, knowledge) => {
+  if (command === "generate") {
+    try {
+      await reviewAPI.generateReviewCard({ nodeId: knowledge.id, cardType: "choice" });
+      ElMessage.success("复习卡片生成成功");
+    } catch (e) {
+      ElMessage.error("生成失败：" + (e.message || "未知错误"));
+    }
+  } else if (command === "delete") {
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除知识点"${knowledge.title}"吗？`,
+        "确认删除",
+        { confirmButtonText: "确定", cancelButtonText: "取消", type: "warning" },
+      );
+      await knowledgeAPI.deleteById(knowledge.id);
+      ElMessage.success("删除成功");
+      loadKnowledgeList();
+    } catch (error) {
+      if (error !== "cancel") {
+        ElMessage.error("删除失败：" + error.message);
+      }
+    }
+  }
 };
 
 const handleBatchDelete = async () => {
@@ -982,9 +1162,106 @@ const expireLabel = (type) => {
   return map[type] || type;
 };
 
+// ========== 待确认知识点 ==========
+
+const loadPendingItems = async () => {
+  try {
+    const data = await knowledgeAPI.getPendingKnowledge();
+    pendingItems.value = Array.isArray(data) ? data : [];
+    pendingCount.value = pendingItems.value.length;
+  } catch (error) {
+    console.error("加载待确认知识点失败:", error);
+  }
+};
+
+const addEmptyPendingItem = () => {
+  pendingItems.value.push({
+    id: null,
+    title: "",
+    summary: "",
+    content: "",
+    _new: true,
+  });
+};
+
+const removePendingItem = async (index) => {
+  const item = pendingItems.value[index];
+  if (item.id && !item._new) {
+    try {
+      await knowledgeAPI.discardPendingKnowledge(item.id);
+    } catch (error) {
+      console.error("丢弃待确认知识点失败:", error);
+    }
+  }
+  pendingItems.value.splice(index, 1);
+  pendingCount.value = pendingItems.value.length;
+};
+
+const discardAllPending = async () => {
+  try {
+    await ElMessageBox.confirm("确定要丢弃所有待确认知识点吗？", "确认", {
+      confirmButtonText: "全部丢弃",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+  for (const item of pendingItems.value) {
+    if (item.id && !item._new) {
+      try {
+        await knowledgeAPI.discardPendingKnowledge(item.id);
+      } catch (error) {
+        console.error("丢弃待确认知识点失败:", error);
+      }
+    }
+  }
+  pendingItems.value = [];
+  pendingCount.value = 0;
+  ElMessage.success("已全部丢弃");
+};
+
+const confirmPending = async () => {
+  // 过滤掉空标题的项
+  const validItems = pendingItems.value.filter((item) => item.title && item.title.trim());
+  if (validItems.length === 0) {
+    ElMessage.warning("至少需要一条有标题的知识点");
+    return;
+  }
+
+  try {
+    await knowledgeAPI.confirmPendingKnowledge({
+      items: validItems.map((item) => ({
+        pendingId: item.id,
+        title: item.title,
+        summary: item.summary,
+        content: item.content,
+      })),
+      generateCards: pendingGenerateCards.value,
+    });
+    ElMessage.success(`已确认入库 ${validItems.length} 条知识点`);
+    pendingItems.value = [];
+    pendingCount.value = 0;
+    pendingGenerateCards.value = false;
+    loadKnowledgeList();
+  } catch (error) {
+    ElMessage.error("确认入库失败: " + (error.message || "未知错误"));
+  }
+};
+
+const handleTabChange = (tab) => {
+  activeTab.value = tab;
+  if (tab === "pending") {
+    loadPendingItems();
+  } else {
+    loadKnowledgeList();
+  }
+};
+
 onMounted(() => {
   loadKnowledgeSystems();
   loadKnowledgeList();
+  loadPendingItems();
 });
 
 onBeforeUnmount(() => {
@@ -1472,6 +1749,9 @@ onBeforeUnmount(() => {
 }
 
 .card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding-top: var(--spacing-md);
   border-top: 1px solid var(--border-lighter);
 }
@@ -1690,6 +1970,199 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
 }
 
+/* ===== Tab 导航 ===== */
+.tab-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.tabs-nav {
+  display: flex;
+  gap: var(--spacing-sm);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+.tab-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ===== 待确认知识点区域 ===== */
+.pending-section {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.pending-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--border-lighter);
+  background: var(--bg-list-item);
+}
+
+.pending-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-primary);
+}
+
+.pending-header-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.pending-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.pending-workspace-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.pending-empty {
+  padding: var(--spacing-3xl) var(--spacing-xl);
+  text-align: center;
+}
+
+.pending-empty-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-top: var(--spacing-md);
+}
+
+.pending-list {
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.pending-card {
+  background: var(--bg-page);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--transition-base);
+}
+
+.pending-card:hover {
+  border-color: var(--border-light);
+}
+
+.pending-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-lighter);
+  background: var(--bg-list-item);
+}
+
+.pending-card-index {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+}
+
+.pending-card-body {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.pending-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pending-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.pending-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-lg);
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.pending-add-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-alpha-10);
+}
+
+.pending-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-top: 1px solid var(--border-lighter);
+  background: var(--bg-list-item);
+}
+
+.pending-footer-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+/* ===== 响应式 ===== */
+
 @media (max-width: 1200px) {
   .stats-section {
     grid-template-columns: repeat(3, 1fr);
@@ -1725,6 +2198,20 @@ onBeforeUnmount(() => {
   }
   .knowledge-list.grid {
     grid-template-columns: 1fr;
+  }
+  .pending-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+  }
+  .pending-footer {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    align-items: flex-start;
+  }
+  .pending-footer-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>
