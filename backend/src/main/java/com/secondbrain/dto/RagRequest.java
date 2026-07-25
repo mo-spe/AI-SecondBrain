@@ -22,4 +22,9 @@ public class RagRequest {
      * 是否返回详细引用（默认true）
      */
     private Boolean includeReferences = true;
+
+    /**
+     * 会话ID（可选，用于多轮对话上下文）
+     */
+    private Long sessionId;
 }

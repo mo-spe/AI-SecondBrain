@@ -20,6 +20,7 @@ import com.unfbx.chatgpt.entity.chat.ChatCompletionResponse;
 import com.unfbx.chatgpt.entity.chat.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -76,17 +77,20 @@ public class AiServiceImpl implements AiService {
     private final UserAiProviderKeyMapper userAiProviderKeyMapper;
     private final ApiKeyEncryptionService encryptionService;
     private final RestTemplate restTemplate;
+    private final RestTemplate streamingRestTemplate;
 
     public AiServiceImpl(AiProviderMapper aiProviderMapper,
                          UserAiConfigMapper userAiConfigMapper,
                          UserAiProviderKeyMapper userAiProviderKeyMapper,
                          ApiKeyEncryptionService encryptionService,
-                         RestTemplate restTemplate) {
+                         RestTemplate restTemplate,
+                         @Qualifier("streamingRestTemplate") RestTemplate streamingRestTemplate) {
         this.aiProviderMapper = aiProviderMapper;
         this.userAiConfigMapper = userAiConfigMapper;
         this.userAiProviderKeyMapper = userAiProviderKeyMapper;
         this.encryptionService = encryptionService;
         this.restTemplate = restTemplate;
+        this.streamingRestTemplate = streamingRestTemplate;
     }
 
     // ========== 新接口实现 ==========

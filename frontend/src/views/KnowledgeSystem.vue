@@ -253,7 +253,11 @@
             </div>
 
             <div v-if="!showHistory && currentAnswer" class="answer-section">
+              <div class="answer-header">
+                <span v-if="isStreaming" class="streaming-indicator">AI 生成中...</span>
+              </div>
               <div class="answer-content" v-html="formattedAnswer"></div>
+              <span v-if="isStreaming" class="streaming-cursor">|</span>
               <div v-if="currentAnswer.references && currentAnswer.references.length > 0" class="answer-references">
                 <p class="references-title">参考来源</p>
                 <div class="references-list">
@@ -308,11 +312,21 @@
                 <el-button
                   type="primary"
                   @click="handleAsk"
-                  :loading="loading"
+                  :loading="loading && !isStreaming"
+                  :disabled="isStreaming"
                   class="send-btn"
                 >
                   <el-icon><Promotion /></el-icon>
                   发送
+                </el-button>
+                <el-button
+                  v-if="isStreaming"
+                  type="danger"
+                  @click="handleStop"
+                  class="send-btn"
+                >
+                  <el-icon><Close /></el-icon>
+                  停止
                 </el-button>
               </div>
             </div>
@@ -325,7 +339,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Document,
   Notebook,
@@ -349,7 +363,12 @@ import {
   Check,
 } from "@element-plus/icons-vue";
 import request from "@/utils/request";
+import { useRouter } from "vue-router";
+import { useUserStore } from "@/stores/user";
 import * as echarts from "echarts";
+
+const router = useRouter();
+const userStore = useUserStore();
 
 const graphContainer = ref(null);
 const treeRef = ref(null);
@@ -366,6 +385,8 @@ const pathCount = ref(8);
 const searchQuery = ref("");
 const autoGenerating = ref(false);
 const loading = ref(false);
+const isStreaming = ref(false);
+const abortController = ref(null);
 const showHistory = ref(false);
 const deepThink = ref(false);
 const question = ref("");
@@ -744,30 +765,136 @@ const handleAsk = async () => {
   }
 
   loading.value = true;
+  isStreaming.value = true;
+  currentAnswer.value = { answer: "", references: [], retrievalTime: 0, generationTime: 0 };
   chatHistory.value.push({ isUser: true, content: question.value });
 
+  const controller = new AbortController();
+  abortController.value = controller;
+
   try {
-    const result = await request.post("/rag/answer", {
-      question: question.value,
-      topK: 3,
-      includeReferences: true,
-      deepThink: deepThink.value,
+    const token = userStore.token;
+    const response = await fetch("/api/rag/answer/stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        question: question.value,
+        topK: 3,
+        includeReferences: true,
+      }),
+      signal: controller.signal,
     });
 
-    currentAnswer.value = result;
-    chatHistory.value.push({
-      isUser: false,
-      content: result.answer,
-      tags: (result.references || []).map((r) => r.title).slice(0, 3),
-    });
+    if (!response.ok) {
+      const text = await response.text();
+      if (text.includes("请先在设置页配置")) {
+        ElMessageBox.alert(
+          "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
+          "需要配置API Key",
+          { confirmButtonText: "前往设置", type: "warning" },
+        ).then(() => router.push("/settings"));
+        return;
+      }
+      throw new Error(text || `HTTP ${response.status}`);
+    }
 
-    ElMessage.success("回答完成");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let currentEvent = "message";
+    let startTime = Date.now();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) {
+          currentEvent = line.substring(6).trim();
+        } else if (line.startsWith("data:")) {
+          const data = line.substring(5).trim();
+          dispatchEvent(currentEvent, data, startTime);
+          currentEvent = "message";
+        }
+      }
+    }
   } catch (error) {
-    console.error("回答失败:", error);
-    ElMessage.error("回答失败：" + (error.message || "未知错误"));
+    if (error.name === "AbortError") {
+      ElMessage.info("已停止生成");
+      return;
+    }
+    console.error("流式问答失败:", error);
+    if (error.message && error.message.includes("API Key")) {
+      ElMessageBox.alert(
+        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
+        "需要配置API Key",
+        { confirmButtonText: "前往设置", type: "warning" },
+      ).then(() => router.push("/settings"));
+    } else {
+      ElMessage.error("回答失败：" + (error.message || "网络错误"));
+    }
   } finally {
     loading.value = false;
+    isStreaming.value = false;
+    abortController.value = null;
     question.value = "";
+  }
+};
+
+function dispatchEvent(eventType, data, startTime) {
+  switch (eventType) {
+    case "token":
+      currentAnswer.value.answer += data;
+      break;
+    case "references":
+      try {
+        currentAnswer.value.references = JSON.parse(data);
+      } catch (e) {
+        console.warn("解析引用失败:", e);
+      }
+      break;
+    case "metrics":
+      try {
+        const m = JSON.parse(data);
+        currentAnswer.value.retrievalTime = m.retrievalTime || 0;
+        currentAnswer.value.generationTime = Date.now() - startTime;
+      } catch (e) {
+        console.warn("解析指标失败:", e);
+      }
+      break;
+    case "done":
+      if (!currentAnswer.value.answer) {
+        currentAnswer.value.answer = "（未生成回答）";
+      }
+      chatHistory.value.push({
+        isUser: false,
+        content: currentAnswer.value.answer,
+        tags: (currentAnswer.value.references || []).map((r) => r.title).slice(0, 3),
+      });
+      break;
+    case "error":
+      if (data && data.includes("请先在设置页配置")) {
+        ElMessageBox.alert(data, "需要配置API Key", {
+          confirmButtonText: "前往设置",
+          type: "warning",
+        }).then(() => router.push("/settings"));
+      } else {
+        ElMessage.error(data || "生成失败");
+      }
+      break;
+  }
+}
+
+const handleStop = () => {
+  if (abortController.value) {
+    abortController.value.abort();
   }
 };
 
@@ -1333,6 +1460,17 @@ onUnmounted(() => {
   margin-bottom: 16px;
 }
 
+.answer-header {
+  margin-bottom: 8px;
+}
+
+.streaming-indicator {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary, #409eff);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 .answer-content {
   padding: 14px;
   background: white;
@@ -1341,6 +1479,23 @@ onUnmounted(() => {
   line-height: 1.8;
   color: var(--text-regular);
   margin-bottom: 12px;
+}
+
+.streaming-cursor {
+  display: inline;
+  font-size: 14px;
+  color: var(--color-primary, #409eff);
+  animation: blink 0.8s step-end infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .answer-references {
