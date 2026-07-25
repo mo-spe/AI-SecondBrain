@@ -31,7 +31,7 @@
 
     body {
       width: 380px;
-      min-height: 440px;
+      min-height: 520px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
@@ -39,7 +39,7 @@
       line-height: 1.5;
     }
 
-    /* Header — 非对称布局，左图标右文字 */
+    /* Header */
     .header {
       padding: 20px 24px 16px;
       display: flex;
@@ -83,7 +83,7 @@
       padding: 20px 24px;
     }
 
-    /* Section — 替代旧的 card */
+    /* Section */
     .section {
       background: var(--bg-surface);
       border: 1px solid var(--border);
@@ -140,6 +140,36 @@
       color: var(--text-muted);
     }
 
+    /* Select */
+    .select-field {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    .select-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .select-field option {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
     /* Button */
     .btn {
       width: 100%;
@@ -185,6 +215,11 @@
       background: #243354;
     }
 
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+
     /* Button group */
     .btn-group {
       display: flex;
@@ -218,7 +253,7 @@
       border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
-    /* Divider — 替代旧的 "或" 分隔 */
+    /* Divider */
     .divider {
       display: flex;
       align-items: center;
@@ -337,6 +372,97 @@
       padding-top: 3px;
     }
 
+    /* Setting row with toggle */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-info {
+      flex: 1;
+      min-width: 0;
+      padding-right: 12px;
+    }
+
+    .setting-label-text {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .setting-desc {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+      background: #FFFFFF;
+    }
+
+    /* Settings save area */
+    .settings-save {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
     /* Link */
     .link {
       color: var(--accent);
@@ -401,6 +527,40 @@
       <div class="btn-group">
         <button class="btn btn-primary" id="goToDashboardBtn">前往知识库</button>
         <button class="btn btn-secondary" id="logoutBtn">退出</button>
+      </div>
+    </div>
+
+    <!-- 采集设置 -->
+    <div id="settingsSection" class="section hidden">
+      <div class="section-title">采集设置</div>
+      <div class="input-group">
+        <label class="input-label" for="workspaceSelect">目标工作区</label>
+        <select id="workspaceSelect" class="select-field">
+          <option value="">个人空间</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label-text">提取知识点</span>
+          <span class="setting-desc">AI 将从对话内容中提取关键知识点</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="extractKnowledge" checked />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label-text">生成复习卡片</span>
+          <span class="setting-desc">确认知识点入库时自动生成复习卡片</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="generateCards" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-save">
+        <button class="btn btn-primary btn-sm" id="saveSettingsBtn">保存设置</button>
       </div>
     </div>
 

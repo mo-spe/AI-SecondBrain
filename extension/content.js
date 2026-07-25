@@ -399,6 +399,9 @@ class AIChatCollector {
           return;
         }
 
+        // 读取插件弹窗中预设的采集设置
+        const settings = await this.getCollectSettings();
+
         const response = await fetch(`${API_BASE_URL}/chat/collect`, {
           method: "POST",
           headers: {
@@ -408,13 +411,21 @@ class AIChatCollector {
           body: JSON.stringify({
             content: chatData.content,
             platform: chatData.platform,
+            workspaceId: settings.workspaceId || null,
+            extractKnowledge: settings.extractKnowledge !== false,
+            generateCards: settings.generateCards || false,
           }),
         });
 
         const result = await response.json();
 
         if (response.ok && result.code === 200) {
-          alert("✅ 采集成功！知识点已保存到您的知识库");
+          // 根据设置给出不同的成功提示
+          if (settings.extractKnowledge !== false) {
+            alert("✅ 采集成功！AI 正在提取知识点，请前往知识库「待确认」页签审核");
+          } else {
+            alert("✅ 采集成功！对话已保存到知识库");
+          }
         } else {
           alert("❌ 采集失败：" + (result.message || "未知错误"));
         }
@@ -428,6 +439,28 @@ class AIChatCollector {
     } finally {
       this.resetButton();
     }
+  }
+
+  async getCollectSettings() {
+    return new Promise((resolve) => {
+      const defaults = {
+        workspaceId: null,
+        extractKnowledge: true,
+        generateCards: false,
+      };
+
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
+        chrome.storage.local.get(["collectSettings"], (result) => {
+          resolve(result.collectSettings || defaults);
+        });
+      } else {
+        resolve(defaults);
+      }
+    });
   }
 
   async getStoredToken() {
