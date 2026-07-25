@@ -156,9 +156,40 @@ public class AiServiceImpl implements AiService {
         AiCallConfig config = resolveConfig(userId, scenarioCode);
         String result = executeCall(config,
                 "你是一个知识提取助手。请从给定的内容中提取关键知识点，返回JSON数组格式。" +
-                "每个元素包含title(标题)、summary(摘要)、content(详细内容)字段。",
+                "每个元素包含title(标题)、summary(摘要)、content(详细内容)字段。" +
+                "直接返回JSON，不要用markdown代码块包裹。",
                 content);
-        return JSON.parseArray(result, KnowledgeDTO.class);
+        String json = extractJsonArray(result);
+        return JSON.parseArray(json, KnowledgeDTO.class);
+    }
+
+    /**
+     * 从 AI 返回的文本中提取 JSON 数组.
+     * <p>处理 AI 可能将 JSON 包裹在 markdown 代码块或额外文字中的情况</p>
+     */
+    private String extractJsonArray(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "[]";
+        }
+        String trimmed = raw.trim();
+        // 去掉 markdown 代码块标记 ```json 和 ```
+        if (trimmed.startsWith("```")) {
+            int start = trimmed.indexOf("\n");
+            if (start == -1) start = 3;
+            else start = start + 1;
+            int end = trimmed.lastIndexOf("```");
+            if (end > start) {
+                trimmed = trimmed.substring(start, end).trim();
+            } else {
+                trimmed = trimmed.substring(start).trim();
+            }
+        }
+        // 如果前面还有非 JSON 文字，从第一个 '[' 开始截取
+        int arrayStart = trimmed.indexOf('[');
+        if (arrayStart > 0) {
+            trimmed = trimmed.substring(arrayStart);
+        }
+        return trimmed;
     }
 
     @Override

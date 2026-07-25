@@ -2,14 +2,16 @@ package com.secondbrain.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.Result;
+import com.secondbrain.dto.BatchConfirmRequest;
 import com.secondbrain.dto.UpdateKnowledgeRequest;
 import com.secondbrain.entity.EditingLock;
 import com.secondbrain.entity.KnowledgeRevision;
+import com.secondbrain.entity.PendingKnowledge;
 import com.secondbrain.entity.User;
 import com.secondbrain.service.EditingLockService;
 import com.secondbrain.service.KnowledgeRevisionService;
-import com.secondbrain.service.KnowledgeRevisionService;
 import com.secondbrain.service.KnowledgeService;
+import com.secondbrain.service.PendingKnowledgeService;
 import com.secondbrain.service.UserService;
 import com.secondbrain.vo.KnowledgeNodeVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,14 +36,17 @@ public class KnowledgeController {
     private final UserService userService;
     private final KnowledgeRevisionService knowledgeRevisionService;
     private final EditingLockService editingLockService;
+    private final PendingKnowledgeService pendingKnowledgeService;
 
     public KnowledgeController(KnowledgeService knowledgeService, UserService userService,
                                KnowledgeRevisionService knowledgeRevisionService,
-                               EditingLockService editingLockService) {
+                               EditingLockService editingLockService,
+                               PendingKnowledgeService pendingKnowledgeService) {
         this.knowledgeService = knowledgeService;
         this.userService = userService;
         this.knowledgeRevisionService = knowledgeRevisionService;
         this.editingLockService = editingLockService;
+        this.pendingKnowledgeService = pendingKnowledgeService;
     }
 
     private Long getWorkspaceId(HttpServletRequest request) {
@@ -342,5 +347,69 @@ public class KnowledgeController {
         }
         knowledgeRevisionService.rollback(nodeId, revId, userId);
         return Result.success("回滚成功", null);
+    }
+
+    // ========== 待确认知识点 ==========
+
+    /**
+     * 获取待确认知识点列表.
+     *
+     * @param httpRequest HTTP请求对象
+     * @return 待确认知识点列表
+     */
+    @GetMapping("/pending")
+    @Operation(summary = "待确认知识点列表", description = "获取当前工作区下所有待确认的知识点")
+    public Result<List<PendingKnowledge>> listPending(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        List<PendingKnowledge> list = pendingKnowledgeService.listPending(userId, workspaceId);
+        return Result.success(list);
+    }
+
+    /**
+     * 批量确认入库.
+     *
+     * @param request     批量确认请求
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @PostMapping("/pending/confirm")
+    @Operation(summary = "批量确认入库", description = "将选中的待确认知识点迁移到知识库，可选是否生成复习卡片")
+    public Result<Void> confirmPending(@RequestBody BatchConfirmRequest request, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        pendingKnowledgeService.confirmBatch(userId, request);
+        return Result.success("确认入库成功", null);
+    }
+
+    /**
+     * 丢弃单条待确认知识点.
+     *
+     * @param id          待确认记录ID
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @DeleteMapping("/pending/{id}")
+    @Operation(summary = "丢弃待确认知识点", description = "将指定待确认知识点标记为已丢弃")
+    public Result<Void> discardPending(@PathVariable Long id, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        pendingKnowledgeService.discardPending(userId, id);
+        return Result.success("已丢弃", null);
+    }
+
+    /**
+     * 手动新增待确认知识点.
+     *
+     * @param item        待确认知识点
+     * @param httpRequest HTTP请求对象
+     * @return 新增的待确认记录
+     */
+    @PostMapping("/pending/add")
+    @Operation(summary = "手动新增待确认知识点", description = "在待确认列表中手动添加一条知识点")
+    public Result<PendingKnowledge> addPending(@RequestBody PendingKnowledge item, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        item.setWorkspaceId(workspaceId);
+        PendingKnowledge result = pendingKnowledgeService.addPending(userId, item);
+        return Result.success(result);
     }
 }

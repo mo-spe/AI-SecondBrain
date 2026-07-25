@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.dto.BatchChatImportRequest;
 import com.secondbrain.dto.ChatCollectRequest;
+import com.secondbrain.dto.ChatCollectMessage;
 import com.secondbrain.dto.ChatRecordDTO;
 import com.secondbrain.dto.KnowledgeDTO;
 import com.secondbrain.entity.RawChatRecord;
@@ -54,17 +55,35 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public void collectChat(ChatCollectRequest request, Long userId, Long workspaceId) {
-        log.info("采集对话，userId：{}，workspaceId：{}，platform：{}", userId, workspaceId, request.getPlatform());
+        // 使用用户指定的工作区，未指定时使用当前工作区
+        Long targetWorkspaceId = request.getWorkspaceId() != null ? request.getWorkspaceId() : workspaceId;
+        // 默认提取知识点，默认不生成复习卡片
+        boolean extractKnowledge = request.getExtractKnowledge() == null || request.getExtractKnowledge();
+        boolean generateCards = Boolean.TRUE.equals(request.getGenerateCards());
+
+        log.info("采集对话 userId={} targetWorkspaceId={} extractKnowledge={} generateCards={} platform={}",
+                userId, targetWorkspaceId, extractKnowledge, generateCards, request.getPlatform());
+
         RawChatRecord record = new RawChatRecord();
         record.setUserId(userId);
-        record.setWorkspaceId(workspaceId);
+        record.setWorkspaceId(targetWorkspaceId);
         record.setPlatform(request.getPlatform());
         record.setContent(request.getContent());
         record.setSourceUrl(request.getSourceUrl());
         record.setCreateTime(LocalDateTime.now());
         rawChatRecordMapper.insert(record);
-        kafkaProducerService.sendChatCollect(record);
-        log.info("对话采集成功，recordId：{}", record.getId());
+
+        if (extractKnowledge) {
+            ChatCollectMessage message = new ChatCollectMessage();
+            message.setRecord(record);
+            message.setWorkspaceId(targetWorkspaceId);
+            message.setExtractKnowledge(true);
+            message.setGenerateCards(generateCards);
+            kafkaProducerService.sendChatCollect(message);
+            log.info("对话采集成功(含知识提取) recordId={}", record.getId());
+        } else {
+            log.info("对话采集成功(仅存档) recordId={}", record.getId());
+        }
     }
 
     /**

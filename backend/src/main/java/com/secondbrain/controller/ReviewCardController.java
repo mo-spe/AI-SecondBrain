@@ -2,8 +2,12 @@ package com.secondbrain.controller;
 
 import com.secondbrain.common.Result;
 import com.secondbrain.dto.ReviewResultDTO;
+import com.secondbrain.entity.ReviewCardPool;
+import com.secondbrain.entity.UserReviewCard;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
+import com.secondbrain.service.ReviewCardPoolService;
 import com.secondbrain.service.ReviewCardService;
+import com.secondbrain.vo.ReviewCardPoolVO;
 import com.secondbrain.vo.ReviewCardVO;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
@@ -25,10 +29,13 @@ public class ReviewCardController {
     private static final Logger log = LoggerFactory.getLogger(ReviewCardController.class);
 
     private final ReviewCardService reviewCardService;
+    private final ReviewCardPoolService poolService;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
 
-    public ReviewCardController(ReviewCardService reviewCardService, KnowledgeNodeMapper knowledgeNodeMapper) {
+    public ReviewCardController(ReviewCardService reviewCardService, ReviewCardPoolService poolService,
+                                KnowledgeNodeMapper knowledgeNodeMapper) {
         this.reviewCardService = reviewCardService;
+        this.poolService = poolService;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
     }
 
@@ -252,6 +259,79 @@ public class ReviewCardController {
         return Result.success(accuracy);
     }
 
+    // ========== 题目池接口 ==========
+
+    /**
+     * 获取工作区题目池列表（含社区标签）.
+     *
+     * @param workspaceId 工作区ID
+     * @param httpRequest HTTP请求对象
+     * @return 题目池列表
+     */
+    @GetMapping("/pool")
+    public Result<List<ReviewCardPoolVO>> getPoolList(@RequestParam Long workspaceId, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        List<ReviewCardPoolVO> list = poolService.getPoolList(workspaceId, userId);
+        return Result.success(list);
+    }
+
+    /**
+     * 获取池子题目详情.
+     *
+     * @param poolId 池子题目ID
+     * @param httpRequest HTTP请求对象
+     * @return 题目详情
+     */
+    @GetMapping("/pool/{poolId}")
+    public Result<ReviewCardPoolVO> getPoolDetail(@PathVariable Long poolId, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        ReviewCardPoolVO vo = poolService.getPoolDetail(poolId, userId);
+        return Result.success(vo);
+    }
+
+    /**
+     * 加入复习（生成个人副本）.
+     *
+     * @param poolId 池子题目ID
+     * @param httpRequest HTTP请求对象
+     * @return 个人副本
+     */
+    @PostMapping("/pool/{poolId}/join")
+    public Result<UserReviewCard> joinPool(@PathVariable Long poolId, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        UserReviewCard card = poolService.joinPool(poolId, userId);
+        return Result.success(card);
+    }
+
+    /**
+     * 删除池子题目（仅 owner）.
+     *
+     * @param poolId 池子题目ID
+     * @param httpRequest HTTP请求对象
+     */
+    @DeleteMapping("/pool/{poolId}")
+    public Result<Void> deletePoolItem(@PathVariable Long poolId, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        poolService.deletePoolItem(poolId, userId);
+        return Result.success();
+    }
+
+    /**
+     * 编辑池子题目（仅 owner）.
+     *
+     * @param poolId 池子题目ID
+     * @param request 编辑请求
+     * @param httpRequest HTTP请求对象
+     * @return 更新后的池子题目
+     */
+    @PutMapping("/pool/{poolId}")
+    public Result<ReviewCardPool> updatePoolItem(@PathVariable Long poolId, @RequestBody UpdatePoolRequest request,
+                                                  HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        ReviewCardPool pool = poolService.updatePoolItem(poolId, request.getQuestion(), request.getAnswer(), userId);
+        return Result.success(pool);
+    }
+
     private ReviewCardVO convertToVO(com.secondbrain.entity.ReviewCard card) {
         ReviewCardVO vo = new ReviewCardVO();
         BeanUtils.copyProperties(card, vo);
@@ -338,5 +418,15 @@ public class ReviewCardController {
          * 反馈内容
          */
         private String comment;
+    }
+
+    /**
+     * 编辑池子题目请求
+     */
+    @Getter
+    @Setter
+    public static class UpdatePoolRequest {
+        private String question;
+        private String answer;
     }
 }

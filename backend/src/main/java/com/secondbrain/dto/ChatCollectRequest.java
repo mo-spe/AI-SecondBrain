@@ -24,4 +24,19 @@ public class ChatCollectRequest {
      * 原始链接
      */
     private String sourceUrl;
+
+    /**
+     * 目标工作区ID（NULL=个人空间）
+     */
+    private Long workspaceId;
+
+    /**
+     * 是否提取知识点，默认true
+     */
+    private Boolean extractKnowledge;
+
+    /**
+     * 是否在确认入库时生成复习卡片，默认false
+     */
+    private Boolean generateCards;
 }
