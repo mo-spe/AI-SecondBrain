@@ -1,10 +1,9 @@
 package com.secondbrain.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.dto.ChatCollectMessage;
 import com.secondbrain.entity.RawChatRecord;
 import com.secondbrain.service.KnowledgeCaptureService;
-import com.secondbrain.service.RawChatRecordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -16,45 +15,44 @@ public class KafkaConsumerService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumerService.class);
 
-    private final RawChatRecordService rawChatRecordService;
     private final KnowledgeCaptureService knowledgeCaptureService;
     private final ObjectMapper objectMapper;
 
     /**
      * 构造器注入依赖.
-     *
-     * @param rawChatRecordService    原始聊天记录服务
-     * @param knowledgeCaptureService 知识采集服务
-     * @param objectMapper            JSON 对象映射器
      */
-    public KafkaConsumerService(RawChatRecordService rawChatRecordService,
-                                KnowledgeCaptureService knowledgeCaptureService,
+    public KafkaConsumerService(KnowledgeCaptureService knowledgeCaptureService,
                                 ObjectMapper objectMapper) {
-        this.rawChatRecordService = rawChatRecordService;
         this.knowledgeCaptureService = knowledgeCaptureService;
         this.objectMapper = objectMapper;
     }
 
     /**
      * 消费聊天采集消息.
-     *
-     * @param record 原始聊天记录
-     * @return void
+     * <p>Kafka 配置使用 StringDeserializer，消息以 JSON 字符串传入，需手动反序列化</p>
+     * <p>如果 extractKnowledge=true，AI 提取知识点后写入 pending_knowledge 表等待用户确认</p>
      */
     @KafkaListener(topics = "chat-collect", groupId = "chat-collect-group")
-    public void consumeChatCollect(RawChatRecord record) {
-        log.info("收到聊天采集记录，userId：{}，sourceUrl：{}", record.getUserId(), record.getSourceUrl());
-        
+    public void consumeChatCollect(String messageJson) {
+        log.info("收到聊天采集消息，长度={}", messageJson.length());
+
         try {
-            rawChatRecordService.save(record);
-            log.info("聊天记录保存成功，id：{}", record.getId());
-            
-            KnowledgeNode node = knowledgeCaptureService.extractKnowledge(record);
-            if (node != null) {
-                log.info("知识提取成功，nodeId：{}，title：{}", node.getId(), node.getTitle());
+            ChatCollectMessage message = objectMapper.readValue(messageJson, ChatCollectMessage.class);
+            RawChatRecord record = message.getRecord();
+            log.info("解析消息 userId={} workspaceId={} extractKnowledge={}",
+                    record.getUserId(), message.getWorkspaceId(), message.getExtractKnowledge());
+
+            // 记录已在 ChatServiceImpl 中持久化，此处仅处理知识提取
+            if (record.getWorkspaceId() == null && message.getWorkspaceId() != null) {
+                record.setWorkspaceId(message.getWorkspaceId());
+            }
+
+            if (Boolean.TRUE.equals(message.getExtractKnowledge())) {
+                int count = knowledgeCaptureService.extractKnowledge(record);
+                log.info("知识提取完成 recordId={} extracted={}", record.getId(), count);
             }
         } catch (Exception e) {
-            log.error("处理聊天采集记录失败", e);
+            log.error("处理聊天采集消息失败", e);
         }
     }
 }
