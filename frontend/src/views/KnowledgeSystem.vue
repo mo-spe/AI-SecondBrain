@@ -17,40 +17,32 @@
       </div>
     </div>
 
-    <div class="content-wrapper">
+    <div class="content-wrapper" :style="{ '--rag-panel-width': ragPanelCollapsed ? '44px' : ragPanelWidth + 'px' }">
       <div class="left-panel">
         <div class="stats-cards">
           <div class="stat-card">
-            <div class="stat-icon purple">
-              <el-icon size="20"><Document /></el-icon>
-            </div>
+            <div class="stat-icon purple"></div>
             <div class="stat-content">
               <div class="stat-value">{{ nodeCount }}</div>
               <div class="stat-label">知识点总数</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon blue">
-              <el-icon size="20"><Link /></el-icon>
-            </div>
+            <div class="stat-icon blue"></div>
             <div class="stat-content">
               <div class="stat-value">{{ edgeCount }}</div>
               <div class="stat-label">连接关系</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon green">
-              <el-icon size="20"><Folder /></el-icon>
-            </div>
+            <div class="stat-icon green"></div>
             <div class="stat-content">
               <div class="stat-value">{{ categoryCount }}</div>
               <div class="stat-label">主题领域</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon orange">
-              <el-icon size="20"><MapLocation /></el-icon>
-            </div>
+            <div class="stat-icon orange"></div>
             <div class="stat-content">
               <div class="stat-value">{{ pathCount }}</div>
               <div class="stat-label">学习路径</div>
@@ -192,29 +184,79 @@
         </div>
       </div>
 
-      <div class="right-panel">
-        <div class="rag-card">
+      <div class="right-panel" :class="{ collapsed: ragPanelCollapsed, dragging: isDragging }">
+        <div
+          class="resize-handle"
+          :class="{ dragging: isDragging, collapsed: ragPanelCollapsed }"
+          @mousedown="onResizeStart"
+        >
+          <div class="resize-grip">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+        <div v-if="ragPanelCollapsed" class="collapsed-tab" @click="toggleRagPanel" title="展开RAG问答">
+          <el-icon size="18"><ChatDotRound /></el-icon>
+          <span class="collapsed-label">RAG</span>
+        </div>
+        <div class="rag-card" v-show="!ragPanelCollapsed">
           <div class="rag-header">
             <div class="rag-title-area">
               <div class="rag-header-icon">
                 <el-icon size="20" color="white"><ChatDotRound /></el-icon>
               </div>
-              <h3 class="rag-title">RAG 知识体系</h3>
+              <h3 class="rag-title">RAG 知识问答</h3>
             </div>
-            <el-button size="small" class="history-btn" @click="showHistory = !showHistory">
-              历史记录
-            </el-button>
+            <div class="rag-header-actions">
+              <el-button size="small" class="history-btn" @click="showSessionList = !showSessionList">
+                <el-icon size="14"><Clock /></el-icon>
+              </el-button>
+              <el-button size="small" class="history-btn" @click="handleNewSession" :disabled="isStreaming">
+                新对话
+              </el-button>
+              <el-button size="small" class="collapse-btn" @click="toggleRagPanel" title="收起面板">
+                <el-icon size="14"><ArrowLeft /></el-icon>
+              </el-button>
+            </div>
           </div>
 
-          <div class="rag-body">
-            <div v-if="!showHistory" class="quick-questions">
+          <div v-if="showSessionList" class="session-list-panel">
+            <div class="session-list-header">
+              <span>历史会话</span>
+              <el-button text size="small" @click="showSessionList = false">
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+            <div class="session-list-body">
+              <div
+                v-for="s in sessions"
+                :key="s.id"
+                class="session-item"
+                :class="{ active: s.id === currentSessionId }"
+                @click="switchSession(s.id)"
+              >
+                <div class="session-title">{{ s.title }}</div>
+                <div class="session-time">{{ formatTime(s.updateTime || s.createTime) }}</div>
+                <el-button
+                  text
+                  size="small"
+                  class="session-delete"
+                  @click.stop="handleDeleteSession(s.id)"
+                >
+                  <el-icon size="12"><Close /></el-icon>
+                </el-button>
+              </div>
+              <div v-if="sessions.length === 0" class="session-empty">暂无历史会话</div>
+            </div>
+          </div>
+
+          <div class="rag-body" ref="ragBodyRef">
+            <div v-if="messages.length === 0 && !isStreaming" class="quick-questions">
               <p class="quick-title">基于您的知识推荐问题：</p>
               <div class="quick-list">
                 <div
                   v-for="(q, index) in quickQuestions"
                   :key="index"
                   class="quick-item"
-                  :class="{ active: question === q.text }"
                   @click="askQuestion(q.text)"
                 >
                   <span class="question-dot"></span>
@@ -223,72 +265,47 @@
               </div>
             </div>
 
-            <div v-if="!showHistory && chatHistory.length > 0" class="chat-history">
-              <div
-                v-for="(chat, index) in chatHistory"
-                :key="index"
-                class="chat-item"
-                :class="{ user: chat.isUser }"
-              >
-                <div class="chat-avatar">
-                  <el-avatar v-if="chat.isUser" :size="28" :src="userAvatar" />
-                  <div v-else class="ai-avatar">
-                    <el-icon size="16" color="white"><ChatLineRound /></el-icon>
-                  </div>
+            <div v-for="(msg, index) in messages" :key="index" class="chat-message" :class="msg.role">
+              <div class="chat-avatar">
+                <el-avatar v-if="msg.role === 'user'" :size="28" :src="userAvatar" />
+                <div v-else class="ai-avatar">
+                  <el-icon size="16" color="white"><ChatLineRound /></el-icon>
                 </div>
-                <div class="chat-content">
-                  <div class="chat-text">{{ chat.content }}</div>
-                  <div v-if="chat.tags && chat.tags.length > 0" class="chat-tags">
-                    <el-tag
-                      v-for="(tag, tagIndex) in chat.tags"
-                      :key="tagIndex"
-                      size="small"
-                      type="primary"
+              </div>
+              <div class="chat-content">
+                <div class="chat-text">{{ msg.content }}</div>
+                <div v-if="msg.role === 'assistant' && msg.references && msg.references.length > 0" class="chat-references">
+                  <div class="ref-label">参考来源</div>
+                  <div class="ref-list">
+                    <span
+                      v-for="(ref, rIdx) in msg.references"
+                      :key="rIdx"
+                      class="ref-chip"
                     >
-                      {{ tag }}
-                    </el-tag>
+                      {{ ref.title }}
+                      <span class="ref-score">{{ (ref.similarity * 100).toFixed(0) }}%</span>
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div v-if="!showHistory && currentAnswer" class="answer-section">
-              <div class="answer-header">
-                <span v-if="isStreaming" class="streaming-indicator">AI 生成中...</span>
-              </div>
-              <div class="answer-content" v-html="formattedAnswer"></div>
-              <span v-if="isStreaming" class="streaming-cursor">|</span>
-              <div v-if="currentAnswer.references && currentAnswer.references.length > 0" class="answer-references">
-                <p class="references-title">参考来源</p>
-                <div class="references-list">
-                  <div
-                    v-for="(ref, index) in currentAnswer.references"
-                    :key="index"
-                    class="reference-item"
-                  >
-                    <span class="ref-index">{{ index + 1 }}</span>
-                    <span class="ref-title">{{ ref.title }}</span>
-                    <span class="ref-similarity">{{ (ref.similarity * 100).toFixed(0) }}%</span>
-                  </div>
+            <div v-if="isStreaming && streamingContent !== null" class="chat-message assistant streaming">
+              <div class="chat-avatar">
+                <div class="ai-avatar">
+                  <el-icon size="16" color="white"><ChatLineRound /></el-icon>
                 </div>
               </div>
-            </div>
-
-            <div v-if="showHistory" class="history-panel">
-              <div class="history-header">
-                <h4>历史记录</h4>
-                <el-button text size="small" @click="showHistory = false">
-                  <el-icon><ArrowLeft /></el-icon>
-                  返回
-                </el-button>
-              </div>
-              <div v-for="(item, index) in historyList" :key="index" class="history-item">
-                <div class="history-question">{{ item.question }}</div>
-                <div class="history-meta">
-                  <span class="history-time">{{ item.time }}</span>
-                  <el-button size="small" text @click="askQuestion(item.question)">
-                    重新提问
-                  </el-button>
+              <div class="chat-content">
+                <div class="chat-text">{{ streamingContent }}<span class="streaming-cursor">|</span></div>
+                <div v-if="streamingReferences.length > 0" class="chat-references">
+                  <div class="ref-label">参考来源</div>
+                  <div class="ref-list">
+                    <span v-for="(ref, rIdx) in streamingReferences" :key="rIdx" class="ref-chip">
+                      {{ ref.title }}
+                      <span class="ref-score">{{ (ref.similarity * 100).toFixed(0) }}%</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -338,7 +355,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Document,
@@ -361,6 +378,7 @@ import {
   StarFilled,
   Close,
   Check,
+  Clock,
 } from "@element-plus/icons-vue";
 import request from "@/utils/request";
 import { useRouter } from "vue-router";
@@ -387,12 +405,54 @@ const autoGenerating = ref(false);
 const loading = ref(false);
 const isStreaming = ref(false);
 const abortController = ref(null);
-const showHistory = ref(false);
+const showSessionList = ref(false);
 const deepThink = ref(false);
 const question = ref("");
-const currentAnswer = ref(null);
+const messages = ref([]);
+const streamingContent = ref(null);
+const streamingReferences = ref([]);
+const currentSessionId = ref(null);
+const sessions = ref([]);
+const ragBodyRef = ref(null);
 const recommendations = ref([]);
 const currentKnowledgeId = ref(null);
+
+const ragPanelCollapsed = ref(false);
+const ragPanelWidth = ref(Number(localStorage.getItem('ragPanelWidth')) || 380);
+const isDragging = ref(false);
+const MIN_PANEL_WIDTH = 320;
+const MAX_PANEL_WIDTH = 700;
+
+const onResizeStart = (e) => {
+  isDragging.value = true;
+  const startX = e.clientX;
+  const startWidth = ragPanelWidth.value;
+
+  const onMouseMove = (moveEvent) => {
+    const delta = startX - moveEvent.clientX;
+    const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth + delta));
+    ragPanelWidth.value = newWidth;
+  };
+
+  const onMouseUp = () => {
+    isDragging.value = false;
+    localStorage.setItem('ragPanelWidth', ragPanelWidth.value);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+};
+
+const toggleRagPanel = () => {
+  ragPanelCollapsed.value = !ragPanelCollapsed.value;
+};
 
 const treeData = ref([
   {
@@ -463,22 +523,116 @@ const quickQuestions = [
   { text: "Redis 的持久化机制有哪些？" },
 ];
 
-const chatHistory = ref([
-  {
-    isUser: true,
-    content: "Spring Boot 自动配置原理是什么？",
-  },
-]);
+const initSession = async () => {
+  try {
+    const res = await request.get("/sessions", { current: 1, size: 50 });
+    if (res && res.records) {
+      sessions.value = res.records;
+      if (res.records.length > 0) {
+        const lastSession = res.records[0];
+        currentSessionId.value = lastSession.id;
+        await loadMessages(lastSession.id);
+        return;
+      }
+    }
+    await createNewSession();
+  } catch (e) {
+    console.warn("加载会话失败，创建新会话", e);
+    await createNewSession();
+  }
+};
 
-const historyList = ref([
-  { question: "什么是微服务架构？", time: "2024-01-15 14:30" },
-  { question: "MySQL 索引优化策略", time: "2024-01-14 10:20" },
-  { question: "Java 并发编程最佳实践", time: "2024-01-13 16:45" },
-]);
+const createNewSession = async () => {
+  const res = await request.post("/sessions", { title: "新对话" });
+  if (res && res.id) {
+    currentSessionId.value = res.id;
+    messages.value = [];
+    sessions.value.unshift(res);
+  }
+};
 
-const formattedAnswer = computed(() => {
-  if (!currentAnswer.value) return "";
-  return currentAnswer.value.answer.replace(/\n/g, "<br>");
+const loadSessions = async () => {
+  try {
+    const res = await request.get("/sessions", { current: 1, size: 50 });
+    if (res && res.records) {
+      sessions.value = res.records;
+    }
+  } catch (e) {
+    console.warn("加载会话列表失败", e);
+  }
+};
+
+const loadMessages = async (sessionId) => {
+  try {
+    const res = await request.get(`/sessions/${sessionId}/messages`, { current: 1, size: 200 });
+    if (res && res.records) {
+      const sorted = [...res.records].sort((a, b) => {
+        return new Date(a.createTime) - new Date(b.createTime);
+      });
+      messages.value = sorted.map((m) => ({
+        role: m.role,
+        content: m.content,
+        references: [],
+      }));
+      scrollToBottom();
+    }
+  } catch (e) {
+    console.warn("加载消息失败", e);
+  }
+};
+
+const switchSession = async (sessionId) => {
+  if (sessionId === currentSessionId.value || isStreaming.value) return;
+  currentSessionId.value = sessionId;
+  await loadMessages(sessionId);
+  showSessionList.value = false;
+};
+
+const handleNewSession = async () => {
+  await createNewSession();
+  showSessionList.value = false;
+};
+
+const handleDeleteSession = async (sessionId) => {
+  try {
+    await request.delete(`/sessions/${sessionId}`);
+    sessions.value = sessions.value.filter((s) => s.id !== sessionId);
+    if (sessionId === currentSessionId.value) {
+      currentSessionId.value = null;
+      messages.value = [];
+      if (sessions.value.length > 0) {
+        await switchSession(sessions.value[0].id);
+      } else {
+        await createNewSession();
+      }
+    }
+    ElMessage.success("会话已删除");
+  } catch (e) {
+    ElMessage.error("删除失败：" + (e.message || "未知错误"));
+  }
+};
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (ragBodyRef.value) {
+      ragBodyRef.value.scrollTop = ragBodyRef.value.scrollHeight;
+    }
+  });
+};
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return "";
+  const d = new Date(timeStr);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return "刚刚";
+  if (diff < 3600000) return Math.floor(diff / 60000) + "分钟前";
+  if (diff < 86400000) return Math.floor(diff / 3600000) + "小时前";
+  return d.toLocaleDateString("zh-CN");
+};
+
+watch(() => messages.value.length, () => {
+  scrollToBottom();
 });
 
 const initGraph = async () => {
@@ -763,11 +917,20 @@ const handleAsk = async () => {
     ElMessage.warning("请输入问题");
     return;
   }
+  if (!currentSessionId.value) {
+    await createNewSession();
+  }
 
   loading.value = true;
   isStreaming.value = true;
-  currentAnswer.value = { answer: "", references: [], retrievalTime: 0, generationTime: 0 };
-  chatHistory.value.push({ isUser: true, content: question.value });
+  streamingContent.value = "";
+  streamingReferences.value = [];
+
+  const userQuestion = question.value;
+  messages.value.push({ role: "user", content: userQuestion });
+  question.value = "";
+  showSessionList.value = false;
+  scrollToBottom();
 
   const controller = new AbortController();
   abortController.value = controller;
@@ -781,9 +944,10 @@ const handleAsk = async () => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        question: question.value,
+        question: userQuestion,
         topK: 3,
         includeReferences: true,
+        sessionId: currentSessionId.value,
       }),
       signal: controller.signal,
     });
@@ -796,6 +960,7 @@ const handleAsk = async () => {
           "需要配置API Key",
           { confirmButtonText: "前往设置", type: "warning" },
         ).then(() => router.push("/settings"));
+        messages.value.pop();
         return;
       }
       throw new Error(text || `HTTP ${response.status}`);
@@ -809,20 +974,30 @@ const handleAsk = async () => {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      if (value) {
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        if (line.startsWith("event:")) {
-          currentEvent = line.substring(6).trim();
-        } else if (line.startsWith("data:")) {
-          const data = line.substring(5).trim();
-          dispatchEvent(currentEvent, data, startTime);
-          currentEvent = "message";
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            currentEvent = line.substring(6).trim();
+          } else if (line.startsWith("data:")) {
+            const data = line.substring(5).trim();
+            dispatchEvent(currentEvent, data, startTime);
+            currentEvent = "message";
+          }
         }
+      }
+
+      if (done) break;
+    }
+
+    if (buffer.trim()) {
+      const line = buffer.trim();
+      if (line.startsWith("data:")) {
+        dispatchEvent(currentEvent, line.substring(5).trim(), startTime);
       }
     }
   } catch (error) {
@@ -841,43 +1016,49 @@ const handleAsk = async () => {
       ElMessage.error("回答失败：" + (error.message || "网络错误"));
     }
   } finally {
+    if (streamingContent.value) {
+      messages.value.push({
+        role: "assistant",
+        content: streamingContent.value,
+        references: streamingReferences.value,
+      });
+      streamingContent.value = null;
+      streamingReferences.value = [];
+    }
     loading.value = false;
     isStreaming.value = false;
     abortController.value = null;
-    question.value = "";
+    loadSessions();
   }
 };
 
 function dispatchEvent(eventType, data, startTime) {
   switch (eventType) {
     case "token":
-      currentAnswer.value.answer += data;
+      streamingContent.value += data;
       break;
     case "references":
       try {
-        currentAnswer.value.references = JSON.parse(data);
+        streamingReferences.value = JSON.parse(data);
       } catch (e) {
         console.warn("解析引用失败:", e);
       }
       break;
     case "metrics":
-      try {
-        const m = JSON.parse(data);
-        currentAnswer.value.retrievalTime = m.retrievalTime || 0;
-        currentAnswer.value.generationTime = Date.now() - startTime;
-      } catch (e) {
-        console.warn("解析指标失败:", e);
-      }
+      // metrics are optional, silently ignore
       break;
     case "done":
-      if (!currentAnswer.value.answer) {
-        currentAnswer.value.answer = "（未生成回答）";
+      if (!streamingContent.value) {
+        streamingContent.value = "（未生成回答）";
       }
-      chatHistory.value.push({
-        isUser: false,
-        content: currentAnswer.value.answer,
-        tags: (currentAnswer.value.references || []).map((r) => r.title).slice(0, 3),
+      messages.value.push({
+        role: "assistant",
+        content: streamingContent.value,
+        references: streamingReferences.value,
       });
+      streamingContent.value = null;
+      streamingReferences.value = [];
+      scrollToBottom();
       break;
     case "error":
       if (data && data.includes("请先在设置页配置")) {
@@ -895,11 +1076,21 @@ function dispatchEvent(eventType, data, startTime) {
 const handleStop = () => {
   if (abortController.value) {
     abortController.value.abort();
+    if (streamingContent.value) {
+      messages.value.push({
+        role: "assistant",
+        content: streamingContent.value + "（已停止）",
+        references: streamingReferences.value,
+      });
+      streamingContent.value = null;
+      streamingReferences.value = [];
+    }
   }
 };
 
 onMounted(async () => {
   await nextTick();
+  initSession();
   if (graphContainer.value) {
     initGraph();
   }
@@ -950,9 +1141,17 @@ onUnmounted(() => {
 
 .content-wrapper {
   display: grid;
-  grid-template-columns: 260px 1fr 380px;
-  gap: 24px;
+  grid-template-columns: 260px 1fr var(--rag-panel-width, 380px);
+  gap: 16px;
   min-height: calc(100vh - 180px);
+}
+
+.content-wrapper:has(.right-panel.collapsed) {
+  grid-template-columns: 260px 1fr 44px;
+}
+
+.content-wrapper:has(.right-panel.dragging) {
+  transition: none;
 }
 
 .left-panel {
@@ -968,42 +1167,26 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: white;
-  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-md);
   padding: 16px;
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-lighter);
 }
 
 .stat-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+  width: 4px;
+  height: 40px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
-.stat-icon.purple {
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-}
-
-.stat-icon.blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-}
-
-.stat-icon.green {
-  background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
-}
-
-.stat-icon.orange {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-}
+.stat-icon.purple { background: var(--color-primary); }
+.stat-icon.blue   { background: var(--color-info); }
+.stat-icon.green  { background: var(--color-success); }
+.stat-icon.orange { background: var(--color-accent); }
 
 .stat-content {
   flex: 1;
@@ -1023,10 +1206,9 @@ onUnmounted(() => {
 }
 
 .knowledge-tree-card {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-card);
   border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   flex: 1;
   display: flex;
@@ -1039,8 +1221,9 @@ onUnmounted(() => {
 }
 
 .tree-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   margin: 0;
 }
@@ -1285,6 +1468,12 @@ onUnmounted(() => {
 .right-panel {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+.right-panel.dragging {
+  transition: none;
 }
 
 .rag-card {
@@ -1299,7 +1488,7 @@ onUnmounted(() => {
 }
 
 .rag-header {
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   padding: 16px 20px;
   display: flex;
   justify-content: space-between;
@@ -1323,31 +1512,142 @@ onUnmounted(() => {
 }
 
 .rag-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   color: white;
   margin: 0;
 }
 
+.rag-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .history-btn {
   background: rgba(255, 255, 255, 0.2);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: white;
+  font-size: var(--font-size-xs);
+  padding: 4px 12px;
+  transition: background var(--transition-fast);
 }
 
 .history-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  color: white;
+}
+
+.collapse-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.collapse-btn:hover {
   background: rgba(255, 255, 255, 0.3);
   color: white;
+}
+
+/* ---- Collapsed tab ---- */
+.collapsed-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: white;
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  height: 100%;
+  justify-content: center;
+}
+
+.collapsed-tab:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.collapsed-label {
+  writing-mode: vertical-rl;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.1em;
+}
+
+/* ---- Resize handle ---- */
+.resize-handle {
+  position: absolute;
+  left: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background var(--transition-fast);
+}
+
+.resize-handle:hover,
+.resize-handle.dragging {
+  background: var(--color-primary-alpha-10);
+}
+
+.resize-grip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 2px;
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+
+.resize-grip:hover {
+  background: var(--color-primary-alpha-10);
+}
+
+.resize-grip span {
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-base);
+  transition: background var(--transition-fast);
+}
+
+.resize-handle.dragging .resize-grip span {
+  background: var(--color-primary);
+}
+
+.resize-handle.collapsed {
+  display: none;
 }
 
 .rag-body {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .quick-questions {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .quick-title {
@@ -1377,9 +1677,8 @@ onUnmounted(() => {
   border: 1px solid transparent;
 }
 
-.quick-item:hover,
-.quick-item.active {
-  background: rgba(124, 58, 237, 0.08);
+.quick-item:hover {
+  background: var(--color-primary-alpha-10);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
@@ -1393,32 +1692,33 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.chat-history {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.chat-item {
+/* ---- Chat Messages ---- */
+.chat-message {
   display: flex;
   gap: 10px;
+  animation: fadeIn 0.2s ease-out;
 }
 
-.chat-item.user {
+.chat-message.user {
   flex-direction: row-reverse;
 }
 
-.chat-item.user .chat-content {
+.chat-message.user .chat-content {
   background: var(--color-primary);
   color: white;
   border-radius: 12px 12px 4px 12px;
 }
 
-.chat-item:not(.user) .chat-content {
+.chat-message:not(.user) .chat-content {
   background: var(--bg-page);
   color: var(--text-primary);
   border-radius: 12px 12px 12px 4px;
+  border: 1px solid var(--border-lighter);
+}
+
+.chat-message.streaming .chat-content {
+  border-color: var(--color-primary);
+  background: var(--color-primary-alpha-10);
 }
 
 .chat-avatar {
@@ -1429,7 +1729,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
+  background: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1444,152 +1744,131 @@ onUnmounted(() => {
 .chat-text {
   font-size: 13px;
   line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.chat-tags {
+.chat-references {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-lighter);
+}
+
+.ref-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.ref-list {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 8px;
 }
 
-.answer-section {
+.ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+
+.ref-score {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ---- Session List ---- */
+.session-list-panel {
+  border-bottom: 1px solid var(--border-lighter);
+  max-height: 220px;
+  overflow-y: auto;
   background: var(--bg-page);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  margin-bottom: 16px;
 }
 
-.answer-header {
-  margin-bottom: 8px;
-}
-
-.streaming-indicator {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-primary, #409eff);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.answer-content {
-  padding: 14px;
-  background: white;
-  border-radius: var(--radius-md);
+.session-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
   font-size: 13px;
-  line-height: 1.8;
-  color: var(--text-regular);
-  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
+.session-list-body {
+  padding: 0 8px 8px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.session-item:hover,
+.session-item.active {
+  background: var(--color-primary-alpha-10);
+}
+
+.session-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-regular);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.session-delete {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.session-item:hover .session-delete {
+  opacity: 1;
+}
+
+.session-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ---- Streaming ---- */
 .streaming-cursor {
   display: inline;
   font-size: 14px;
-  color: var(--color-primary, #409eff);
+  color: var(--color-primary);
   animation: blink 0.8s step-end infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
-}
-
-.answer-references {
-  border-top: 1px solid var(--border-lighter);
-  padding-top: 12px;
-}
-
-.references-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0 0 8px 0;
-}
-
-.references-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.reference-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: white;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-lighter);
-}
-
-.ref-index {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: var(--color-primary);
-  color: white;
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ref-title {
-  font-size: 12px;
-  color: var(--text-regular);
-  flex: 1;
-}
-
-.ref-similarity {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.history-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.history-header h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.history-item {
-  padding: 12px;
-  background: var(--bg-page);
-  border-radius: var(--radius-md);
-}
-
-.history-question {
-  font-size: 13px;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.history-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.history-time {
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 .rag-input-area {
@@ -1651,8 +1930,8 @@ onUnmounted(() => {
 
 @media (max-width: 1400px) {
   .content-wrapper {
-    grid-template-columns: 240px 1fr 340px;
-    gap: 16px;
+    grid-template-columns: 220px 1fr var(--rag-panel-width, 340px);
+    gap: 12px;
   }
 }
 
@@ -1660,6 +1939,14 @@ onUnmounted(() => {
   .content-wrapper {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+
+  .resize-handle {
+    display: none;
+  }
+
+  .right-panel.collapsed {
+    display: none;
   }
 
   .middle-panel {

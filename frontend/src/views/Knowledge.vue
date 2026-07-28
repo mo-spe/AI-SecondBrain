@@ -120,6 +120,10 @@
                 show-word-limit
               />
             </div>
+            <TagSuggest
+              :title="item.title"
+              :summary="item.summary"
+            />
           </div>
         </div>
 
@@ -164,14 +168,14 @@
         </button>
       </div>
       <el-select
-        v-model="filterSystem"
-        placeholder="全部体系"
+        v-model="filterTag"
+        placeholder="全部标签"
         size="default"
         clearable
         @change="handleSearch"
       >
-        <el-option label="全部体系" value="" />
-        <el-option v-for="system in knowledgeSystems" :key="system.id" :label="system.name" :value="system.id" />
+        <el-option label="全部标签" value="" />
+        <el-option v-for="tag in tagTree" :key="tag.id" :label="tag.tagName" :value="tag.id" />
       </el-select>
       <el-select
         v-model="filterImportance"
@@ -201,17 +205,6 @@
         <el-option label="熟悉" :value="2" />
         <el-option label="入门" :value="1" />
         <el-option label="未掌握" :value="0" />
-      </el-select>
-      <el-select
-        v-model="filterTag"
-        placeholder="全部标签"
-        size="default"
-        clearable
-        @change="handleSearch"
-      >
-        <el-option label="全部标签" value="" />
-        <el-option label="待复习" value="review" />
-        <el-option label="已掌握" value="mastered" />
       </el-select>
       <el-button type="default" size="default" @click="handleAdvancedFilter">
         <el-icon><Filter /></el-icon>
@@ -275,27 +268,74 @@
     <div class="main-content">
       <aside class="system-sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">知识体系</span>
-          <button class="sidebar-add" @click="handleAddSystem">
+          <span class="sidebar-title">知识标签</span>
+          <button class="sidebar-add" @click="handleCreateTag">
             <el-icon size="14"><Plus /></el-icon>
           </button>
         </div>
         <div class="system-list">
           <div
-            v-for="system in knowledgeSystems"
-            :key="system.id"
             class="system-item"
-            :class="{ active: selectedSystem === system.id }"
-            @click="selectSystem(system.id)"
+            :class="{ active: selectedTagId === '' }"
+            @click="selectTag('')"
           >
-            <el-icon :size="14" :color="system.color">{{ system.icon }}</el-icon>
-            <span class="system-name">{{ getSystemDisplayName(system) }}</span>
-            <span class="system-count">{{ system.count || 0 }}</span>
+            <span class="system-name">全部知识</span>
+            <span class="system-count">{{ pagination.total || 0 }}</span>
+          </div>
+          <div
+            v-for="tag in flatTagList"
+            :key="tag.id"
+            class="system-item"
+            :class="{ active: selectedTagId === tag.id }"
+            :style="{ paddingLeft: (12 + tag._depth * 16) + 'px' }"
+            @click="selectTag(tag.id)"
+            @contextmenu.prevent="handleTagContextMenu($event, tag)"
+          >
+            <span
+              v-if="tag._hasChildren"
+              class="tag-expand-btn"
+              @click.stop="toggleTagExpand(tag.id)"
+            >
+              <el-icon size="10"><component :is="tag._isExpanded ? ArrowDown : ArrowRight" /></el-icon>
+            </span>
+            <span v-else class="tag-expand-spacer"></span>
+            <span
+              class="tag-color-dot"
+              :style="{ background: tag.tagColor || '#6366f1' }"
+            ></span>
+            <span class="system-name">{{ tag.tagName }}</span>
+            <span class="system-count">{{ tag.nodeCount || 0 }}</span>
+          </div>
+          <div v-if="tagTree.length === 0" class="tag-empty">
+            <p class="tag-empty-text">暂无标签</p>
+            <p class="tag-empty-hint">点击下方按钮创建标签来分类你的知识</p>
           </div>
         </div>
-        <button class="add-system-btn" @click="handleAddSystem">
+
+        <!-- 右键菜单 -->
+        <div
+          v-if="editingTag"
+          class="tag-context-menu"
+          :style="{ position: 'fixed', left: contextMenuPosition.x, top: contextMenuPosition.y }"
+          @click.stop
+        >
+          <div class="context-menu-item" @click="handleEditTag(editingTag)">
+            <el-icon size="13"><Edit /></el-icon>
+            编辑标签
+          </div>
+          <div class="context-menu-item danger" @click="handleDeleteTag(editingTag)">
+            <el-icon size="13"><Delete /></el-icon>
+            删除标签
+          </div>
+          <div class="context-menu-item" @click="editingTag = null">
+            <el-icon size="13"><Close /></el-icon>
+            取消
+          </div>
+        </div>
+
+        <button class="add-system-btn" @click="handleCreateTag">
           <el-icon size="14"><Plus /></el-icon>
-          <span>新建体系</span>
+          <span>新建标签</span>
         </button>
       </aside>
 
@@ -303,10 +343,10 @@
         <div class="content-header">
           <span class="content-title">知识点列表</span>
           <div class="content-actions">
-            <el-button type="text" size="small" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+            <el-button link size="small" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
               <el-icon size="16"><Grid /></el-icon>
             </el-button>
-            <el-button type="text" size="small" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
+            <el-button link size="small" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
               <el-icon size="16"><List /></el-icon>
             </el-button>
             <el-select
@@ -338,9 +378,6 @@
               />
             </div>
             <div class="card-header">
-              <el-tag :type="getSystemTagType(knowledge.systemId)" size="small" effect="light">
-                {{ getSystemName(knowledge.systemId) }}
-              </el-tag>
               <span @click.stop>
                 <el-dropdown trigger="click" @command="(cmd) => handleCardCommand(cmd, knowledge)">
                   <button class="card-menu">
@@ -388,6 +425,16 @@
                 <el-icon size="12"><CircleCheck /></el-icon>
                 <span class="status mastered">已掌握</span>
               </div>
+            </div>
+            <div class="card-tags">
+              <TagChips
+                :tags="knowledge.tags || []"
+                :editable="true"
+                :node-id="knowledge.id"
+                :available-tags="allFlatTags"
+                @add="loadKnowledgeList"
+                @remove="loadKnowledgeList"
+              />
             </div>
             <div class="card-progress">
               <div class="progress-info">
@@ -455,6 +502,17 @@
               text-color="#ff9900"
               :max="5"
               size="large"
+            />
+          </div>
+          <div class="detail-section">
+            <h4><el-icon><PriceTag /></el-icon>标签</h4>
+            <TagChips
+              :tags="currentKnowledge.tags || []"
+              :editable="true"
+              :node-id="currentKnowledge.id"
+              :available-tags="allFlatTags"
+              @add="onDetailTagChanged"
+              @remove="onDetailTagChanged"
             />
           </div>
           <div class="detail-section">
@@ -528,11 +586,6 @@
             size="large"
           />
         </el-form-item>
-        <el-form-item label="知识体系" prop="systemId">
-          <el-select v-model="editForm.systemId" placeholder="请选择知识体系" size="large">
-            <el-option v-for="system in knowledgeSystems" :key="system.id" :label="system.name" :value="system.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="摘要" prop="summary">
           <el-input
             v-model="editForm.summary"
@@ -542,6 +595,18 @@
             maxlength="500"
             show-word-limit
             size="large"
+          />
+        </el-form-item>
+        <el-form-item label="AI 推荐">
+          <el-button type="primary" plain size="small" @click="fetchEditTagSuggest" :loading="editSuggestLoading">
+            <el-icon><MagicStick /></el-icon>
+            AI 推荐标签
+          </el-button>
+          <TagSuggest
+            ref="editTagSuggestRef"
+            :title="editForm.title"
+            :summary="editForm.summary"
+            style="margin-top: 8px;"
           />
         </el-form-item>
         <el-form-item label="内容" prop="contentMd">
@@ -642,18 +707,29 @@
       @rollback-success="onRollbackSuccess"
     />
 
+    <TagCreateDialog
+      v-model="showTagDialog"
+      :tag="editingTag"
+      :available-tags="tagTree"
+      @saved="handleTagSaved"
+    />
+
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { knowledgeAPI } from "@/api/knowledge";
 import { reviewAPI } from "@/api/review";
 import { collaborationAPI } from "@/api/collaboration";
+import { tagsAPI } from "@/api/tags";
 import VersionHistory from "@/components/VersionHistory.vue";
+import TagCreateDialog from "@/components/TagCreateDialog.vue";
+import TagChips from "@/components/TagChips.vue";
+import TagSuggest from "@/components/TagSuggest.vue";
 import {
   Plus,
   Search,
@@ -685,6 +761,8 @@ import {
   EditPen,
   Delete,
   MagicStick,
+  ArrowRight,
+  PriceTag,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -693,11 +771,10 @@ const loading = ref(false);
 const saveLoading = ref(false);
 const selectedKnowledgeIds = ref([]);
 const searchKeyword = ref("");
-const filterSystem = ref("");
 const filterImportance = ref("");
 const filterMastery = ref("");
 const filterTag = ref("");
-const selectedSystem = ref("");
+const selectedTagId = ref("");
 const viewMode = ref("grid");
 const sortBy = ref("newest");
 const activeTab = ref("all"); // 'all' | 'pending'
@@ -708,6 +785,8 @@ const showVersionHistory = ref(false);
 const knowledgeList = ref([]);
 const currentKnowledge = ref(null);
 const editFormRef = ref(null);
+const editTagSuggestRef = ref(null);
+const editSuggestLoading = ref(false);
 
 // 编辑锁相关
 const editingNodeId = ref(null);
@@ -726,60 +805,24 @@ const shareLink = ref("");
 const shareLoading = ref(false);
 const myShares = ref([]);
 
-const knowledgeSystems = ref([]);
+const tagTree = ref([]);
+const expandedTags = ref(new Set());
+const showTagDialog = ref(false);
+const editingTag = ref(null);
 
-const systemIcons = {
-  "全部知识": Grid,
-  "Java 核心技术": Notebook,
-  "Spring Boot": Document,
-  "数据结构与算法": Folder,
-  "计算机网络": MapLocation,
-  "操作系统": Monitor,
-  "数据库系统": DataBoard,
-  "前端开发": Brush,
+const selectTag = (tagId) => {
+  selectedTagId.value = tagId;
+  pagination.value.current = 1;
+  loadKnowledgeList();
 };
 
-const systemColors = {
-  "全部知识": "#7c3aed",
-  "Java 核心技术": "#7c3aed",
-  "Spring Boot": "#22c55e",
-  "数据结构与算法": "#f97316",
-  "计算机网络": "#3b82f6",
-  "操作系统": "#2563eb",
-  "数据库系统": "#ef4444",
-  "前端开发": "#ec4899",
-};
-
-const loadKnowledgeSystems = async () => {
+const loadTagTree = async () => {
   try {
-    const data = await knowledgeAPI.getList({ size: 1000 });
-    const systems = new Map();
-    (data.records || []).forEach((item) => {
-      const systemName = item.systemName || item._name || "未知";
-      const systemId = item.systemId || item._id || "";
-      systems.set(systemId, {
-        id: systemId,
-        name: systemName,
-        count: (systems.get(systemId)?.count || 0) + 1,
-        color: systemColors[systemName] || "#7c3aed",
-        icon: systemIcons[systemName] || Grid,
-      });
-    });
-    knowledgeSystems.value = [
-      { id: "", name: "全部知识", count: data.total || 0, color: "#7c3aed", icon: Grid },
-      ...Array.from(systems.values()),
-    ];
+    const data = await tagsAPI.getTree();
+    tagTree.value = Array.isArray(data) ? data : [];
   } catch (error) {
-    knowledgeSystems.value = [
-      { id: "", name: "全部知识", count: 253, color: "#7c3aed", icon: Grid },
-      { id: "java", name: "Java 核心技术", count: 85, color: "#7c3aed", icon: Notebook },
-      { id: "spring", name: "Spring Boot", count: 67, color: "#22c55e", icon: Document },
-      { id: "algorithm", name: "数据结构与算法", count: 48, color: "#f97316", icon: Folder },
-      { id: "network", name: "计算机网络", count: 32, color: "#3b82f6", icon: MapLocation },
-      { id: "os", name: "操作系统", count: 28, color: "#2563eb", icon: Monitor },
-      { id: "database", name: "数据库系统", count: 39, color: "#ef4444", icon: DataBoard },
-      { id: "frontend", name: "前端开发", count: 21, color: "#ec4899", icon: Brush },
-    ];
+    console.warn("加载标签树失败", error);
+    tagTree.value = [];
   }
 };
 
@@ -799,7 +842,6 @@ const statistics = ref({
 const editForm = ref({
   id: null,
   title: "",
-  systemId: "",
   summary: "",
   contentMd: "",
   importance: 3,
@@ -832,8 +874,8 @@ const loadKnowledgeList = async () => {
     if (filterMastery.value !== "") {
       params.masteryLevel = filterMastery.value;
     }
-    if (selectedSystem.value) {
-      params.systemId = selectedSystem.value;
+    if (selectedTagId.value) {
+      params.tagId = selectedTagId.value;
     }
 
     const data = await knowledgeAPI.getList(params);
@@ -866,34 +908,118 @@ const handleCurrentChange = (current) => {
   loadKnowledgeList();
 };
 
-const selectSystem = (systemId) => {
-  selectedSystem.value = systemId;
-  pagination.value.current = 1;
-  loadKnowledgeList();
+const toggleTagExpand = (tagId) => {
+  if (expandedTags.value.has(tagId)) {
+    expandedTags.value.delete(tagId);
+  } else {
+    expandedTags.value.add(tagId);
+  }
+  expandedTags.value = new Set(expandedTags.value);
 };
 
-const getSystemName = (systemId) => {
-  const system = knowledgeSystems.value.find((s) => s.id === systemId);
-  return system ? getSystemDisplayName(system) : "未知";
+const handleTagContextMenu = (event, tag) => {
+  event.preventDefault();
+  editingTag.value = tag;
+  contextMenuPosition.value = { x: event.clientX + 'px', y: event.clientY + 'px' };
 };
 
-const getSystemDisplayName = (system) => {
-  if (!system) return "未知";
-  if (typeof system === "string") return system;
-  return system.name || system._name || system.title || "未知";
+const contextMenuPosition = ref({ x: '0px', y: '0px' });
+
+const handleCreateTag = () => {
+  editingTag.value = null;
+  showTagDialog.value = true;
 };
 
-const getSystemTagType = (systemId) => {
-  const system = knowledgeSystems.value.find((s) => s.id === systemId);
-  if (!system) return "info";
-  const color = system.color.toLowerCase();
-  if (color.includes("purple") || color.includes("7c3aed")) return "primary";
-  if (color.includes("green") || color.includes("22c55e")) return "success";
-  if (color.includes("orange") || color.includes("f97316")) return "warning";
-  if (color.includes("blue") || color.includes("3b82f6")) return "info";
-  if (color.includes("red") || color.includes("ef4444")) return "danger";
-  return "info";
+const handleEditTag = (tag) => {
+  editingTag.value = tag;
+  showTagDialog.value = true;
 };
+
+const handleTagSaved = async (formData) => {
+  try {
+    if (editingTag.value) {
+      await tagsAPI.update(editingTag.value.id, formData);
+      ElMessage.success("标签已更新");
+    } else {
+      await tagsAPI.create(formData);
+      ElMessage.success("标签已创建");
+    }
+    showTagDialog.value = false;
+    editingTag.value = null;
+    await loadTagTree();
+  } catch (e) {
+    ElMessage.error((editingTag.value ? "更新" : "创建") + "失败：" + (e.message || "未知错误"));
+  }
+};
+
+const handleDeleteTag = async (tag) => {
+  const childCount = tag.children?.length || 0;
+  const nodeCount = tag.nodeCount || 0;
+  let message = `确定要删除标签"${tag.tagName}"吗？`;
+  if (childCount > 0) {
+    message += `\n该标签下有 ${childCount} 个子标签，删除后子标签将变为顶级标签。`;
+  }
+  if (nodeCount > 0) {
+    message += `\n该标签已被 ${nodeCount} 个知识点使用，删除后这些知识点将失去此标签。`;
+  }
+  try {
+    await ElMessageBox.confirm(message, "确认删除", {
+      confirmButtonText: "确定删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    await tagsAPI.delete(tag.id);
+    ElMessage.success("标签已删除");
+    if (selectedTagId.value === tag.id) {
+      selectedTagId.value = "";
+      loadKnowledgeList();
+    }
+    await loadTagTree();
+  } catch (e) {
+    if (e !== "cancel") {
+      ElMessage.error("删除失败：" + (e.message || "未知错误"));
+    }
+  }
+};
+
+const renderTagNode = (tag, depth) => {
+  const hasChildren = tag.children && tag.children.length > 0;
+  const isExpanded = expandedTags.value.has(tag.id);
+  return {
+    ...tag,
+    _depth: depth,
+    _hasChildren: hasChildren,
+    _isExpanded: isExpanded,
+  };
+};
+
+const flatTagList = computed(() => {
+  const result = [];
+  const walk = (tags, depth) => {
+    for (const tag of tags) {
+      result.push(renderTagNode(tag, depth));
+      if (tag.children && tag.children.length > 0 && expandedTags.value.has(tag.id)) {
+        walk(tag.children, depth + 1);
+      }
+    }
+  };
+  walk(tagTree.value, 0);
+  return result;
+});
+
+const allFlatTags = computed(() => {
+  const result = [];
+  const walk = (tags) => {
+    for (const tag of tags) {
+      result.push(tag);
+      if (tag.children && tag.children.length > 0) {
+        walk(tag.children);
+      }
+    }
+  };
+  walk(tagTree.value);
+  return result;
+});
 
 const getMasteryPercentage = (level) => {
   return (level / 5) * 100;
@@ -946,7 +1072,6 @@ const editKnowledge = async (knowledge) => {
   editForm.value = {
     id: knowledge.id,
     title: knowledge.title,
-    systemId: knowledge.systemId || "",
     summary: knowledge.summary,
     contentMd: knowledge.contentMd || "",
     importance: knowledge.importance,
@@ -958,12 +1083,27 @@ const handleAddKnowledge = () => {
   editForm.value = {
     id: null,
     title: "",
-    systemId: "",
     summary: "",
     contentMd: "",
     importance: 3,
   };
   showEditDialog.value = true;
+};
+
+const fetchEditTagSuggest = () => {
+  editTagSuggestRef.value?.fetchSuggestions();
+};
+
+const onDetailTagChanged = async () => {
+  if (currentKnowledge.value?.id) {
+    try {
+      const updatedTags = await tagsAPI.getByNode(currentKnowledge.value.id);
+      currentKnowledge.value = { ...currentKnowledge.value, tags: Array.isArray(updatedTags) ? updatedTags : [] };
+    } catch (e) {
+      console.warn("刷新标签失败", e);
+    }
+  }
+  loadKnowledgeList();
 };
 
 const handleSave = async () => {
@@ -1009,10 +1149,6 @@ const onEditDialogClosed = () => {
 
 const handleImport = () => {
   ElMessage.info("导入功能开发中");
-};
-
-const handleAddSystem = () => {
-  ElMessage.info("新建体系功能开发中");
 };
 
 const handleAdvancedFilter = () => {
@@ -1259,7 +1395,7 @@ const handleTabChange = (tab) => {
 };
 
 onMounted(() => {
-  loadKnowledgeSystems();
+  loadTagTree();
   loadKnowledgeList();
   loadPendingItems();
 });
@@ -1565,6 +1701,87 @@ onBeforeUnmount(() => {
   color: var(--color-primary);
 }
 
+/* ---- Tag Tree ---- */
+.tag-expand-btn {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.tag-expand-btn:hover {
+  color: var(--color-primary);
+}
+
+.tag-expand-spacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.tag-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-empty {
+  padding: 24px 12px;
+  text-align: center;
+}
+
+.tag-empty-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.tag-empty-hint {
+  font-size: 12px;
+  color: var(--text-placeholder);
+  margin: 0;
+}
+
+/* ---- Tag Context Menu ---- */
+.tag-context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px 0;
+  z-index: 2000;
+  min-width: 140px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-regular);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu-item.danger {
+  color: #ef4444;
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
 .knowledge-content {
   flex: 1;
   display: flex;
@@ -1638,7 +1855,7 @@ onBeforeUnmount(() => {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: var(--spacing-md);
 }
@@ -1681,7 +1898,12 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-tags {
   margin-bottom: var(--spacing-md);
+  min-height: 26px;
 }
 
 .meta-item {

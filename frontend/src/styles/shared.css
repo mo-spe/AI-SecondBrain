@@ -1,6 +1,6 @@
 /* ============================================================
-   UI/UX Pro Max — Shared Styles & Keyframes
-   Extracted from SFC scoped blocks to eliminate duplication
+   UI/UX Pro Max — Shared Styles & Keyframes v3.0
+   Anti-template: no generic gradients, distinctive card patterns
    ============================================================ */
 
 /* ============================================================
@@ -8,30 +8,18 @@
    ============================================================ */
 
 @keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-20px); }
+  from { opacity: 0; transform: translateY(-16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.05); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25%      { transform: translate(20px, -30px) scale(1.1); }
-  50%      { transform: translate(-20px, 20px) scale(0.9); }
-  75%      { transform: translate(30px, 10px) scale(1.05); }
-}
-
-@keyframes logoFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-10px); }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes rotating {
@@ -53,108 +41,99 @@
   80%      { transform: translateX(4px); }
 }
 
-@keyframes shine {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-@keyframes twinkle {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-
 /* ============================================================
-   SHARED BACKGROUND GRADIENT (was in 12 files)
+   SURFACE PATTERNS — distinctive, not generic
    ============================================================ */
 
-.background-gradient {
+/* Subtle page surface — replaces full-page gradients */
+.page-surface {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--gradient-primary);
+  background:
+    linear-gradient(180deg, var(--bg-page) 0%, color-mix(in srgb, var(--bg-page) 97%, var(--color-primary) 3%) 100%);
   z-index: 0;
 }
 
 /* ============================================================
-   SHARED WELCOME CARD (was in 11 files)
+   PAGE HEADER — editorial, no icon circles
    ============================================================ */
 
-.welcome-card {
-  background: var(--bg-white-alpha-10);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-3xl);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xl);
-  border: 1px solid var(--border-white-translucent);
-  box-shadow: var(--shadow-md);
-  animation: fadeInDown 0.6s ease-out;
+.page-header-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-lighter);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  margin-bottom: var(--spacing-xl);
+  transition: border-color var(--transition-base);
 }
 
-.welcome-icon {
-  background: var(--bg-white-alpha-20);
-  border-radius: var(--radius-full);
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-.welcome-content {
-  flex: 1;
-}
-
-.welcome-title {
-  font-size: var(--font-size-5xl);
+.page-header-card .page-title {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-4xl);
   font-weight: var(--font-weight-bold);
-  color: white;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+  letter-spacing: -0.02em;
 }
 
-.welcome-subtitle {
-  font-size: var(--font-size-lg);
-  color: rgba(255, 255, 255, 0.9);
+.page-header-card .page-subtitle {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
   margin: 0;
+  line-height: var(--line-height-relaxed);
 }
 
 /* ============================================================
-   SHARED CARD PATTERNS
+   CARD PATTERNS — warm, distinctive
    ============================================================ */
 
-.card-glass {
-  background: var(--bg-card-translucent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+/* Standard card — subtle, with optional left accent */
+.card-surface {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-2xl);
+  padding: var(--spacing-xl);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.card-surface:hover {
+  border-color: var(--border-base);
   box-shadow: var(--shadow-md);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-.card-glass:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-primary-hover);
+/* Accent card — left border like a book margin */
+.card-accent {
+  background: var(--bg-card);
+  border: 1px solid var(--border-lighter);
+  border-left: 2px solid var(--color-accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: var(--spacing-lg);
+  transition: border-left-color var(--transition-base);
 }
 
-.card-header {
+.card-accent:hover {
+  border-left-color: var(--color-primary);
+}
+
+/* Card header — clean divider */
+.card-divider {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-md);
-  border-bottom: 2px solid var(--border-lighter);
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-lighter);
 }
 
-.card-header h3 {
+.card-divider h3 {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   margin: 0;
   display: flex;
@@ -162,61 +141,77 @@
   gap: var(--spacing-sm);
 }
 
-.card-header h3 .el-icon {
+.card-divider h3 .el-icon {
   color: var(--color-primary);
 }
 
 /* ============================================================
-   SHARED LIST ITEM
+   STAT CARDS — dashboard
+   ============================================================ */
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  transition: border-color var(--transition-base);
+}
+
+.stat-card:hover {
+  border-color: var(--color-primary);
+}
+
+.stat-card .stat-accent {
+  width: 4px;
+  height: 48px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.stat-card .stat-accent.primary { background: var(--color-primary); }
+.stat-card .stat-accent.success { background: var(--color-success); }
+.stat-card .stat-accent.warning { background: var(--color-accent); }
+.stat-card .stat-accent.danger  { background: var(--color-danger); }
+
+.stat-card .stat-content { flex: 1; }
+
+.stat-card .stat-value {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.stat-card .stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+/* ============================================================
+   LIST ITEM — subtle slide
    ============================================================ */
 
 .list-item {
   background: var(--bg-list-item);
   border-radius: var(--radius-md);
   padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   cursor: pointer;
-  transition: background var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .list-item:hover {
   background: var(--bg-hover);
-  transform: translateX(4px);
-  box-shadow: var(--shadow-md);
+  transform: translateX(3px);
 }
 
 /* ============================================================
-   SHARED STAT ICON WRAPPER (Dashboard)
-   ============================================================ */
-
-.stat-icon-wrapper {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-icon-wrapper.primary { background: var(--gradient-primary); color: white; }
-.stat-icon-wrapper.success { background: var(--gradient-success); color: white; }
-.stat-icon-wrapper.warning { background: var(--gradient-warning); color: white; }
-.stat-icon-wrapper.danger  { background: var(--gradient-danger);  color: white; }
-
-.stat-value {
-  font-size: var(--font-size-5xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.stat-label {
-  font-size: var(--font-size-base);
-  color: var(--text-secondary);
-}
-
-/* ============================================================
-   SHARED INPUT WRAPPER (Login / Register)
+   INPUT — warm focus
    ============================================================ */
 
 .input-wrapper {
@@ -226,19 +221,19 @@
   border-radius: var(--radius-md);
   padding: 12px 16px;
   transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 }
 
 .input-wrapper:focus-within {
-  background: white;
+  background: var(--bg-card);
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-focus-ring-lg);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .input-icon {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   color: var(--color-primary);
-  margin-right: var(--spacing-lg);
+  margin-right: var(--spacing-md);
   flex-shrink: 0;
 }
 
@@ -251,15 +246,16 @@
 .text-secondary         { color: var(--text-secondary); }
 .text-muted             { color: var(--text-muted); }
 
-.fade-in-down           { animation: fadeInDown 0.6s ease-out; }
-.fade-in-up             { animation: fadeInUp 0.6s ease-out; }
+.fade-in-down           { animation: fadeInDown 0.5s ease-out; }
+.fade-in-up             { animation: fadeInUp 0.5s ease-out; }
+.fade-in                { animation: fadeIn 0.4s ease-out; }
 
 .spinner                { animation: rotating 1.5s linear infinite; }
 .success-animate        { animation: successPulse 0.4s ease-out; }
 .error-shake            { animation: shake 0.4s ease-in-out; }
 
 /* ============================================================
-   GLOBAL FOCUS-VISIBLE STYLES
+   ACCESSIBILITY
    ============================================================ */
 
 *:focus-visible {
@@ -267,24 +263,6 @@
   outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
-
-/* ============================================================
-   GPU ACCELERATION HINTS
-   ============================================================ */
-
-.page-wrapper,
-.background-gradient,
-.welcome-card,
-.stat-card,
-.content-card,
-.chart-card {
-  will-change: transform;
-  transform: translateZ(0);
-}
-
-/* ============================================================
-   GLOBAL MEDIA QUERIES
-   ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
   *,

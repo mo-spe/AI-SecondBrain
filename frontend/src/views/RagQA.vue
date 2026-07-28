@@ -225,20 +225,30 @@ const handleAsk = async () => {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      if (value) {
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        if (line.startsWith("event:")) {
-          currentEvent = line.substring(6).trim();
-        } else if (line.startsWith("data:")) {
-          const data = line.substring(5).trim();
-          dispatchEvent(currentEvent, data, startTime);
-          currentEvent = "message";
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            currentEvent = line.substring(6).trim();
+          } else if (line.startsWith("data:")) {
+            const data = line.substring(5).trim();
+            dispatchEvent(currentEvent, data, startTime);
+            currentEvent = "message";
+          }
         }
+      }
+
+      if (done) break;
+    }
+
+    if (buffer.trim()) {
+      const line = buffer.trim();
+      if (line.startsWith("data:")) {
+        dispatchEvent(currentEvent, line.substring(5).trim(), startTime);
       }
     }
   } catch (error) {

@@ -1,54 +1,54 @@
 /* ============================================================
-   Dark Mode — warmth-adjusted, no artificial glow
+   Dark Mode — warmth-adjusted, parchment inversion
    Activated via [data-theme="dark"] on <html>
    ============================================================ */
 
 [data-theme="dark"] {
   /* Backgrounds — warm dark, not cold blue */
-  --bg-page: #1C1E1C;
-  --bg-card: #252825;
-  --bg-card-translucent: rgba(37, 40, 37, 0.95);
-  --bg-input: #2D302D;
-  --bg-hover: #2D302D;
-  --bg-list-item: #252825;
+  --bg-page: #1B1B18;
+  --bg-card: #232320;
+  --bg-card-translucent: rgba(35, 35, 32, 0.97);
+  --bg-input: #2A2A26;
+  --bg-hover: #2A2A26;
+  --bg-list-item: #232320;
   --bg-overlay: rgba(0, 0, 0, 0.6);
-  --bg-sidebar: #1C1E1C;
-  --bg-sidebar-hover: #2D302D;
+  --bg-sidebar: #1B1B18;
+  --bg-sidebar-hover: #2A2A26;
 
   /* Text */
-  --text-primary: #E8E5DF;
-  --text-regular: #C5C2BA;
-  --text-secondary: #96968E;
-  --text-muted: #7A7A72;
-  --text-placeholder: #6A6A62;
+  --text-primary: #E8E4DC;
+  --text-regular: #C5C0B6;
+  --text-secondary: #969286;
+  --text-muted: #7A766C;
+  --text-placeholder: #6A665C;
 
   /* Borders */
-  --border-base: #3A3D38;
-  --border-light: #30332E;
-  --border-lighter: #2A2D28;
+  --border-base: #3A3832;
+  --border-light: #30302A;
+  --border-lighter: #2A2A24;
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-primary: 0 4px 12px rgba(45, 90, 75, 0.2);
-  --shadow-primary-hover: 0 12px 40px rgba(45, 90, 75, 0.2);
+  --shadow-primary: 0 4px 12px rgba(43, 95, 75, 0.2);
+  --shadow-primary-hover: 0 12px 40px rgba(43, 95, 75, 0.2);
   --shadow-dropdown: 0 12px 32px rgba(0, 0, 0, 0.5);
-  --shadow-focus-ring: 0 0 0 2px rgba(74, 140, 112, 0.3);
+  --shadow-focus-ring: 0 0 0 2px rgba(74, 140, 110, 0.3);
 
   /* Semantic backgrounds */
   --color-success-bg: rgba(59, 125, 90, 0.2);
   --color-success-border: rgba(59, 125, 90, 0.35);
-  --color-warning-bg: rgba(212, 155, 78, 0.2);
-  --color-warning-border: rgba(212, 155, 78, 0.35);
-  --color-danger-bg: rgba(196, 78, 61, 0.2);
-  --color-danger-border: rgba(196, 78, 61, 0.35);
-  --color-info-bg: rgba(74, 124, 150, 0.2);
-  --color-info-border: rgba(74, 124, 150, 0.35);
+  --color-warning-bg: rgba(184, 114, 58, 0.2);
+  --color-warning-border: rgba(184, 114, 58, 0.35);
+  --color-danger-bg: rgba(184, 68, 58, 0.2);
+  --color-danger-border: rgba(184, 68, 58, 0.35);
+  --color-info-bg: rgba(74, 120, 150, 0.2);
+  --color-info-border: rgba(74, 120, 150, 0.35);
 
-  /* Alpha overlays — redefine to remove old vars */
-  --color-primary-alpha-10: rgba(45, 90, 75, 0.12);
-  --color-primary-alpha-15: rgba(45, 90, 75, 0.18);
-  --color-primary-alpha-20: rgba(45, 90, 75, 0.25);
-  --color-accent-alpha-10: rgba(212, 155, 78, 0.12);
+  /* Alpha overlays */
+  --color-primary-alpha-10: rgba(43, 95, 75, 0.14);
+  --color-primary-alpha-15: rgba(43, 95, 75, 0.20);
+  --color-primary-alpha-20: rgba(43, 95, 75, 0.28);
+  --color-accent-alpha-10: rgba(184, 114, 58, 0.14);
 }

@@ -104,28 +104,28 @@
           <div class="actions-grid">
             <div class="action-card purple" @click="router.push('/review')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><Document /></el-icon>
+                <el-icon size="28" color="#7c3aed"><Document /></el-icon>
               </div>
               <div class="action-title">开始复习</div>
               <div class="action-desc">智能安排复习计划</div>
             </div>
             <div class="action-card blue" @click="router.push('/chat')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><Plus /></el-icon>
+                <el-icon size="28" color="#3b82f6"><Plus /></el-icon>
               </div>
               <div class="action-title">生成复习卡片</div>
               <div class="action-desc">AI 智能生成卡片</div>
             </div>
             <div class="action-card green" @click="router.push('/knowledge')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><Grid /></el-icon>
+                <el-icon size="28" color="#10b981"><Grid /></el-icon>
               </div>
               <div class="action-title">知识点管理</div>
               <div class="action-desc">构建知识体系</div>
             </div>
             <div class="action-card orange" @click="router.push('/report')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><TrendCharts /></el-icon>
+                <el-icon size="28" color="#f59e0b"><TrendCharts /></el-icon>
               </div>
               <div class="action-title">学习统计</div>
               <div class="action-desc">查看学习数据</div>
@@ -432,7 +432,8 @@ onMounted(() => {
 }
 
 .section-title {
-  font-size: var(--font-size-lg);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
@@ -444,48 +445,66 @@ onMounted(() => {
 
 .learning-overview-section {
   background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
 }
 
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
 }
 
 .overview-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
   padding: var(--spacing-lg);
   background: var(--bg-page);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
 }
 
+.overview-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.overview-card.review::before  { background: var(--color-primary); }
+.overview-card.completed::before { background: var(--color-success); }
+.overview-card.accuracy::before  { background: var(--color-accent); }
+.overview-card.streak::before    { background: var(--color-info); }
+
 .card-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  opacity: 0.7;
 }
 
 .card-value {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
-  margin-bottom: 2px;
+  line-height: 1.1;
 }
 
 .card-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--text-regular);
+  margin-top: 2px;
 }
 
 .card-sub {
@@ -495,15 +514,15 @@ onMounted(() => {
 
 .quick-actions-section {
   background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
 }
 
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
 }
 
 .action-card {
@@ -511,53 +530,44 @@ onMounted(() => {
   flex-direction: column;
   align-items: flex-start;
   padding: var(--spacing-lg);
-  border-radius: var(--radius-lg);
+  background: var(--bg-page);
+  border: 1px solid var(--border-lighter);
+  border-left: 3px solid;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   cursor: pointer;
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  transition: transform var(--transition-fast), border-color var(--transition-base), background var(--transition-base);
 }
 
 .action-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--border-base);
+  background: var(--bg-hover);
 }
 
-.action-card.purple {
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-}
-
-.action-card.blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-}
-
-.action-card.green {
-  background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
-}
-
-.action-card.orange {
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-}
+.action-card.purple { border-left-color: #7c3aed; }
+.action-card.blue   { border-left-color: #3b82f6; }
+.action-card.green  { border-left-color: #10b981; }
+.action-card.orange { border-left-color: #f59e0b; }
 
 .action-icon {
-  width: 56px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .action-title {
-  font-size: var(--font-size-base);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
-  color: white;
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .action-desc {
   font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
 }
 
 .bottom-section {
@@ -569,9 +579,9 @@ onMounted(() => {
 .review-center-card,
 .knowledge-management-card {
   background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
 }
@@ -580,11 +590,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-lighter);
 }
 
 .card-title {
-  font-size: var(--font-size-base);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
