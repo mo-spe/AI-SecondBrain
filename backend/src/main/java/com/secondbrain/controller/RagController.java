@@ -99,6 +99,9 @@ public class RagController {
                                         .data(event.getData()));
                                 break;
                             case DONE:
+                                emitter.send(SseEmitter.event()
+                                        .name("done")
+                                        .data("completed"));
                                 emitter.complete();
                                 break;
                             case ERROR:
