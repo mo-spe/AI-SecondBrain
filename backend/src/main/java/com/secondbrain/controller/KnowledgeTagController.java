@@ -1,26 +1,22 @@
 package com.secondbrain.controller;
 
 import com.secondbrain.common.Result;
+import com.secondbrain.dto.TagSuggestion;
 import com.secondbrain.entity.KnowledgeTag;
 import com.secondbrain.service.KnowledgeTagService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 知识标签控制器.
  *
- * <p>提供标签的 CRUD 及节点关联操作，支撑领域排行榜的标签筛选。</p>
+ * <p>提供标签的 CRUD、层级树构建、AI建议及节点关联操作。</p>
  */
 @RestController
 @RequestMapping("/tags")
@@ -34,10 +30,17 @@ public class KnowledgeTagController {
     }
 
     @GetMapping
-    @Operation(summary = "获取用户的所有标签")
+    @Operation(summary = "获取用户的所有标签（扁平列表）")
     public Result<List<KnowledgeTag>> listMyTags(HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         return Result.success(knowledgeTagService.listByUser(userId));
+    }
+
+    @GetMapping("/tree")
+    @Operation(summary = "获取用户的标签树（含层级结构和知识点数量）")
+    public Result<List<KnowledgeTag>> listTree(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        return Result.success(knowledgeTagService.listTreeByUser(userId));
     }
 
     @GetMapping("/all")
@@ -51,9 +54,23 @@ public class KnowledgeTagController {
     public Result<KnowledgeTag> create(
             @Parameter(description = "标签名称") @RequestParam String tagName,
             @Parameter(description = "标签颜色") @RequestParam(required = false) String tagColor,
+            @Parameter(description = "父标签ID") @RequestParam(required = false) Long parentId,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        return Result.success("创建成功", knowledgeTagService.create(tagName, tagColor, userId));
+        return Result.success("创建成功", knowledgeTagService.create(tagName, tagColor, parentId, userId));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新标签")
+    public Result<KnowledgeTag> update(
+            @Parameter(description = "标签ID") @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        String tagName = (String) body.get("tagName");
+        String tagColor = (String) body.get("tagColor");
+        Long parentId = body.get("parentId") != null ? ((Number) body.get("parentId")).longValue() : null;
+        return Result.success("更新成功", knowledgeTagService.update(id, tagName, tagColor, parentId, userId));
     }
 
     @DeleteMapping("/{id}")
@@ -88,5 +105,19 @@ public class KnowledgeTagController {
     public Result<List<KnowledgeTag>> listByNode(
             @Parameter(description = "知识节点ID") @PathVariable Long nodeId) {
         return Result.success(knowledgeTagService.listByNode(nodeId));
+    }
+
+    @PostMapping("/ai-suggest")
+    @Operation(summary = "AI建议标签")
+    public Result<List<TagSuggestion>> aiSuggest(
+            @RequestBody Map<String, String> body,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        String title = body.get("title");
+        String summary = body.getOrDefault("summary", "");
+        if (title == null || title.isBlank()) {
+            return Result.success(List.of());
+        }
+        return Result.success(knowledgeTagService.suggestTags(title, summary, userId));
     }
 }

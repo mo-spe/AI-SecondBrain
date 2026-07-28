@@ -23,9 +23,10 @@ public interface KnowledgeService {
      * @param importance 重要程度
      * @param masteryLevel 掌握程度
      * @param workspaceId 工作区ID
+     * @param tagId 标签ID（可选，筛选包含该标签的知识点）
      * @return 知识节点分页
      */
-    Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId);
+    Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId);
 
     /**
      * 根据ID查询知识点.

@@ -72,10 +72,11 @@ public class KnowledgeController {
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
             @Parameter(description = "重要程度") @RequestParam(required = false) Integer importance,
             @Parameter(description = "掌握程度") @RequestParam(required = false) Integer masteryLevel,
+            @Parameter(description = "标签ID") @RequestParam(required = false) Long tagId,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         Long workspaceId = getWorkspaceId(httpRequest);
-        Page<KnowledgeNodeVO> page = knowledgeService.list(current, size, keyword, userId, importance, masteryLevel, workspaceId);
+        Page<KnowledgeNodeVO> page = knowledgeService.list(current, size, keyword, userId, importance, masteryLevel, workspaceId, tagId);
         return Result.success(page);
     }
 

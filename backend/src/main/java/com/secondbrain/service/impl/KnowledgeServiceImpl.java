@@ -5,13 +5,16 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.dto.KnowledgeReference;
 import com.secondbrain.elasticsearch.KnowledgeDocument;
 import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.entity.KnowledgeNodeTagRelation;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
+import com.secondbrain.mapper.KnowledgeNodeTagRelationMapper;
 import com.secondbrain.service.CacheService;
 import com.secondbrain.service.EbbinghausService;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.KnowledgeService;
 import com.secondbrain.service.GamificationService;
 import com.secondbrain.service.KnowledgeVectorService;
+import com.secondbrain.service.KnowledgeTagService;
 import com.secondbrain.service.RelationRecommendationService;
 import com.secondbrain.service.VectorSearchService;
 import com.secondbrain.vo.KnowledgeNodeVO;
@@ -23,7 +26,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -46,6 +53,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final RelationRecommendationService relationRecommendationService;
     private final KnowledgeVectorService knowledgeVectorService;
     private final GamificationService gamificationService;
+    private final KnowledgeTagService knowledgeTagService;
+    private final KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper;
 
     @Autowired
     public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper,
@@ -55,7 +64,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                                 @Autowired(required = false) ElasticsearchService elasticsearchService,
                                 @Autowired(required = false) RelationRecommendationService relationRecommendationService,
                                 @Autowired(required = false) KnowledgeVectorService knowledgeVectorService,
-                                GamificationService gamificationService) {
+                                GamificationService gamificationService,
+                                KnowledgeTagService knowledgeTagService,
+                                KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.cacheService = cacheService;
         this.ebbinghausService = ebbinghausService;
@@ -64,6 +75,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         this.relationRecommendationService = relationRecommendationService;
         this.knowledgeVectorService = knowledgeVectorService;
         this.gamificationService = gamificationService;
+        this.knowledgeTagService = knowledgeTagService;
+        this.knowledgeNodeTagRelationMapper = knowledgeNodeTagRelationMapper;
     }
 
     /**
@@ -79,7 +92,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      * @return 知识节点分页结果
      */
     @Override
-    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId) {
+    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId) {
         Page<KnowledgeNode> page = new Page<>(current, size);
 
         LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
@@ -93,6 +106,25 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         if (masteryLevel != null) {
             wrapper.eq(KnowledgeNode::getMasteryLevel, masteryLevel);
+        }
+        if (tagId != null) {
+            List<Long> nodeIds = knowledgeNodeTagRelationMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeNodeTagRelation>()
+                    .eq(KnowledgeNodeTagRelation::getTagId, tagId)
+            ).stream()
+                .map(KnowledgeNodeTagRelation::getNodeId)
+                .distinct()
+                .collect(Collectors.toList());
+
+            if (nodeIds.isEmpty()) {
+                Page<KnowledgeNodeVO> emptyPage = new Page<>();
+                emptyPage.setCurrent(current);
+                emptyPage.setSize(size);
+                emptyPage.setTotal(0);
+                emptyPage.setRecords(Collections.emptyList());
+                return emptyPage;
+            }
+            wrapper.in(KnowledgeNode::getId, nodeIds);
         }
         wrapper.orderByDesc(KnowledgeNode::getCreateTime);
 
@@ -476,6 +508,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         KnowledgeNodeVO vo = new KnowledgeNodeVO();
         BeanUtils.copyProperties(node, vo);
+        vo.setTags(knowledgeTagService.listByNode(node.getId()));
         return vo;
     }
 
