@@ -63,28 +63,35 @@
   --border-light: #E5DFD2;
   --border-lighter: #ECE7DC;
 
-  /* ============ SHADOWS — kept minimal per Flat Design ============ */
-  --shadow-sm: 0 1px 2px rgba(30, 27, 24, 0.04);
-  --shadow-md: 0 2px 8px rgba(30, 27, 24, 0.05);
-  --shadow-lg: 0 4px 16px rgba(30, 27, 24, 0.06);
-  --shadow-primary: 0 2px 8px rgba(43, 95, 75, 0.12);
-  --shadow-primary-hover: 0 4px 16px rgba(43, 95, 75, 0.16);
-  --shadow-navbar: 0 1px 0 rgba(30, 27, 24, 0.06);
-  --shadow-dropdown: 0 4px 16px rgba(30, 27, 24, 0.06);
+  /* ============ SHADOWS — Soft UI Evolution: multi-layer, warm ============ */
+  --shadow-sm: 0 1px 2px rgba(30, 27, 24, 0.04), 0 1px 3px rgba(30, 27, 24, 0.03);
+  --shadow-md: 0 2px 4px rgba(30, 27, 24, 0.04), 0 4px 12px rgba(30, 27, 24, 0.05);
+  --shadow-lg: 0 4px 8px rgba(30, 27, 24, 0.04), 0 8px 24px rgba(30, 27, 24, 0.07);
+  --shadow-xl: 0 8px 16px rgba(30, 27, 24, 0.05), 0 16px 48px rgba(30, 27, 24, 0.08);
+  --shadow-primary: 0 2px 4px rgba(43, 95, 75, 0.08), 0 4px 12px rgba(43, 95, 75, 0.12);
+  --shadow-primary-hover: 0 4px 8px rgba(43, 95, 75, 0.10), 0 8px 24px rgba(43, 95, 75, 0.16);
+  --shadow-accent: 0 2px 4px rgba(184, 114, 58, 0.08), 0 4px 12px rgba(184, 114, 58, 0.12);
+  --shadow-navbar: 0 1px 0 rgba(30, 27, 24, 0.06), 0 1px 3px rgba(30, 27, 24, 0.03);
+  --shadow-dropdown: 0 4px 8px rgba(30, 27, 24, 0.04), 0 8px 24px rgba(30, 27, 24, 0.08);
   --shadow-focus-ring: 0 0 0 2px rgba(43, 95, 75, 0.25);
 
-  /* ============ BORDER RADII — slightly sharper, less rounded ============ */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* ============ BORDER RADII — Soft UI: slightly warmer ============ */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
   --radius-full: 50%;
 
-  /* ============ TRANSITIONS ============ */
-  --transition-fast: 0.15s ease;
-  --transition-base: 0.25s ease;
-  --transition-slow: 0.4s ease;
+  /* ============ TRANSITIONS — natural cubic-bezier curves ============ */
+  --ease-out-soft: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: 0.15s var(--ease-out-soft);
+  --transition-base: 0.25s var(--ease-out-soft);
+  --transition-slow: 0.4s var(--ease-out-soft);
+  --transition-spring: 0.3s var(--ease-spring);
 
   /* ============ SPACING — editorial rhythm ============ */
   --spacing-xs: 4px;

@@ -4,7 +4,7 @@
       <aside class="sidebar-panel">
         <div class="user-profile-card">
           <div class="profile-header">
-            <el-icon size="20" color="#f59e0b"><Trophy /></el-icon>
+            <el-icon size="20" color="var(--color-accent)"><Trophy /></el-icon>
             <span class="welcome-text">こんにちは, {{ userStore.userInfo.username }}</span>
             <p class="welcome-subtitle">欢迎回到 AI-SecondBrain</p>
           </div>
@@ -15,27 +15,27 @@
           </div>
           <div class="user-info-list">
             <div class="info-item">
-              <el-icon size="14" color="#7c3aed"><Key /></el-icon>
+              <el-icon size="14" color="var(--color-primary)"><Key /></el-icon>
               <span class="info-label">用户ID</span>
               <span class="info-value">{{ userStore.userInfo.id }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#3b82f6"><Message /></el-icon>
+              <el-icon size="14" color="var(--color-info)"><Message /></el-icon>
               <span class="info-label">邮箱</span>
               <span class="info-value">{{ userStore.userInfo.email }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#10b981"><Phone /></el-icon>
+              <el-icon size="14" color="var(--color-success)"><Phone /></el-icon>
               <span class="info-label">手机号</span>
               <span class="info-value">{{ userStore.userInfo.phone }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#8b5cf6"><Calendar /></el-icon>
+              <el-icon size="14" color="var(--color-primary-light)"><Calendar /></el-icon>
               <span class="info-label">注册时间</span>
               <span class="info-value">{{ formatDate(userStore.userInfo.registerTime) }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#06b6d4"><Clock /></el-icon>
+              <el-icon size="14" color="var(--color-accent-light)"><Clock /></el-icon>
               <span class="info-label">最后登录</span>
               <span class="info-value">{{ formatDate(userStore.userInfo.lastLoginTime) }}</span>
             </div>
@@ -53,7 +53,7 @@
       <main class="main-panel">
         <div class="learning-overview-section">
           <div class="section-header">
-            <el-icon size="20" color="#7c3aed"><Document /></el-icon>
+            <el-icon size="20" color="var(--color-primary)"><Document /></el-icon>
             <span class="section-title">学习概览</span>
             <el-select v-model="timeRange" class="time-select" size="small">
               <el-option label="本周" value="week" />
@@ -64,7 +64,7 @@
           <div class="overview-grid">
             <div class="overview-card review">
               <div class="card-icon">
-                <el-icon size="24" color="#7c3aed"><DocumentCopy /></el-icon>
+                <el-icon size="24" color="var(--color-primary)"><DocumentCopy /></el-icon>
               </div>
               <div class="card-value">{{ statistics.pendingReviewCount }}</div>
               <div class="card-label">待复习</div>
@@ -72,7 +72,7 @@
             </div>
             <div class="overview-card completed">
               <div class="card-icon">
-                <el-icon size="24" color="#22c55e"><CircleCheck /></el-icon>
+                <el-icon size="24" color="var(--color-success)"><CircleCheck /></el-icon>
               </div>
               <div class="card-value">{{ statistics.completedReviewCount }}</div>
               <div class="card-label">已完成</div>
@@ -80,14 +80,14 @@
             </div>
             <div class="overview-card accuracy">
               <div class="card-icon">
-                <el-icon size="24" color="#f97316"><Aim /></el-icon>
+                <el-icon size="24" color="var(--color-accent)"><Aim /></el-icon>
               </div>
               <div class="card-value">{{ accuracy }}%</div>
               <div class="card-label">正确率</div>
             </div>
             <div class="overview-card streak">
               <div class="card-icon">
-                <el-icon size="24" color="#3b82f6"><Medal /></el-icon>
+                <el-icon size="24" color="var(--color-info)"><Medal /></el-icon>
               </div>
               <div class="card-value">{{ streakDays }}</div>
               <div class="card-label">连续天数</div>
@@ -98,37 +98,37 @@
 
         <div class="quick-actions-section">
           <div class="section-header">
-            <el-icon size="20" color="#7c3aed"><Lightning /></el-icon>
+            <el-icon size="20" color="var(--color-primary)"><Lightning /></el-icon>
             <span class="section-title">快捷操作</span>
           </div>
           <div class="actions-grid">
             <div class="action-card purple" @click="router.push('/review')">
               <div class="action-icon">
-                <el-icon size="28" color="#7c3aed"><Document /></el-icon>
+                <el-icon size="28" color="var(--color-primary)"><Document /></el-icon>
               </div>
               <div class="action-title">开始复习</div>
               <div class="action-desc">智能安排复习计划</div>
             </div>
             <div class="action-card blue" @click="router.push('/chat')">
               <div class="action-icon">
-                <el-icon size="28" color="#3b82f6"><Plus /></el-icon>
+                <el-icon size="28" color="var(--color-info)"><Plus /></el-icon>
               </div>
               <div class="action-title">生成复习卡片</div>
               <div class="action-desc">AI 智能生成卡片</div>
             </div>
             <div class="action-card green" @click="router.push('/knowledge')">
               <div class="action-icon">
-                <el-icon size="28" color="#10b981"><Grid /></el-icon>
+                <el-icon size="28" color="var(--color-success)"><Grid /></el-icon>
               </div>
               <div class="action-title">知识点管理</div>
               <div class="action-desc">构建知识体系</div>
             </div>
-            <div class="action-card orange" @click="router.push('/report')">
+            <div class="action-card brass" @click="router.push('/square')">
               <div class="action-icon">
-                <el-icon size="28" color="#f59e0b"><TrendCharts /></el-icon>
+                <el-icon size="28" color="#B8723A"><Platform /></el-icon>
               </div>
-              <div class="action-title">学习统计</div>
-              <div class="action-desc">查看学习数据</div>
+              <div class="action-title">知识广场</div>
+              <div class="action-desc">发现优质知识</div>
             </div>
           </div>
         </div>
@@ -136,9 +136,9 @@
         <div class="bottom-section">
           <div class="review-center-card">
             <div class="card-header">
-              <el-icon size="18" color="#7c3aed"><Clock /></el-icon>
+              <el-icon size="18" color="var(--color-primary)"><Clock /></el-icon>
               <span class="card-title">复习中心</span>
-              <button class="view-all-btn">查看全部</button>
+              <button class="view-all-btn" @click="router.push('/review')">查看全部</button>
             </div>
             <div class="review-progress">
               <div class="progress-info">
@@ -157,7 +157,7 @@
                     cy="50"
                     r="42"
                     fill="none"
-                    stroke="#e2e8f0"
+                    stroke="var(--border-lighter)"
                     stroke-width="8"
                   />
                   <circle
@@ -165,9 +165,9 @@
                     cy="50"
                     r="42"
                     fill="none"
-                    stroke="#7c3aed"
+                    stroke="var(--color-primary)"
                     stroke-width="8"
-                    stroke-linecap="round"
+                    :stroke-linecap="reviewProgressPercent >= 99.9 || reviewProgressPercent <= 0.1 ? 'butt' : 'round'"
                     :stroke-dasharray="264"
                     :stroke-dashoffset="264 * (1 - reviewProgressPercent / 100)"
                     transform="rotate(-90 50 50)"
@@ -178,12 +178,27 @@
             </div>
             <div class="review-stats">
               <div class="review-stat-item">
-                <el-icon size="14" color="#7c3aed"><DocumentCopy /></el-icon>
+                <el-icon size="14" color="var(--color-primary)"><DocumentCopy /></el-icon>
                 <span class="stat-label">待复习卡片</span>
-                <span class="stat-value">{{ statistics.pendingReviewCount }} 个</span>
+                <span class="stat-value">{{ reviewOverview.pendingCount }} 个</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="var(--color-success)"><CircleCheck /></el-icon>
+                <span class="stat-label">已复习</span>
+                <span class="stat-value">{{ reviewOverview.completedCount }} 个</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="var(--color-accent)"><TrendCharts /></el-icon>
+                <span class="stat-label">正确率</span>
+                <span class="stat-value">{{ reviewOverview.accuracy }}%</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="var(--color-warning)"><Medal /></el-icon>
+                <span class="stat-label">连续天数</span>
+                <span class="stat-value">{{ reviewOverview.streakDays }} 天</span>
               </div>
             </div>
-            <button class="start-review-btn">
+            <button class="start-review-btn" @click="router.push('/review')">
               <el-icon size="16"><VideoPlay /></el-icon>
               <span>开始复习</span>
             </button>
@@ -191,7 +206,7 @@
 
           <div class="knowledge-management-card">
             <div class="card-header">
-              <el-icon size="18" color="#7c3aed"><Trophy /></el-icon>
+              <el-icon size="18" color="var(--color-primary)"><Trophy /></el-icon>
               <span class="card-title">知识管理</span>
               <button class="view-all-btn" @click="router.push('/knowledge')">查看全部</button>
             </div>
@@ -266,6 +281,14 @@ const userAvatar = computed(() => {
   return userStore.userInfo.avatar || "";
 });
 
+// 复习概览数据（从 /review/overview 接口获取）
+const reviewOverview = ref({
+  pendingCount: 0,
+  completedCount: 0,
+  accuracy: 0,
+  streakDays: 0,
+});
+
 const reviewProgressPercent = computed(() => {
   if (todayTotal.value === 0) return 0;
   return Math.round((todayCompleted.value / todayTotal.value) * 100);
@@ -307,10 +330,27 @@ const loadTodayCards = async () => {
   }
 };
 
+const loadReviewOverview = async () => {
+  try {
+    const data = await reviewAPI.getOverview();
+    if (data) {
+      reviewOverview.value = {
+        pendingCount: data.todayPending ?? 0,
+        completedCount: data.todayCompleted ?? 0,
+        accuracy: data.totalAccuracy ?? 0,
+        streakDays: data.streakDays ?? 0,
+      };
+    }
+  } catch (error) {
+    console.error("加载复习概览失败:", error);
+  }
+};
+
 onMounted(() => {
   loadStatistics();
   loadAccuracyAndStreak();
   loadTodayCards();
+  loadReviewOverview();
 });
 </script>
 
@@ -543,10 +583,10 @@ onMounted(() => {
   background: var(--bg-hover);
 }
 
-.action-card.purple { border-left-color: #7c3aed; }
-.action-card.blue   { border-left-color: #3b82f6; }
-.action-card.green  { border-left-color: #10b981; }
-.action-card.orange { border-left-color: #f59e0b; }
+.action-card.purple { border-left-color: var(--color-primary); }
+.action-card.blue   { border-left-color: var(--color-info); }
+.action-card.green  { border-left-color: var(--color-success); }
+.action-card.brass  { border-left-color: var(--color-accent); }
 
 .action-icon {
   width: 40px;

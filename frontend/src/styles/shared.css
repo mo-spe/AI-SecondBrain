@@ -98,12 +98,16 @@
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
-  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
 }
 
 .card-surface:hover {
   border-color: var(--border-base);
   box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 /* Accent card — left border like a book margin */
@@ -113,11 +117,16 @@
   border-left: 2px solid var(--color-accent);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: var(--spacing-lg);
-  transition: border-left-color var(--transition-base);
+  transition:
+    border-left-color var(--transition-base),
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
 }
 
 .card-accent:hover {
   border-left-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 /* Card header — clean divider */
@@ -157,11 +166,16 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
-  transition: border-color var(--transition-base);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
 }
 
 .stat-card:hover {
   border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .stat-card .stat-accent {
@@ -285,4 +299,127 @@
   .no-print  { display: none !important; }
   .el-card   { box-shadow: none; border: 1px solid #ddd; }
   .el-button { display: none; }
+}
+
+/* ============================================================
+   SKELETON LOADING — shimmer placeholder
+   ============================================================ */
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-list-item) 25%,
+    var(--bg-hover) 50%,
+    var(--bg-list-item) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s var(--ease-in-out-soft) infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: var(--spacing-sm);
+  border-radius: var(--radius-xs);
+}
+
+.skeleton-text:last-child {
+  width: 60%;
+  margin-bottom: 0;
+}
+
+.skeleton-card {
+  height: 180px;
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================================
+   BUTTON FEEDBACK — tactile press scale
+   ============================================================ */
+
+.el-button:active:not(.is-disabled) {
+  transform: scale(0.97);
+  transition: transform 0.08s var(--ease-out-soft);
+}
+
+.el-button.is-round {
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    filter var(--transition-fast);
+}
+
+/* ============================================================
+   LIST ITEM — staggered entrance
+   ============================================================ */
+
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-item {
+  animation: staggerFadeIn 0.4s var(--ease-out-soft) backwards;
+}
+
+/* ============================================================
+   CARD ENTRANCE — smooth fade-up
+   ============================================================ */
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card-enter {
+  animation: cardEntrance 0.45s var(--ease-out-soft) backwards;
+}
+
+/* ============================================================
+   SCROLLBAR — refined, matching theme
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-base);
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-placeholder);
+}
+
+/* ============================================================
+   SELECTION — themed text selection
+   ============================================================ */
+
+::selection {
+  background: var(--color-primary-alpha-20);
+  color: var(--text-primary);
 }

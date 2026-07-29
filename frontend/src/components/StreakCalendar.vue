@@ -36,10 +36,16 @@ const props = defineProps({
 const days = ref([]);
 
 const cellClass = (day) => {
-  if (!day.hasCheckIn && !day.hasReview) return "level-0";
-  if (day.pointsEarned <= 0) return "level-1";
-  if (day.pointsEarned <= 10) return "level-2";
-  if (day.pointsEarned <= 25) return "level-3";
+  // 颜色级别完全依据当日真实获得的积分（签到 + 复习 + 创建 + 成就等汇总）
+  // hasReview / hasCheckIn 只用于 tooltip 展示，不直接决定颜色
+  const p = day.pointsEarned || 0;
+  // 只要有签到或复习活动，且当日有正积分，最低给到 level-1
+  const active = day.hasCheckIn || day.hasReview;
+  if (p <= 0 && !active) return "level-0";
+  if (p <= 0 && active) return "level-1";  // 有活动但积分 0（旧数据/漏记）
+  if (p <= 8) return "level-1";
+  if (p <= 20) return "level-2";
+  if (p <= 50) return "level-3";
   return "level-4";
 };
 

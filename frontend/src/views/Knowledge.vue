@@ -78,15 +78,27 @@
         >
           <div class="pending-card-header">
             <span class="pending-card-index">知识点 {{ index + 1 }}</span>
-            <el-button
-              type="danger"
-              link
-              size="small"
-              @click="removePendingItem(index)"
-            >
-              <el-icon size="14"><Delete /></el-icon>
-              <span>删除</span>
-            </el-button>
+            <div class="pending-card-actions">
+              <el-button
+                type="success"
+                link
+                size="small"
+                :disabled="!item.title || !item.title.trim()"
+                @click="confirmSinglePending(index)"
+              >
+                <el-icon size="14"><Check /></el-icon>
+                <span>入库</span>
+              </el-button>
+              <el-button
+                type="danger"
+                link
+                size="small"
+                @click="removePendingItem(index)"
+              >
+                <el-icon size="14"><Delete /></el-icon>
+                <span>删除</span>
+              </el-button>
+            </div>
           </div>
           <div class="pending-card-body">
             <div class="pending-field">
@@ -206,6 +218,17 @@
         <el-option label="入门" :value="1" />
         <el-option label="未掌握" :value="0" />
       </el-select>
+      <el-select
+        v-model="filterReviewTarget"
+        placeholder="复习目标"
+        size="default"
+        clearable
+        @change="handleSearch"
+      >
+        <el-option label="全部" value="" />
+        <el-option label="复习目标" :value="1" />
+        <el-option label="非复习目标" :value="0" />
+      </el-select>
       <el-button type="default" size="default" @click="handleAdvancedFilter">
         <el-icon><Filter /></el-icon>
         <span>筛选</span>
@@ -233,12 +256,22 @@
           <div class="stat-change">占比 {{ statistics.highImportanceRatio || 0 }}%</div>
         </div>
       </div>
+      <div class="stat-card cyan">
+        <div class="stat-icon">
+          <el-icon size="24"><MagicStick /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">纳入复习</div>
+          <div class="stat-value">{{ statistics.inReview || 0 }}</div>
+          <div class="stat-change">占比 {{ statistics.inReviewRatio || 0 }}%</div>
+        </div>
+      </div>
       <div class="stat-card green">
         <div class="stat-icon">
           <el-icon size="24"><CircleCheck /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-label">已掌握知识点</div>
+          <div class="stat-label">已掌握</div>
           <div class="stat-value">{{ statistics.mastered || 0 }}</div>
           <div class="stat-change">占比 {{ statistics.masteredRatio || 0 }}%</div>
         </div>
@@ -248,19 +281,9 @@
           <el-icon size="24"><Cherry /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-label">待复习知识点</div>
+          <div class="stat-label">待复习</div>
           <div class="stat-value">{{ statistics.toReview || 0 }}</div>
-          <div class="stat-change">较昨日 <span class="increase">↑{{ statistics.toReviewIncrease || 0 }}</span></div>
-        </div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-icon">
-          <el-icon size="24"><WarningFilled /></el-icon>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">未掌握知识点</div>
-          <div class="stat-value">{{ statistics.notMastered || 0 }}</div>
-          <div class="stat-change">占比 {{ statistics.notMasteredRatio || 0 }}%</div>
+          <div class="stat-change">复习目标中 {{ statistics.reviewPending || 0 }}</div>
         </div>
       </div>
     </div>
@@ -385,9 +408,21 @@
                   </button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item command="generate">
+                      <el-dropdown-item
+                        v-if="knowledge.needReview !== 1"
+                        command="toggleOn"
+                        style="color: var(--el-color-primary); font-weight: var(--font-weight-semibold)"
+                      >
                         <el-icon><MagicStick /></el-icon>
-                        生成复习卡片
+                        纳入复习计划
+                      </el-dropdown-item>
+                      <el-dropdown-item
+                        v-else
+                        command="toggleOff"
+                        style="color: var(--el-color-danger); font-weight: var(--font-weight-semibold)"
+                      >
+                        <el-icon><CircleClose /></el-icon>
+                        取消复习目标
                       </el-dropdown-item>
                       <el-dropdown-item command="delete" divided>
                         <el-icon><Delete /></el-icon>
@@ -417,13 +452,17 @@
                 <el-icon size="12"><Timer /></el-icon>
                 <span :class="['difficulty', knowledge.difficulty]">{{ knowledge.difficulty === 'difficult' ? '困难' : '中等' }}</span>
               </div>
-              <div class="meta-item" v-if="knowledge.status === 'review'">
-                <el-icon size="12"><Clock /></el-icon>
-                <span class="status review">待复习</span>
+              <div class="meta-item" v-if="knowledge.needReview === 0 || knowledge.needReview === undefined">
+                <el-icon size="12"><Finished /></el-icon>
+                <span class="status neutral">非复习目标</span>
               </div>
-              <div class="meta-item" v-else>
+              <div class="meta-item" v-else-if="knowledge.masteryLevel >= 4">
                 <el-icon size="12"><CircleCheck /></el-icon>
                 <span class="status mastered">已掌握</span>
+              </div>
+              <div class="meta-item" v-else>
+                <el-icon size="12"><Clock /></el-icon>
+                <span class="status review">待复习</span>
               </div>
             </div>
             <div class="card-tags">
@@ -436,7 +475,7 @@
                 @remove="loadKnowledgeList"
               />
             </div>
-            <div class="card-progress">
+            <div class="card-progress" v-if="knowledge.needReview === 1">
               <div class="progress-info">
                 <span class="progress-label">掌握进度</span>
                 <span class="progress-value">{{ getMasteryPercentage(knowledge.masteryLevel) }}%</span>
@@ -448,10 +487,34 @@
                 :text-inside="false"
               />
             </div>
+            <div class="card-no-review" v-else>
+              <el-divider content-position="center">未纳入复习计划</el-divider>
+            </div>
             <div class="card-footer">
               <span class="creator">newuser 创建于 {{ formatDate(knowledge.createTime) }}</span>
-              <el-button type="primary" size="small" text @click.stop="handleGenerateCard(knowledge)">
+              <el-button
+                v-if="knowledge.needReview !== 1"
+                class="review-btn review-btn--add"
+                type="primary"
+                size="small"
+                round
+                :loading="knowledge._toggleLoading"
+                @click.stop="handleToggleReviewTarget(knowledge, 1)"
+              >
+                <el-icon style="margin-right: 4px"><Clock /></el-icon>
                 纳入复习
+              </el-button>
+              <el-button
+                v-else
+                class="review-btn review-btn--remove"
+                type="danger"
+                size="small"
+                round
+                :loading="knowledge._toggleLoading"
+                @click.stop="handleToggleReviewTarget(knowledge, 0)"
+              >
+                <el-icon style="margin-right: 4px"><CircleClose /></el-icon>
+                取消复习
               </el-button>
             </div>
           </div>
@@ -521,6 +584,8 @@ import {
   Delete,
   MagicStick,
   ArrowRight,
+  Finished,
+  CircleClose,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -530,6 +595,7 @@ const selectedKnowledgeIds = ref([]);
 const searchKeyword = ref("");
 const filterImportance = ref("");
 const filterMastery = ref("");
+const filterReviewTarget = ref("");
 const selectedTagId = ref("");
 const viewMode = ref("grid");
 const sortBy = ref("newest");
@@ -567,12 +633,12 @@ const statistics = ref({
   total: 253,
   highImportance: 68,
   highImportanceRatio: 26.9,
-  mastered: 102,
-  masteredRatio: 40.3,
-  toReview: 36,
-  toReviewIncrease: 8,
-  notMastered: 115,
-  notMasteredRatio: 45.5,
+  inReview: 42,
+  inReviewRatio: 16.6,
+  mastered: 28,
+  masteredRatio: 11.1,
+  toReview: 14,
+  reviewPending: 28,
   increase: 12,
 });
 
@@ -601,12 +667,14 @@ const loadKnowledgeList = async () => {
     if (selectedTagId.value) {
       params.tagId = selectedTagId.value;
     }
+    if (filterReviewTarget.value !== "") {
+      params.needReview = filterReviewTarget.value;
+    }
 
     const data = await knowledgeAPI.getList(params);
     knowledgeList.value = (data.records || []).map((knowledge) => ({
       ...knowledge,
       difficulty: knowledge.difficulty || "medium",
-      status: knowledge.masteryLevel >= 4 ? "mastered" : "review",
     }));
     pagination.value.total = data.total || 0;
   } catch (error) {
@@ -783,22 +851,49 @@ const handleAdvancedFilter = () => {
 };
 
 const handleGenerateCard = async (knowledge) => {
+  if (knowledge._toggleLoading) return;
+  knowledge._toggleLoading = true;
   try {
-    await reviewAPI.generateReviewCard({ nodeId: knowledge.id, cardType: "choice" });
-    ElMessage.success(`已为"${knowledge.title}"生成复习卡片`);
+    await knowledgeAPI.toggleNeedReview(knowledge.id, 1);
+    ElMessage.success(`已将"${knowledge.title}"纳入复习计划，将开始生成复习卡片`);
+    knowledge.needReview = 1;
+    knowledge.masteryLevel = 0;
+    knowledge.reviewCount = 0;
   } catch (e) {
-    ElMessage.error("生成失败：" + (e.message || "未知错误"));
+    ElMessage.error("操作失败：" + (e.message || "未知错误"));
+  } finally {
+    knowledge._toggleLoading = false;
+  }
+};
+
+const handleToggleReviewTarget = async (knowledge, needReview) => {
+  if (knowledge._toggleLoading) return;
+  knowledge._toggleLoading = true;
+  const action = needReview === 1 ? "纳入复习" : "取消复习";
+  try {
+    await knowledgeAPI.toggleNeedReview(knowledge.id, needReview);
+    const extraInfo = needReview === 1 ? "，将开始生成复习卡片" : "，已清理该知识点的复习卡片";
+    ElMessage.success(`已${action}"${knowledge.title}"${extraInfo}`);
+    knowledge.needReview = needReview;
+    if (needReview === 0) {
+      knowledge.masteryLevel = 0;
+      knowledge.reviewCount = 0;
+    } else {
+      knowledge.masteryLevel = 0;
+      knowledge.reviewCount = 0;
+    }
+  } catch (e) {
+    ElMessage.error("操作失败：" + (e.message || "未知错误"));
+  } finally {
+    knowledge._toggleLoading = false;
   }
 };
 
 const handleCardCommand = async (command, knowledge) => {
-  if (command === "generate") {
-    try {
-      await reviewAPI.generateReviewCard({ nodeId: knowledge.id, cardType: "choice" });
-      ElMessage.success("复习卡片生成成功");
-    } catch (e) {
-      ElMessage.error("生成失败：" + (e.message || "未知错误"));
-    }
+  if (command === "toggleOn") {
+    await handleToggleReviewTarget(knowledge, 1);
+  } else if (command === "toggleOff") {
+    await handleToggleReviewTarget(knowledge, 0);
   } else if (command === "delete") {
     try {
       await ElMessageBox.confirm(
@@ -932,6 +1027,32 @@ const confirmPending = async () => {
   }
 };
 
+const confirmSinglePending = async (index) => {
+  const item = pendingItems.value[index];
+  if (!item.title || !item.title.trim()) {
+    ElMessage.warning("请先填写知识点标题");
+    return;
+  }
+
+  try {
+    await knowledgeAPI.confirmPendingKnowledge({
+      items: [{
+        pendingId: item.id,
+        title: item.title,
+        summary: item.summary,
+        content: item.content,
+      }],
+      generateCards: pendingGenerateCards.value,
+    });
+    ElMessage.success(`"${item.title}" 已入库`);
+    pendingItems.value.splice(index, 1);
+    pendingCount.value = pendingItems.value.length;
+    loadKnowledgeList();
+  } catch (error) {
+    ElMessage.error("入库失败: " + (error.message || "未知错误"));
+  }
+};
+
 const handleTabChange = (tab) => {
   activeTab.value = tab;
   if (tab === "pending") {
@@ -1062,38 +1183,54 @@ onMounted(() => {
   align-items: center;
   gap: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  border: 1px solid var(--border-lighter);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-light);
 }
 
 .stat-card.purple .stat-icon {
   background: rgba(124, 58, 237, 0.1);
   color: #7c3aed;
 }
+.stat-card.purple:hover { box-shadow: 0 4px 8px rgba(124, 58, 237, 0.08), 0 8px 24px rgba(124, 58, 237, 0.10); }
 
 .stat-card.orange .stat-icon {
   background: rgba(249, 115, 22, 0.1);
   color: #f97316;
 }
+.stat-card.orange:hover { box-shadow: 0 4px 8px rgba(249, 115, 22, 0.08), 0 8px 24px rgba(249, 115, 22, 0.10); }
 
 .stat-card.green .stat-icon {
   background: rgba(34, 197, 94, 0.1);
   color: #22c55e;
 }
+.stat-card.green:hover { box-shadow: 0 4px 8px rgba(34, 197, 94, 0.08), 0 8px 24px rgba(34, 197, 94, 0.10); }
 
 .stat-card.blue .stat-icon {
   background: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
 }
+.stat-card.blue:hover { box-shadow: 0 4px 8px rgba(59, 130, 246, 0.08), 0 8px 24px rgba(59, 130, 246, 0.10); }
+
+.stat-card.cyan .stat-icon {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+}
+.stat-card.cyan:hover { box-shadow: 0 4px 8px rgba(6, 182, 212, 0.08), 0 8px 24px rgba(6, 182, 212, 0.10); }
 
 .stat-card.red .stat-icon {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
+.stat-card.red:hover { box-shadow: 0 4px 8px rgba(239, 68, 68, 0.08), 0 8px 24px rgba(239, 68, 68, 0.10); }
 
 .stat-icon {
   width: 48px;
@@ -1380,14 +1517,19 @@ onMounted(() => {
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-lighter);
   cursor: pointer;
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
   position: relative;
 }
 
 .knowledge-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-light);
 }
 
 .card-checkbox {
@@ -1492,6 +1634,21 @@ onMounted(() => {
   color: #22c55e;
 }
 
+.status.neutral {
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+}
+
+.card-no-review {
+  margin-bottom: var(--spacing-md);
+}
+
+.card-no-review :deep(.el-divider__text) {
+  background: var(--bg-card);
+  color: var(--text-placeholder);
+  font-size: var(--font-size-xs);
+}
+
 .card-progress {
   margin-bottom: var(--spacing-md);
 }
@@ -1524,6 +1681,35 @@ onMounted(() => {
 .creator {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
+}
+
+.review-btn {
+  min-width: 96px;
+  height: 30px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  transition:
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.review-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.review-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.review-btn--add {
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.28);
+}
+
+.review-btn--remove {
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .pagination-wrapper {
@@ -1697,6 +1883,11 @@ onMounted(() => {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
+}
+
+.pending-card-actions {
+  display: flex;
+  gap: var(--spacing-xs);
 }
 
 .pending-card-body {
