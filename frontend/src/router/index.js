@@ -77,8 +77,14 @@ const routes = [
       {
         path: "research",
         name: "Research",
-        component: () => import("@/views/Research.vue"),
+        redirect: "/ai-research",
         meta: { title: "AI学习研究" },
+      },
+      {
+        path: "ai-research",
+        name: "AIResearch",
+        component: () => import("@/views/ResearchWorkspace.vue"),
+        meta: { title: "AI Research Workspace" },
       },
       {
         path: "settings",
