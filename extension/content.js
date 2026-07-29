@@ -298,6 +298,34 @@ class AIChatCollector {
     return formatted.trim();
   }
 
+  /* ============ SVG 图标 ============ */
+  getIcon(name) {
+    const icons = {
+      collect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    };
+    return icons[name] || icons.info;
+  }
+
+  /* ============ Toast 通知 ============ */
+  showToast(message, type = "info", duration = 3500) {
+    const existing = document.querySelectorAll(".aisecondbrain-toast");
+    existing.forEach((t) => t.remove());
+
+    const toast = document.createElement("div");
+    toast.className = `aisecondbrain-toast ${type}`;
+    toast.innerHTML = `${this.getIcon(type)}<span>${message}</span>`;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add("fade-out");
+      setTimeout(() => toast.remove(), 250);
+    }, duration);
+  }
+
   injectCollectButton() {
     if (!this.isSupportedSite()) {
       return;
@@ -314,39 +342,8 @@ class AIChatCollector {
 
     const button = document.createElement("button");
     button.id = "ai-secondbrain-collect-btn";
-    button.innerHTML = "📥 采集到知识库";
-    button.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 999999;
-      padding: 10px 18px;
-      background: #10B981;
-      color: #FFFFFF;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
-      transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    `;
-
-    button.addEventListener("mouseenter", () => {
-      button.style.background = "#059669";
-      button.style.transform = "translateY(-2px)";
-      button.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1)";
-    });
-
-    button.addEventListener("mouseleave", () => {
-      button.style.background = "#10B981";
-      button.style.transform = "translateY(0)";
-      button.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)";
-    });
+    button.className = "aisecondbrain-save-btn";
+    button.innerHTML = `${this.getIcon("collect")} 采集到知识库`;
 
     button.addEventListener("click", () => {
       this.collectAndSend();
@@ -376,14 +373,14 @@ class AIChatCollector {
 
   async collectAndSend() {
     const button = document.getElementById("ai-secondbrain-collect-btn");
-    button.innerHTML = "⏳ 采集中...";
+    button.innerHTML = '<span class="spinner"></span> 采集中...';
     button.disabled = true;
 
     try {
       const chatData = this.extractChatContent();
 
       if (!chatData) {
-        alert("未能提取到对话内容，请确保页面已加载完成");
+        this.showToast("未能提取到对话内容，请确保页面已加载完成", "error");
         this.resetButton();
         return;
       }
@@ -394,12 +391,11 @@ class AIChatCollector {
         const token = await this.getStoredToken();
 
         if (!token) {
-          alert("❌ 请先在插件弹窗中登录");
+          this.showToast("请先在插件弹窗中登录", "error");
           this.resetButton();
           return;
         }
 
-        // 读取插件弹窗中预设的采集设置
         const settings = await this.getCollectSettings();
 
         const response = await fetch(`${API_BASE_URL}/chat/collect`, {
@@ -420,22 +416,21 @@ class AIChatCollector {
         const result = await response.json();
 
         if (response.ok && result.code === 200) {
-          // 根据设置给出不同的成功提示
           if (settings.extractKnowledge !== false) {
-            alert("✅ 采集成功！AI 正在提取知识点，请前往知识库「待确认」页签审核");
+            this.showToast("采集成功！AI 正在提取知识点，请前往知识库「待确认」页签审核", "success", 5000);
           } else {
-            alert("✅ 采集成功！对话已保存到知识库");
+            this.showToast("采集成功！对话已保存到知识库", "success");
           }
         } else {
-          alert("❌ 采集失败：" + (result.message || "未知错误"));
+          this.showToast("采集失败：" + (result.message || "未知错误"), "error");
         }
       } catch (apiError) {
         console.error("API 请求失败:", apiError);
-        alert("❌ 采集失败：" + apiError.message);
+        this.showToast("采集失败：" + apiError.message, "error");
       }
     } catch (error) {
       console.error("采集失败:", error);
-      alert("❌ 采集失败：" + error.message);
+      this.showToast("采集失败：" + error.message, "error");
     } finally {
       this.resetButton();
     }
@@ -478,28 +473,23 @@ class AIChatCollector {
               chrome.runtime.lastError.message ===
               "Extension context invalidated."
             ) {
-              console.error("扩展上下文已失效");
-              alert("❌ 扩展已更新，请刷新页面后重试");
+              this.showToast("扩展已更新，请刷新页面后重试", "error");
               resolve(null);
             } else {
-              console.error("其他错误:", chrome.runtime.lastError.message);
-              alert("❌ 扩展通信失败，请刷新页面后重试");
+              this.showToast("扩展通信失败，请刷新页面后重试", "error");
               resolve(null);
             }
           } else {
             if (response && response.success && response.token) {
-              console.log("Token 获取成功");
               resolve(response.token);
             } else {
-              console.error("Token 获取失败:", response);
-              alert("❌ 请先在插件弹窗中登录");
+              this.showToast("请先在插件弹窗中登录", "error");
               resolve(null);
             }
           }
         });
       } else {
-        console.error("Chrome Runtime API 不可用");
-        alert("❌ 扩展API不可用，请检查扩展是否正常加载");
+        this.showToast("扩展API不可用，请检查扩展是否正常加载", "error");
         resolve(null);
       }
     });
@@ -507,8 +497,10 @@ class AIChatCollector {
 
   resetButton() {
     const button = document.getElementById("ai-secondbrain-collect-btn");
-    button.innerHTML = "📥 采集到知识库";
-    button.disabled = false;
+    if (button) {
+      button.innerHTML = `${this.getIcon("collect")} 采集到知识库`;
+      button.disabled = false;
+    }
   }
 }
 

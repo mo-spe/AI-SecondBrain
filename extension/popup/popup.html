@@ -12,52 +12,93 @@
     }
 
     :root {
-      --bg-primary: #0B1120;
-      --bg-surface: #131C31;
-      --bg-elevated: #1C2942;
-      --accent: #10B981;
-      --accent-hover: #059669;
-      --accent-soft: rgba(16, 185, 129, 0.12);
-      --text-primary: #E2E8F0;
+      /* 深色主题 — 多层背景 */
+      --bg-base: #0A0F1A;
+      --bg-surface: #111827;
+      --bg-elevated: #1A2332;
+      --bg-input: #0D1420;
+
+      /* 品牌色 — 青绿色系 */
+      --accent: #14B8A6;
+      --accent-hover: #0D9488;
+      --accent-active: #0F766E;
+      --accent-soft: rgba(20, 184, 166, 0.12);
+      --accent-glow: rgba(20, 184, 166, 0.25);
+
+      /* 文字色 */
+      --text-primary: #F1F5F9;
       --text-secondary: #94A3B8;
       --text-muted: #64748B;
+
+      /* 边框 */
       --border: #1E293B;
-      --border-focus: #10B981;
-      --success: #10B981;
+      --border-hover: #334155;
+      --border-focus: #14B8A6;
+
+      /* 语义色 */
+      --success: #22C55E;
+      --success-soft: rgba(34, 197, 94, 0.12);
       --error: #EF4444;
-      --radius: 10px;
-      --radius-sm: 6px;
+      --error-soft: rgba(239, 68, 68, 0.12);
+      --warning: #F59E0B;
+      --warning-soft: rgba(245, 158, 11, 0.12);
+
+      /* 圆角 */
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 5px;
+
+      /* 阴影 — 多层柔和 */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
+      --shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+      --shadow-accent: 0 2px 6px rgba(20, 184, 166, 0.15), 0 4px 16px rgba(20, 184, 166, 0.2);
+      --shadow-focus: 0 0 0 3px var(--accent-soft);
+
+      /* 过渡曲线 */
+      --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --tr-fast: 0.15s var(--ease-out);
+      --tr-base: 0.25s var(--ease-out);
     }
 
     body {
       width: 380px;
       min-height: 520px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-base);
       color: var(--text-primary);
       font-size: 13px;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Header */
+    /* ============ Header ============ */
     .header {
-      padding: 20px 24px 16px;
+      padding: 18px 20px 14px;
       display: flex;
       align-items: center;
       gap: 12px;
       border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-base) 100%);
     }
 
     .header-icon {
       width: 36px;
       height: 36px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #10B981 0%, #0EA5E9 100%);
+      border-radius: 10px;
+      background: linear-gradient(135deg, #14B8A6 0%, #0EA5E9 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
       flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+    }
+
+    .header-icon svg {
+      width: 20px;
+      height: 20px;
+      color: #FFFFFF;
     }
 
     .header-text {
@@ -78,18 +119,29 @@
       margin-top: 1px;
     }
 
-    /* Content */
+    /* ============ Content ============ */
     .content {
-      padding: 20px 24px;
+      padding: 16px 20px 20px;
     }
 
-    /* Section */
+    /* ============ Section ============ */
     .section {
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+      animation: sectionEnter 0.35s var(--ease-out) backwards;
+    }
+
+    .section:nth-child(2) { animation-delay: 0.05s; }
+    .section:nth-child(3) { animation-delay: 0.10s; }
+    .section:nth-child(4) { animation-delay: 0.15s; }
+
+    @keyframes sectionEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .section-title {
@@ -98,12 +150,20 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--text-muted);
-      margin-bottom: 16px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Input */
+    .section-title svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    /* ============ Input ============ */
     .input-group {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .input-group:last-of-type {
@@ -115,42 +175,43 @@
       font-size: 12px;
       font-weight: 500;
       color: var(--text-secondary);
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
 
     .input-field {
       width: 100%;
       padding: 10px 14px;
-      background: var(--bg-primary);
+      background: var(--bg-input);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text-primary);
       font-size: 13px;
       font-family: inherit;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: border-color var(--tr-fast), box-shadow var(--tr-fast), background var(--tr-fast);
       outline: none;
     }
 
     .input-field:focus {
       border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px var(--accent-soft);
+      box-shadow: var(--shadow-focus);
+      background: var(--bg-base);
     }
 
     .input-field::placeholder {
       color: var(--text-muted);
     }
 
-    /* Select */
+    /* ============ Select ============ */
     .select-field {
       width: 100%;
       padding: 10px 14px;
-      background: var(--bg-primary);
+      background: var(--bg-input);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text-primary);
       font-size: 13px;
       font-family: inherit;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: border-color var(--tr-fast), box-shadow var(--tr-fast);
       outline: none;
       cursor: pointer;
       appearance: none;
@@ -162,7 +223,7 @@
 
     .select-field:focus {
       border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px var(--accent-soft);
+      box-shadow: var(--shadow-focus);
     }
 
     .select-field option {
@@ -170,39 +231,49 @@
       color: var(--text-primary);
     }
 
-    /* Button */
+    /* ============ Button ============ */
     .btn {
       width: 100%;
-      padding: 11px 16px;
+      padding: 10px 16px;
       border: none;
       border-radius: var(--radius-sm);
       font-size: 13px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background 0.15s ease, transform 0.1s ease;
+      transition: background var(--tr-fast), transform 0.1s var(--ease-out), box-shadow var(--tr-fast), filter var(--tr-fast);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 7px;
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
     }
 
     .btn-primary {
       background: var(--accent);
       color: #FFFFFF;
+      box-shadow: var(--shadow-accent);
     }
 
     .btn-primary:hover {
       background: var(--accent-hover);
+      filter: brightness(1.05);
     }
 
     .btn-primary:active {
-      transform: scale(0.98);
+      background: var(--accent-active);
+      transform: scale(0.97);
     }
 
     .btn-primary:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+      box-shadow: none;
     }
 
     .btn-secondary {
@@ -213,6 +284,11 @@
 
     .btn-secondary:hover {
       background: #243354;
+      border-color: var(--border-hover);
+    }
+
+    .btn-secondary:active {
+      transform: scale(0.97);
     }
 
     .btn-sm {
@@ -220,7 +296,7 @@
       font-size: 12px;
     }
 
-    /* Button group */
+    /* ============ Button Group ============ */
     .btn-group {
       display: flex;
       gap: 8px;
@@ -230,35 +306,47 @@
       flex: 1;
     }
 
-    /* Status */
+    /* ============ Status Badge ============ */
     .status {
-      padding: 10px 14px;
+      padding: 9px 13px;
       border-radius: var(--radius-sm);
       font-size: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
+      animation: statusEnter 0.3s var(--ease-out);
+    }
+
+    @keyframes statusEnter {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .status.success {
-      background: rgba(16, 185, 129, 0.1);
+      background: var(--success-soft);
       color: var(--success);
-      border: 1px solid rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.2);
     }
 
     .status.error {
-      background: rgba(239, 68, 68, 0.1);
+      background: var(--error-soft);
       color: var(--error);
       border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
-    /* Divider */
+    .status svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    /* ============ Divider ============ */
     .divider {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin: 16px 0;
+      margin: 14px 0;
       color: var(--text-muted);
       font-size: 11px;
       font-weight: 500;
@@ -273,7 +361,7 @@
       background: var(--border);
     }
 
-    /* Loading spinner */
+    /* ============ Loading Spinner ============ */
     .loading {
       display: inline-block;
       width: 14px;
@@ -288,19 +376,19 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Logged in user */
+    /* ============ User Info ============ */
     .user-info {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .user-avatar {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #10B981 0%, #0EA5E9 100%);
+      background: linear-gradient(135deg, #14B8A6 0%, #0EA5E9 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -308,6 +396,7 @@
       font-weight: 600;
       color: #FFFFFF;
       flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(20, 184, 166, 0.25);
     }
 
     .user-details {
@@ -326,8 +415,8 @@
       color: var(--success);
       display: flex;
       align-items: center;
-      gap: 4px;
-      margin-top: 1px;
+      gap: 5px;
+      margin-top: 2px;
     }
 
     .user-status::before {
@@ -336,25 +425,26 @@
       height: 6px;
       border-radius: 50%;
       background: var(--success);
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
     }
 
-    /* Steps */
+    /* ============ Steps ============ */
     .steps {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     .step {
       display: flex;
-      gap: 12px;
+      gap: 11px;
       align-items: flex-start;
     }
 
     .step-number {
       width: 24px;
       height: 24px;
-      border-radius: 6px;
+      border-radius: 7px;
       background: var(--accent-soft);
       color: var(--accent);
       display: flex;
@@ -363,6 +453,13 @@
       font-size: 12px;
       font-weight: 600;
       flex-shrink: 0;
+      transition: background var(--tr-fast), transform var(--tr-fast);
+    }
+
+    .step:hover .step-number {
+      background: var(--accent);
+      color: #FFFFFF;
+      transform: scale(1.08);
     }
 
     .step-text {
@@ -372,13 +469,14 @@
       padding-top: 3px;
     }
 
-    /* Setting row with toggle */
+    /* ============ Setting Row ============ */
     .setting-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 10px 0;
       border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+      transition: background var(--tr-fast);
     }
 
     .setting-row:last-child {
@@ -406,12 +504,12 @@
       line-height: 1.4;
     }
 
-    /* Toggle switch */
+    /* ============ Toggle Switch ============ */
     .toggle {
       position: relative;
       display: inline-block;
-      width: 40px;
-      height: 22px;
+      width: 42px;
+      height: 24px;
       flex-shrink: 0;
       cursor: pointer;
     }
@@ -430,25 +528,27 @@
       bottom: 0;
       background: var(--bg-elevated);
       border: 1px solid var(--border);
-      border-radius: 11px;
-      transition: all 0.2s ease;
+      border-radius: 12px;
+      transition: all 0.25s var(--ease-out);
     }
 
     .toggle-slider::before {
       content: '';
       position: absolute;
-      height: 16px;
-      width: 16px;
+      height: 18px;
+      width: 18px;
       left: 2px;
-      bottom: 2px;
+      top: 2px;
       background: var(--text-muted);
       border-radius: 50%;
-      transition: all 0.2s ease;
+      transition: all 0.25s var(--ease-spring);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     .toggle input:checked + .toggle-slider {
       background: var(--accent);
       border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
     }
 
     .toggle input:checked + .toggle-slider::before {
@@ -456,21 +556,27 @@
       background: #FFFFFF;
     }
 
-    /* Settings save area */
+    .toggle:hover .toggle-slider::before {
+      filter: brightness(1.1);
+    }
+
+    /* ============ Settings Save ============ */
     .settings-save {
-      margin-top: 14px;
+      margin-top: 12px;
       display: flex;
       justify-content: flex-end;
     }
 
-    /* Link */
+    /* ============ Link ============ */
     .link {
       color: var(--accent);
       text-decoration: none;
       font-weight: 500;
+      transition: color var(--tr-fast);
     }
 
     .link:hover {
+      color: var(--accent-hover);
       text-decoration: underline;
     }
 
@@ -478,18 +584,107 @@
       text-align: center;
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 14px;
+      margin-top: 12px;
     }
 
-    /* Utility */
+    /* ============ Toast ============ */
+    .toast-container {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn 0.3s var(--ease-spring);
+      pointer-events: auto;
+      max-width: 340px;
+    }
+
+    .toast.success {
+      background: var(--bg-elevated);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-left: 3px solid var(--success);
+    }
+
+    .toast.error {
+      background: var(--bg-elevated);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-left: 3px solid var(--error);
+    }
+
+    .toast.info {
+      background: var(--bg-elevated);
+      color: var(--accent);
+      border: 1px solid rgba(20, 184, 166, 0.3);
+      border-left: 3px solid var(--accent);
+    }
+
+    .toast svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .toast.fade-out {
+      animation: toastOut 0.25s var(--ease-out) forwards;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-12px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-8px); }
+    }
+
+    /* ============ Accessibility ============ */
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* ============ Utility ============ */
     .hidden {
-      display: none;
+      display: none !important;
     }
   </style>
 </head>
 <body>
+  <!-- Toast 容器 -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <div class="header">
-    <div class="header-icon">🧠</div>
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+      </svg>
+    </div>
     <div class="header-text">
       <div class="brand-name">AI SecondBrain</div>
       <div class="brand-subtitle">个人知识管理助手</div>
@@ -499,7 +694,10 @@
   <div class="content">
     <!-- 登录区 -->
     <div id="loginSection" class="section">
-      <div class="section-title">登录账户</div>
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        登录账户
+      </div>
       <div class="input-group">
         <label class="input-label" for="username">用户名</label>
         <input type="text" id="username" class="input-field" placeholder="请输入用户名" />
@@ -508,7 +706,10 @@
         <label class="input-label" for="password">密码</label>
         <input type="password" id="password" class="input-field" placeholder="请输入密码" />
       </div>
-      <button class="btn btn-primary" id="loginBtn">登录</button>
+      <button class="btn btn-primary" id="loginBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        登录
+      </button>
       <div class="footer-text">
         还没有账户？<a href="http://localhost:5173" class="link" target="_blank">立即注册</a>
       </div>
@@ -516,23 +717,35 @@
 
     <!-- 已登录区 -->
     <div id="loggedInSection" class="section hidden">
-      <div class="section-title">账户信息</div>
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        账户信息
+      </div>
       <div class="user-info">
-        <div class="user-avatar">U</div>
+        <div class="user-avatar" id="userAvatar">U</div>
         <div class="user-details">
           <div class="user-name" id="currentUser">已登录用户</div>
           <div class="user-status">已连接</div>
         </div>
       </div>
       <div class="btn-group">
-        <button class="btn btn-primary" id="goToDashboardBtn">前往知识库</button>
-        <button class="btn btn-secondary" id="logoutBtn">退出</button>
+        <button class="btn btn-primary" id="goToDashboardBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          前往知识库
+        </button>
+        <button class="btn btn-secondary" id="logoutBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          退出
+        </button>
       </div>
     </div>
 
     <!-- 采集设置 -->
     <div id="settingsSection" class="section hidden">
-      <div class="section-title">采集设置</div>
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        采集设置
+      </div>
       <div class="input-group">
         <label class="input-label" for="workspaceSelect">目标工作区</label>
         <select id="workspaceSelect" class="select-field">
@@ -560,7 +773,10 @@
         </label>
       </div>
       <div class="settings-save">
-        <button class="btn btn-primary btn-sm" id="saveSettingsBtn">保存设置</button>
+        <button class="btn btn-primary btn-sm" id="saveSettingsBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          保存设置
+        </button>
       </div>
     </div>
 
