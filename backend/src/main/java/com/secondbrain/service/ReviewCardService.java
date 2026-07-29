@@ -5,6 +5,7 @@ import com.secondbrain.entity.ReviewCard;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /** 复习卡片服务接口. <p>提供复习卡片的生成、查询、提交复习结果及统计功能</p> */
 public interface ReviewCardService {
@@ -183,4 +184,22 @@ public interface ReviewCardService {
      * @return 准确率
      */
     int getUserAccuracy(Long userId, Long workspaceId);
+
+    /**
+     * 计算最长连续复习天数（历史峰值）.
+     *
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @return 最长连续天数
+     */
+    int calculateMaxStreak(Long userId, Long workspaceId);
+
+    /**
+     * 获取复习中心概览统计（紫框 + 统计卡片 + 队列分类数量等）.
+     *
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @return 概览数据（todayPending/todayCompleted/yesterdayPending/todayAccuracy/yesterdayCompleted/maxStreak/memoryRetention/categoryCounts）
+     */
+    Map<String, Object> getOverview(Long userId, Long workspaceId);
 }

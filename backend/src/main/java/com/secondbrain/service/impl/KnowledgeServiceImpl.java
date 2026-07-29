@@ -16,6 +16,7 @@ import com.secondbrain.service.GamificationService;
 import com.secondbrain.service.KnowledgeVectorService;
 import com.secondbrain.service.KnowledgeTagService;
 import com.secondbrain.service.RelationRecommendationService;
+import com.secondbrain.service.ReviewCardService;
 import com.secondbrain.service.VectorSearchService;
 import com.secondbrain.vo.KnowledgeNodeVO;
 import org.slf4j.Logger;
@@ -55,6 +56,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final GamificationService gamificationService;
     private final KnowledgeTagService knowledgeTagService;
     private final KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper;
+    private final ReviewCardService reviewCardService;
 
     @Autowired
     public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper,
@@ -66,7 +68,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                                 @Autowired(required = false) KnowledgeVectorService knowledgeVectorService,
                                 GamificationService gamificationService,
                                 KnowledgeTagService knowledgeTagService,
-                                KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper) {
+                                KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper,
+                                ReviewCardService reviewCardService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.cacheService = cacheService;
         this.ebbinghausService = ebbinghausService;
@@ -77,6 +80,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         this.gamificationService = gamificationService;
         this.knowledgeTagService = knowledgeTagService;
         this.knowledgeNodeTagRelationMapper = knowledgeNodeTagRelationMapper;
+        this.reviewCardService = reviewCardService;
     }
 
     /**
@@ -92,7 +96,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      * @return 知识节点分页结果
      */
     @Override
-    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId) {
+    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId, Integer needReview) {
         Page<KnowledgeNode> page = new Page<>(current, size);
 
         LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
@@ -106,6 +110,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         if (masteryLevel != null) {
             wrapper.eq(KnowledgeNode::getMasteryLevel, masteryLevel);
+        }
+        if (needReview != null) {
+            wrapper.eq(KnowledgeNode::getNeedReview, needReview);
         }
         if (tagId != null) {
             List<Long> nodeIds = knowledgeNodeTagRelationMapper.selectList(
@@ -212,6 +219,57 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         knowledgeNodeMapper.updateById(updateNode);
 
         log.info("更新知识点重要性，id：{}", id);
+    }
+
+    @Override
+    public void toggleNeedReview(Long id, Integer needReview, Long userId, Long workspaceId) {
+        KnowledgeNode node = knowledgeNodeMapper.selectById(id);
+        if (node == null) {
+            throw new IllegalStateException("知识点不存在");
+        }
+        if (!hasAccess(node, userId, workspaceId)) {
+            throw new IllegalStateException("无权操作此知识点");
+        }
+
+        KnowledgeNode updateNode = new KnowledgeNode();
+        updateNode.setId(id);
+        updateNode.setNeedReview(needReview);
+
+        if (needReview != null && needReview == 1) {
+            // 纳入复习时重置掌握程度和复习计数
+            updateNode.setMasteryLevel(0);
+            updateNode.setReviewCount(0);
+            updateNode.setNextReviewTime(ebbinghausService.calculateNextReviewTime(LocalDateTime.now(), 0, true));
+            knowledgeNodeMapper.updateById(updateNode);
+
+            // 为该知识点生成初始复习卡片
+            try {
+                List<com.secondbrain.entity.ReviewCard> existingCards = reviewCardService.getReviewCardsByNodeId(id, userId, workspaceId);
+                if (existingCards == null || existingCards.isEmpty()) {
+                    reviewCardService.generateReviewCard(id, "choice", "auto", userId);
+                    reviewCardService.generateReviewCard(id, "choice", "auto", userId);
+                    log.info("纳入复习目标并生成复习卡片，nodeId={}", id);
+                }
+            } catch (Exception e) {
+                log.error("纳入复习目标时生成卡片失败，nodeId={}", id, e);
+            }
+        } else {
+            // 取消复习时清理该知识点的复习卡片
+            knowledgeNodeMapper.updateById(updateNode);
+            try {
+                List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getReviewCardsByNodeId(id, userId, workspaceId);
+                if (cards != null) {
+                    for (com.secondbrain.entity.ReviewCard card : cards) {
+                        reviewCardService.deleteReviewCard(card.getId(), userId);
+                    }
+                    log.info("取消复习目标并删除{}张复习卡片，nodeId={}", cards.size(), id);
+                }
+            } catch (Exception e) {
+                log.error("取消复习目标时清理卡片失败，nodeId={}", id, e);
+            }
+        }
+
+        log.info("切换知识点复习目标状态，id={}，needReview={}", id, needReview);
     }
 
     /**

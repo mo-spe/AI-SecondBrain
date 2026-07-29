@@ -1,6 +1,7 @@
 package com.secondbrain.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondbrain.client.AnthropicClient;
 import com.secondbrain.client.GeminiClient;
@@ -110,7 +111,7 @@ public class AiServiceImpl implements AiService {
     @Override
     public AiCallConfig resolveConfig(Long userId, String scenarioCode) {
         UserAiConfig config = userAiConfigMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserAiConfig>()
+                new LambdaQueryWrapper<UserAiConfig>()
                         .eq(UserAiConfig::getUserId, userId)
                         .eq(UserAiConfig::getScenarioCode, scenarioCode));
 
@@ -137,7 +138,7 @@ public class AiServiceImpl implements AiService {
             apiKey = encryptionService.decrypt(config.getApiKey());
         } else {
             UserAiProviderKey providerKey = userAiProviderKeyMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserAiProviderKey>()
+                    new LambdaQueryWrapper<UserAiProviderKey>()
                             .eq(UserAiProviderKey::getUserId, userId)
                             .eq(UserAiProviderKey::getProviderId, provider.getId()));
             if (providerKey != null && providerKey.getApiKey() != null && !providerKey.getApiKey().isBlank()) {

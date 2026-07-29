@@ -2,6 +2,8 @@ package com.secondbrain.controller;
 
 import com.secondbrain.common.Result;
 import com.secondbrain.dto.ReviewResultDTO;
+import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.entity.ReviewCard;
 import com.secondbrain.entity.ReviewCardPool;
 import com.secondbrain.entity.UserReviewCard;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 /** 复习卡片控制器. <p>提供复习卡片的生成、查询、提交、删除等接口</p> */
 @RestController
@@ -54,7 +57,7 @@ public class ReviewCardController {
     public Result<ReviewCardVO> generateReviewCard(@RequestBody GenerateCardRequest request, HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         String generationType = request.getGenerationType() != null ? request.getGenerationType() : "auto";
-        com.secondbrain.entity.ReviewCard card = reviewCardService.generateReviewCard(
+        ReviewCard card = reviewCardService.generateReviewCard(
                 request.getNodeId(), request.getCardType(), generationType, userId
         );
 
@@ -83,6 +86,9 @@ public class ReviewCardController {
 
         List<ReviewCardVO> vos = cards.stream()
                 .map(this::convertToVO)
+                // 过滤脏数据：question 为空或 nodeTitle/question 都为空的卡片
+                .filter(vo -> vo.getQuestion() != null && !vo.getQuestion().isBlank())
+                // 过滤空题卡：question 只有 A. B. C. 选项无正文的兜底在 parseQuestionText 做
                 .toList();
 
         if (sortBy != null) {
@@ -259,6 +265,20 @@ public class ReviewCardController {
         return Result.success(accuracy);
     }
 
+    /**
+     * 获取复习中心概览统计（紫框、卡片、队列分类数量等）.
+     *
+     * @param httpRequest HTTP请求对象
+     * @return 概览统计 Map
+     */
+    @GetMapping("/overview")
+    public Result<Map<String, Object>> getOverview(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        Map<String, Object> data = reviewCardService.getOverview(userId, workspaceId);
+        return Result.success(data);
+    }
+
     // ========== 题目池接口 ==========
 
     /**
@@ -332,7 +352,7 @@ public class ReviewCardController {
         return Result.success(pool);
     }
 
-    private ReviewCardVO convertToVO(com.secondbrain.entity.ReviewCard card) {
+    private ReviewCardVO convertToVO(ReviewCard card) {
         ReviewCardVO vo = new ReviewCardVO();
         BeanUtils.copyProperties(card, vo);
 
@@ -349,7 +369,7 @@ public class ReviewCardController {
 
         // 获取知识点的复习次数和掌握程度
         if (card.getNodeId() != null) {
-            com.secondbrain.entity.KnowledgeNode node = knowledgeNodeMapper.selectById(card.getNodeId());
+           KnowledgeNode node = knowledgeNodeMapper.selectById(card.getNodeId());
             if (node != null) {
                 vo.setNodeReviewCount(node.getReviewCount() != null ? node.getReviewCount() : 0);
                 vo.setNodeMasteryLevel(node.getMasteryLevel() != null ? node.getMasteryLevel() : 0);

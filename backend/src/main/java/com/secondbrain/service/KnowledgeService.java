@@ -26,7 +26,7 @@ public interface KnowledgeService {
      * @param tagId 标签ID（可选，筛选包含该标签的知识点）
      * @return 知识节点分页
      */
-    Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId);
+    Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId, Integer needReview);
 
     /**
      * 根据ID查询知识点.
@@ -71,6 +71,16 @@ public interface KnowledgeService {
      * @return void
      */
     void updateImportance(Long id, Integer importance, Long userId, Long workspaceId);
+
+    /**
+     * 切换知识点的复习目标状态.
+     *
+     * @param id         知识点ID
+     * @param needReview 是否需要复习（1=纳入复习，0=取消复习）
+     * @param userId     用户ID
+     * @param workspaceId 工作区ID
+     */
+    void toggleNeedReview(Long id, Integer needReview, Long userId, Long workspaceId);
 
     /**
      * 更新知识点内容.

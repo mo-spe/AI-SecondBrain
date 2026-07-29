@@ -17,4 +17,13 @@ public interface KnowledgeCaptureService {
      * @return 提取的待确认知识点数量
      */
     int extractKnowledge(RawChatRecord record);
+
+    /**
+     * 从原始记录中提取知识（含是否生成复习卡片标志）.
+     *
+     * @param record       原始聊天记录
+     * @param needReview   是否需要生成复习卡片（null 视为 false）
+     * @return 提取的待确认知识点数量
+     */
+    int extractKnowledge(RawChatRecord record, Boolean needReview);
 }

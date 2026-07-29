@@ -1,5 +1,6 @@
 package com.secondbrain.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondbrain.entity.KnowledgeNode;
@@ -1179,16 +1180,16 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
 
     private List<String> getExistingQuestions(Long nodeId) {
         try {
-            List<com.secondbrain.entity.ReviewCard> cards = reviewCardMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.secondbrain.entity.ReviewCard>()
-                            .eq(com.secondbrain.entity.ReviewCard::getNodeId, nodeId)
-                            .eq(com.secondbrain.entity.ReviewCard::getDeleted, 0)
-                            .orderByDesc(com.secondbrain.entity.ReviewCard::getCreateTime)
+            List<ReviewCard> cards = reviewCardMapper.selectList(
+                    new LambdaQueryWrapper<ReviewCard>()
+                            .eq(ReviewCard::getNodeId, nodeId)
+                            .eq(ReviewCard::getDeleted, 0)
+                            .orderByDesc(ReviewCard::getCreateTime)
                             .last("LIMIT 5")
             );
 
             List<String> questions = new ArrayList<>();
-            for (com.secondbrain.entity.ReviewCard card : cards) {
+            for (ReviewCard card : cards) {
                 if (card.getQuestion() != null && !card.getQuestion().isEmpty()) {
                     String questionText = extractQuestionText(card.getQuestion());
                     if (questionText != null && !questionText.isEmpty()) {

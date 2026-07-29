@@ -48,8 +48,9 @@ public class KafkaConsumerService {
             }
 
             if (Boolean.TRUE.equals(message.getExtractKnowledge())) {
-                int count = knowledgeCaptureService.extractKnowledge(record);
-                log.info("知识提取完成 recordId={} extracted={}", record.getId(), count);
+                int count = knowledgeCaptureService.extractKnowledge(record, message.getGenerateCards());
+                log.info("知识提取完成 recordId={} extracted={} needReview={}",
+                        record.getId(), count, message.getGenerateCards());
             }
         } catch (Exception e) {
             log.error("处理聊天采集消息失败", e);
