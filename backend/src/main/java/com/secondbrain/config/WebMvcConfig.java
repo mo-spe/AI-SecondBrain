@@ -32,7 +32,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**", "/async-task/**", "/workspace/**", "/admin/**", "/share/**", "/square/**", "/notification/**", "/statistics/**", "/user/**", "/gamification/**", "/tags/**", "/ai/**", "/sessions/**")
+                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**", "/async-task/**", "/workspace/**", "/admin/**", "/share/**", "/square/**", "/notification/**", "/statistics/**", "/user/**", "/gamification/**", "/tags/**", "/ai/**", "/sessions/**", "/research/**")
                 .excludePathPatterns("/auth/**", "/health/**");
 
         registry.addInterceptor(workspaceInterceptor)

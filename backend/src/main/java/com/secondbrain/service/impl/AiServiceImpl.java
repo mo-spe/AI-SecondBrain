@@ -1,6 +1,7 @@
 package com.secondbrain.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondbrain.client.AnthropicClient;
 import com.secondbrain.client.GeminiClient;
 import com.secondbrain.dto.AiCallConfig;
@@ -18,6 +19,11 @@ import com.unfbx.chatgpt.OpenAiClient;
 import com.unfbx.chatgpt.entity.chat.ChatCompletion;
 import com.unfbx.chatgpt.entity.chat.ChatCompletionResponse;
 import com.unfbx.chatgpt.entity.chat.Message;
+import okhttp3.OkHttpClient;
+import okhttp3.MediaType;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,10 +31,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * AI服务实现类.
@@ -214,6 +226,24 @@ public class AiServiceImpl implements AiService {
         return executeCallWithMessages(config, systemPrompt, filteredMessages);
     }
 
+    @Override
+    public String chatStream(Long userId, String scenarioCode,
+                             List<Map<String, String>> messages, Consumer<String> onChunk) {
+        AiCallConfig config = resolveConfig(userId, scenarioCode);
+
+        String systemPrompt = null;
+        List<Map<String, String>> filteredMessages = new ArrayList<>();
+        for (Map<String, String> msg : messages) {
+            if ("system".equals(msg.get("role"))) {
+                systemPrompt = msg.get("content");
+            } else {
+                filteredMessages.add(msg);
+            }
+        }
+
+        return executeCallWithMessagesStream(config, systemPrompt, filteredMessages, onChunk);
+    }
+
     /**
      * 执行AI调用（单轮：system prompt + user prompt）.
      */
@@ -264,6 +294,11 @@ public class AiServiceImpl implements AiService {
         OpenAiClient client = OpenAiClient.builder()
                 .apiKey(java.util.Collections.singletonList(config.getApiKey()))
                 .apiHost(baseUrl)
+                .okHttpClient(new OkHttpClient.Builder()
+                        .connectTimeout(30, TimeUnit.SECONDS)
+                        .readTimeout(120, TimeUnit.SECONDS)
+                        .writeTimeout(30, TimeUnit.SECONDS)
+                        .build())
                 .build();
 
         List<Message> apiMessages = new ArrayList<>();
@@ -284,6 +319,138 @@ public class AiServiceImpl implements AiService {
         ChatCompletionResponse response = client.chatCompletion(chatCompletion);
         return response.getChoices().get(0).getMessage().getContent();
     }
+
+    /**
+     * 流式执行 AI 调用（分片回调）.
+     */
+    private String executeCallWithMessagesStream(AiCallConfig config, String systemPrompt,
+                                                  List<Map<String, String>> messages,
+                                                  Consumer<String> onChunk) {
+        log.info("ai_stream_call provider={} apiType={} model={} messages={}",
+                config.getProviderCode(), config.getApiType(), config.getModelName(), messages.size());
+
+        return switch (config.getApiType()) {
+            case "anthropic", "gemini" ->
+                // 不支持流式的 provider 回退到同步调用，手动分片回调
+                    callNonStream(config, systemPrompt, messages, onChunk);
+            default -> callOpenAiCompatibleStream(config, systemPrompt, messages, onChunk);
+        };
+    }
+
+    /**
+     * 非流式 provider 回退：一次调用，逐字符回调模拟流式.
+     */
+    private String callNonStream(AiCallConfig config, String systemPrompt,
+                                  List<Map<String, String>> messages, Consumer<String> onChunk) {
+        String result = executeCallWithMessages(config, systemPrompt, messages);
+        if (result != null) {
+            for (int i = 0; i < result.length(); i += 10) {
+                int end = Math.min(i + 10, result.length());
+                onChunk.accept(result.substring(i, end));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * OpenAI 兼容 API 流式调用（原生 SSE 解析）.
+     *
+     * <p>chatgpt-java 1.1.5 无 chatCompletionStream 方法，
+     * 直接通过 OkHttp 发 stream=true 的 POST 请求，
+     * 逐行解析 SSE data: 块获取增量内容。</p>
+     */
+    private String callOpenAiCompatibleStream(AiCallConfig config, String systemPrompt,
+                                               List<Map<String, String>> messages,
+                                               Consumer<String> onChunk) {
+        String baseUrl = config.getBaseUrl();
+        if (baseUrl != null && !baseUrl.endsWith("/")) {
+            baseUrl = baseUrl + "/";
+        }
+
+        OkHttpClient streamClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(0, TimeUnit.SECONDS)   // 流式：无读取超时
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build();
+
+        // 构建 JSON 请求体
+        List<Map<String, Object>> apiMessages = new ArrayList<>();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            apiMessages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+        for (Map<String, String> msg : messages) {
+            apiMessages.add(Map.of("role", msg.get("role"), "content", msg.get("content")));
+        }
+
+        Map<String, Object> requestBody = new LinkedHashMap<>();
+        requestBody.put("model", config.getModelName());
+        requestBody.put("messages", apiMessages);
+        requestBody.put("stream", true);
+
+        String json;
+        try {
+            json = OBJECT_MAPPER.writeValueAsString(requestBody);
+        } catch (Exception e) {
+            log.error("stream_json_build_failed", e);
+            return callNonStream(config, systemPrompt, messages, onChunk);
+        }
+
+        Request request = new Request.Builder()
+                .url(baseUrl + "chat/completions")
+                .header("Authorization", "Bearer " + config.getApiKey())
+                .header("Content-Type", "application/json")
+                .header("Accept", "text/event-stream")
+                .post(RequestBody.create(json, MediaType.get("application/json")))
+                .build();
+
+        StringBuilder fullContent = new StringBuilder();
+        try (Response response = streamClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                log.warn("stream_http_error status={}", response.code());
+                return callNonStream(config, systemPrompt, messages, onChunk);
+            }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(response.body().byteStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("data: ") && !line.equals("data: [DONE]")) {
+                    String data = line.substring(6);
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> chunk = OBJECT_MAPPER.readValue(data, Map.class);
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> choices =
+                                (List<Map<String, Object>>) chunk.get("choices");
+                        if (choices != null && !choices.isEmpty()) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> delta =
+                                    (Map<String, Object>) choices.get(0).get("delta");
+                            if (delta != null) {
+                                String content = (String) delta.get("content");
+                                if (content != null) {
+                                    fullContent.append(content);
+                                    onChunk.accept(content);
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 跳过无法解析的行
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.error("stream_io_error", e);
+            if (fullContent.length() > 0) {
+                return fullContent.toString();
+            }
+            return callNonStream(config, systemPrompt, messages, onChunk);
+        }
+
+        return fullContent.toString();
+    }
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // ========== @Deprecated 方法（保留兼容，Phase 5 迁移完成后移除） ==========
 

@@ -5,6 +5,7 @@ import com.secondbrain.dto.KnowledgeDTO;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * AI服务接口.
@@ -64,6 +65,20 @@ public interface AiService {
      * @return AI回复内容
      */
     String chat(Long userId, String scenarioCode, List<Map<String, String>> messages);
+
+    /**
+     * 使用用户配置执行流式多轮对话.
+     *
+     * <p>每收到一个 token 片段就回调 onChunk，避免长生成任务超时。</p>
+     *
+     * @param userId       用户ID
+     * @param scenarioCode 场景代码
+     * @param messages     消息列表
+     * @param onChunk      每块内容的回调
+     * @return 完整回复内容
+     */
+    String chatStream(Long userId, String scenarioCode,
+                      List<Map<String, String>> messages, Consumer<String> onChunk);
 
     // ========== 旧接口（保留兼容，逐步迁移） ==========
 

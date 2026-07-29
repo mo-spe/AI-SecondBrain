@@ -84,7 +84,7 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       id-type: auto
@@ -147,6 +147,13 @@ aliyun:
     access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
     bucket-name: ${ALIYUN_OSS_BUCKET_NAME:thesecondbrain}
 
+research:
+  proxy:
+    enabled: ${RESEARCH_PROXY_ENABLED:true}
+    host: ${RESEARCH_PROXY_HOST:127.0.0.1}
+    port: ${RESEARCH_PROXY_PORT:7890}
+    type: ${RESEARCH_PROXY_TYPE:HTTP}
+
 deerflow:
   api:
     url: ${DEERFLOW_API_URL:http://localhost:8000}
@@ -164,7 +171,7 @@ logging:
   level:
     com.secondbrain: debug
     org.springframework.web: info
-    org.mybatis: debug
+    org.mybatis: warn
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
   file:
