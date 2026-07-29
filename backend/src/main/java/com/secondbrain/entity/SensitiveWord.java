@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 @TableName("sensitive_word")
 public class SensitiveWord {
 
+    /// todo 后期我们可针对系统的id做特殊处理，如uuid，或者使用雪花算法生成id，避免id被猜测到
+
     /**
      * 主键ID
      */

@@ -3,6 +3,7 @@ package com.secondbrain.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.secondbrain.common.SystemConstants;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.SensitiveWord;
 import com.secondbrain.entity.SquareBookmark;
@@ -21,8 +22,10 @@ import com.secondbrain.mapper.SquarePostMapper;
 import com.secondbrain.mapper.SquareReportMapper;
 import com.secondbrain.mapper.UserMapper;
 import com.secondbrain.mapper.WorkspaceMemberMapper;
+import com.secondbrain.service.CacheService;
 import com.secondbrain.service.SquareNotificationService;
 import com.secondbrain.service.SquareService;
+import com.secondbrain.util.SensitiveWordMatcher;
 import com.secondbrain.vo.SquareCommentVO;
 import com.secondbrain.vo.SquarePostVO;
 import com.secondbrain.vo.SquareReportVO;
@@ -38,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -61,22 +65,26 @@ public class SquareServiceImpl implements SquareService {
     private final UserMapper userMapper;
     private final SquareNotificationService notificationService;
     private final WorkspaceMemberMapper workspaceMemberMapper;
+    private final CacheService cacheService;
 
     /**
-     * 敏感词内存缓存（volatile 保证可见性，首次访问时加载）
+     * 敏感词 AC 自动机本地缓存（volatile 保证可见性）.
+     * 从 Redis 缓存的词列表编译而来，本地 TTL 5 分钟自动重建。
      */
-    private volatile List<SensitiveWord> sensitiveWordCache;
+    private volatile SensitiveWordMatcher sensitiveWordMatcher;
+    private volatile long matcherBuiltAt;
+    private static final long MATCHER_TTL_MS = 5 * 60 * 1000L;
 
     public SquareServiceImpl(SquarePostMapper squarePostMapper,
-                              SquareLikeMapper squareLikeMapper,
-                              SquareCommentMapper squareCommentMapper,
-                              SquareBookmarkMapper squareBookmarkMapper,
-                              SquareReportMapper squareReportMapper,
-                              SensitiveWordMapper sensitiveWordMapper,
-                              KnowledgeNodeMapper knowledgeNodeMapper,
-                              UserMapper userMapper,
-                              SquareNotificationService notificationService,
-                              WorkspaceMemberMapper workspaceMemberMapper) {
+                             SquareLikeMapper squareLikeMapper,
+                             SquareCommentMapper squareCommentMapper,
+                             SquareBookmarkMapper squareBookmarkMapper,
+                             SquareReportMapper squareReportMapper,
+                             SensitiveWordMapper sensitiveWordMapper,
+                             KnowledgeNodeMapper knowledgeNodeMapper,
+                             UserMapper userMapper,
+                             SquareNotificationService notificationService,
+                             WorkspaceMemberMapper workspaceMemberMapper, CacheService cacheService) {
         this.squarePostMapper = squarePostMapper;
         this.squareLikeMapper = squareLikeMapper;
         this.squareCommentMapper = squareCommentMapper;
@@ -87,6 +95,7 @@ public class SquareServiceImpl implements SquareService {
         this.userMapper = userMapper;
         this.notificationService = notificationService;
         this.workspaceMemberMapper = workspaceMemberMapper;
+        this.cacheService = cacheService;
     }
 
     // ==================== 发布/下架 ====================
@@ -604,41 +613,60 @@ public class SquareServiceImpl implements SquareService {
     // ==================== 私有方法 ====================
 
     /**
-     * 检查文本是否包含敏感词.
-     * 命中任一敏感词则抛出异常。
+     * 检查文本是否包含敏感词。
+     * 使用 AC 自动机一次扫描完成多模式匹配，O(text_length)。
      */
     private void checkSensitiveWords(String text) {
         if (text == null || text.isEmpty()) {
             return;
         }
-        List<SensitiveWord> words = getSensitiveWordCache();
-        for (SensitiveWord sw : words) {
-            if (text.contains(sw.getWord())) {
-                throw new BusinessException(400, "内容包含敏感词，请修改后重试");
-            }
+        if (getSensitiveWordMatcher().matches(text)) {
+            throw new BusinessException(400, "内容包含敏感词，请修改后重试");
         }
     }
 
     /**
-     * 获取敏感词缓存（首次访问时从数据库加载）.
+     * 获取敏感词列表（Redis 缓存，TTL 1 小时后从 DB 重新加载）.
      */
-    /// todo: 敏感词缓存现在还没有做，后续可以考虑使用 Redis 或其他缓存方案来优化性能，尤其是在敏感词列表较长的情况下。
     private List<SensitiveWord> getSensitiveWordCache() {
-        if (sensitiveWordCache == null) {
-            synchronized (this) {
-                if (sensitiveWordCache == null) {
-                    sensitiveWordCache = sensitiveWordMapper.selectList(null);
-                }
-            }
+        return cacheService.getOrLoad(
+                SystemConstants.SENSITIVE_WORD_CACHE_KEY,
+                List.class,
+                SystemConstants.CACHE_TTL_HOURS,
+                TimeUnit.HOURS,
+                () -> sensitiveWordMapper.selectList(null)
+        );
+    }
+
+    /**
+     * 获取编译好的 AC 自动机。
+     * DCL + 本地 TTL 保证多实例最终一致性，避免每次检查都重新编译。
+     */
+    private SensitiveWordMatcher getSensitiveWordMatcher() {
+        SensitiveWordMatcher matcher = sensitiveWordMatcher;
+        if (matcher != null && System.currentTimeMillis() - matcherBuiltAt < MATCHER_TTL_MS) {
+            return matcher;
         }
-        return sensitiveWordCache;
+        synchronized (this) {
+            matcher = sensitiveWordMatcher;
+            if (matcher != null && System.currentTimeMillis() - matcherBuiltAt < MATCHER_TTL_MS) {
+                return matcher;
+            }
+            List<SensitiveWord> words = getSensitiveWordCache();
+            matcher = SensitiveWordMatcher.compile(words);
+            sensitiveWordMatcher = matcher;
+            matcherBuiltAt = System.currentTimeMillis();
+            return matcher;
+        }
     }
 
     /**
      * 刷新敏感词缓存（增删敏感词后调用）.
+     * 同时失效 Redis 缓存和本地 AC 自动机，下次检查时重建。
      */
     private void refreshSensitiveWordCache() {
-        sensitiveWordCache = sensitiveWordMapper.selectList(null);
+        cacheService.delete(SystemConstants.SENSITIVE_WORD_CACHE_KEY);
+        sensitiveWordMatcher = null;
     }
 
     /**
