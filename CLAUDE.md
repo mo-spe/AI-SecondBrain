@@ -980,3 +980,57 @@ public void setId(Long id) {
 ```
 
 仅在确有需要时再添加其他 Lombok 注解，避免引入不必要的 `equals()`、`hashCode()`、`toString()` 等方法。
+
+# AI Research Agent 开发约束
+
+## 禁止事项
+
+1. 禁止在未分析现有代码的情况下创建新模块。
+
+2. 禁止重复实现已有的 RAG。
+
+3. 禁止重复实现已有的 Elasticsearch 搜索。
+
+4. 禁止重复实现已有的知识图谱。
+
+5. 禁止重复实现已有的 AI Model Client。
+
+6. 禁止 Research Agent 直接修改用户知识库。
+
+7. 禁止 Agent 自动删除用户知识。
+
+8. 禁止没有 Source 的研究结论被标记为确定事实。
+
+9. 禁止展示模型 Chain-of-Thought。
+
+10. 禁止无限 Agent Loop。
+
+11. 禁止单个 Agent 无限调用 Tool。
+
+12. 禁止单个 Research Task 无限重试。
+
+13. 禁止一次性修改大量无关代码。
+
+14. 禁止未经确认修改数据库已有表。
+
+15. 禁止为了实现新功能重构整个旧系统。
+
+16. 禁止创建重复 DTO。
+
+17. 禁止创建重复 Service。
+
+18. 禁止创建重复 Tool。
+
+19. 禁止在 Controller 中编写业务逻辑。
+
+20. 禁止在 Service 中直接编写复杂 SQL。
+
+21. 禁止 Entity 手写 Getter / Setter。
+
+22. 必须使用 Lombok @Getter / @Setter。
+
+23. 所有最终设计、架构、需求、测试和开发总结必须保存为 Markdown 文档。
+
+24. 发现已有同主题文档时，必须优先更新已有文档。
+
+25. 禁止创建 final-final、new、temp、test2、copy 等无意义重复文件。
