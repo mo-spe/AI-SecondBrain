@@ -1,7 +1,7 @@
 # AI-SecondBrain API 接口文档
 
-版本：V1.0
-更新日期：2026-07-24
+版本：V2.0
+更新日期：2026-07-29
 维护人：AI-SecondBrain Team
 
 ---
@@ -10,17 +10,18 @@
 
 | 模块 | 章节号 | 接口数 | 说明 |
 |------|--------|--------|------|
-| 认证与用户模块 | 第1章 | 6 | 登录注册、用户信息管理 |
-| 知识管理模块 | 第2章 | 28 | 知识CRUD、图谱、标签、编辑锁、版本管理 |
-| AI对话与采集模块 | 第3章 | 6 | 对话采集、批量导入、快捷采集 |
-| 复习系统模块 | 第4章 | 12 | 复习卡片生成、提交、统计 |
-| AI问答与报告模块 | 第5章 | 16 | RAG问答、学习报告、DeerFlow深度研究 |
-| 工作区模块 | 第6章 | 13 | 工作区CRUD、成员管理、权限控制 |
-| 知识广场与分享模块 | 第7章 | 15 | 发布、点赞、评论、收藏、分享 |
-| 游戏化与统计模块 | 第8章 | 9 | 积分、成就、排行榜、学习统计 |
-| 通知与导出模块 | 第9章 | 9 | 通知管理、数据导出 |
-| 向量、系统与管理模块 | 第10章 | 15 | 向量管理、系统健康、管理后台 |
-| **合计** | | **129** | |
+| 认证与用户模块 | 第1章 | 9 | 登录注册、用户信息管理、AI配置 |
+| 知识管理模块 | 第2章 | 35 | 知识CRUD、图谱、标签、编辑锁、版本管理、待确认知识点 |
+| AI对话与采集模块 | 第3章 | 10 | 对话采集、批量导入、快捷采集、会话管理 |
+| 复习系统模块 | 第4章 | 17 | 复习卡片生成、提交、统计、题目池 |
+| AI问答与报告模块 | 第5章 | 19 | RAG问答、学习报告、DeerFlow深度研究、AI服务商 |
+| 研究项目模块 | 第6章 | 28 | 研究项目CRUD、任务管理、计划、来源、记忆 |
+| 工作区模块 | 第7章 | 13 | 工作区CRUD、成员管理、权限控制 |
+| 知识广场与分享模块 | 第8章 | 15 | 发布、点赞、评论、收藏、分享 |
+| 游戏化与统计模块 | 第9章 | 9 | 积分、成就、排行榜、学习统计 |
+| 通知与导出模块 | 第10章 | 9 | 通知管理、数据导出 |
+| 向量、系统与管理模块 | 第11章 | 15 | 向量管理、系统健康、管理后台 |
+| **合计** | | **179** | |
 
 ---
 
@@ -347,6 +348,147 @@ Content-Type: image/png
   "code": 200,
   "message": "操作成功",
   "data": "https://oss.example.com/avatar/1.png"
+}
+```
+
+---
+
+#### 1.7 获取用户AI配置
+
+- **接口名称**：获取用户AI配置
+- **请求方法和路径**：`GET /api/user/ai-config`
+- **接口描述**：获取当前用户按场景配置的AI服务商、模型和API Key信息。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+
+**请求示例**
+
+```http
+GET /api/user/ai-config
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "scene": "chat",
+      "providerId": 1,
+      "providerCode": "openai",
+      "providerName": "OpenAI",
+      "modelId": 10,
+      "modelName": "gpt-4o",
+      "apiKey": "sk-***",
+      "hasKey": true
+    },
+    {
+      "scene": "embedding",
+      "providerId": 2,
+      "providerCode": "siliconflow",
+      "providerName": "SiliconFlow",
+      "modelId": 21,
+      "modelName": "bge-large-zh",
+      "apiKey": null,
+      "hasKey": false
+    }
+  ]
+}
+```
+
+---
+
+#### 1.8 批量保存场景配置
+
+- **接口名称**：批量保存场景配置
+- **请求方法和路径**：`PUT /api/user/ai-config`
+- **接口描述**：批量保存当前用户在不同场景下的AI服务商和模型配置。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 场景配置列表，每个元素包含场景、服务商ID、模型ID等字段 |
+
+**请求示例**
+
+```http
+PUT /api/user/ai-config
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  {
+    "scene": "chat",
+    "providerId": 1,
+    "modelId": 10
+  },
+  {
+    "scene": "embedding",
+    "providerId": 2,
+    "modelId": 21
+  }
+]
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": null
+}
+```
+
+---
+
+#### 1.9 保存服务商全局API Key
+
+- **接口名称**：保存服务商全局API Key
+- **请求方法和路径**：`PUT /api/user/ai-config/provider-key`
+- **接口描述**：为指定AI服务商保存当前用户的全局API Key，该Key可被同服务商下的多个场景复用。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 请求体，包含 providerId 和 apiKey 字段 |
+
+**请求示例**
+
+```http
+PUT /api/user/ai-config/provider-key
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "providerId": 1,
+  "apiKey": "sk-xxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": null
 }
 ```
 
@@ -1571,6 +1713,345 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.xxxxx
 }
 ```
 
+#### 2.29 待确认知识点列表
+
+- **接口名称**：待确认知识点列表
+- **请求方法和路径**：`GET /api/knowledge/pending`
+- **接口描述**：获取当前工作区下所有待确认（AI 抽取后未入库）的知识点列表。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+
+**请求示例**
+
+```http
+GET /api/knowledge/pending
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 501,
+      "userId": 88,
+      "workspaceId": 12,
+      "rawChatId": 3321,
+      "title": "向量检索的Top-K含义",
+      "summary": "Top-K 表示从向量库中召回相似度最高的 K 条结果",
+      "content": "在 RAG 流程中，Top-K 控制召回阶段返回的知识条数……",
+      "status": 0,
+      "createTime": "2026-07-29 09:12:30",
+      "updateTime": "2026-07-29 09:12:30",
+      "deleted": 0
+    }
+  ]
+}
+```
+
+---
+
+#### 2.30 批量确认入库
+
+- **接口名称**：批量确认入库
+- **请求方法和路径**：`POST /api/knowledge/pending/confirm`
+- **接口描述**：将选中的待确认知识点批量迁移到知识库，可选在入库后同时生成复习卡片。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 批量确认请求体，包含 items 列表和 generateCards 开关 |
+
+**请求示例**
+
+```http
+POST /api/knowledge/pending/confirm
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "pendingId": 501,
+      "title": "向量检索的Top-K含义",
+      "summary": "Top-K 表示从向量库中召回相似度最高的 K 条结果",
+      "content": "在 RAG 流程中，Top-K 控制召回阶段返回的知识条数……"
+    },
+    {
+      "pendingId": 502,
+      "title": "嵌入模型的维度",
+      "summary": "嵌入向量的维度决定了语义表达能力与计算成本",
+      "content": "常见的嵌入维度有 768、1024、1536……"
+    }
+  ],
+  "generateCards": true
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "确认入库成功",
+  "data": null
+}
+```
+
+---
+
+#### 2.31 丢弃待确认知识点
+
+- **接口名称**：丢弃待确认知识点
+- **请求方法和路径**：`DELETE /api/knowledge/pending/{id}`
+- **接口描述**：将指定待确认知识点标记为已丢弃，不再进入知识库。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 待确认知识点记录ID |
+
+**请求示例**
+
+```http
+DELETE /api/knowledge/pending/501
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已丢弃",
+  "data": null
+}
+```
+
+---
+
+#### 2.32 手动新增待确认知识点
+
+- **接口名称**：手动新增待确认知识点
+- **请求方法和路径**：`POST /api/knowledge/pending/add`
+- **接口描述**：在当前工作区的待确认列表中手动添加一条知识点，后续可通过确认接口入库。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 待确认知识点对象，包含 title/summary/content 等字段 |
+
+**请求示例**
+
+```http
+POST /api/knowledge/pending/add
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "手动记录的知识点",
+  "summary": "一段简要描述",
+  "content": "详细内容正文……",
+  "rawChatId": null
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 503,
+    "userId": 88,
+    "workspaceId": 12,
+    "rawChatId": null,
+    "title": "手动记录的知识点",
+    "summary": "一段简要描述",
+    "content": "详细内容正文……",
+    "status": 0,
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:00:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 2.33 获取标签树
+
+- **接口名称**：获取标签树（含层级结构）
+- **请求方法和路径**：`GET /api/tags/tree`
+- **接口描述**：获取当前用户的标签树形结构，包含父子层级关系和每个标签下关联的知识点数量。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+
+**请求示例**
+
+```http
+GET /api/tags/tree
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "userId": 88,
+      "tagName": "前端",
+      "tagColor": "#1890ff",
+      "parentId": null,
+      "knowledgeCount": 12,
+      "children": [
+        {
+          "id": 2,
+          "userId": 88,
+          "tagName": "React",
+          "tagColor": "#61dafb",
+          "parentId": 1,
+          "knowledgeCount": 8,
+          "children": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+#### 2.34 更新标签
+
+- **接口名称**：更新标签
+- **请求方法和路径**：`PUT /api/tags/{id}`
+- **接口描述**：更新指定标签的名称、颜色或父标签。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| id | Long | path | 是 | 待更新的标签ID |
+| body | Object | body | 是 | 更新请求体，包含 tagName/tagColor/parentId 字段 |
+
+**请求示例**
+
+```http
+PUT /api/tags/2
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "tagName": "React18",
+  "tagColor": "#61dafb",
+  "parentId": 1
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 2,
+    "userId": 88,
+    "tagName": "React18",
+    "tagColor": "#61dafb",
+    "parentId": 1
+  }
+}
+```
+
+---
+
+#### 2.35 AI建议标签
+
+- **接口名称**：AI建议标签
+- **请求方法和路径**：`POST /api/tags/ai-suggest`
+- **接口描述**：根据知识点的标题和摘要，由AI推荐合适的标签列表，标识是匹配已有标签还是建议新建。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 请求体，包含 title 和 summary 字段 |
+
+**请求示例**
+
+```http
+POST /api/tags/ai-suggest
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "使用 React Hooks 管理状态",
+  "summary": "介绍 useState、useReducer 等 Hook 在状态管理中的应用"
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "tagName": "React",
+      "existingTagId": 2,
+      "isNew": false,
+      "confidence": 92
+    },
+    {
+      "tagName": "前端状态管理",
+      "existingTagId": null,
+      "isNew": true,
+      "confidence": 78
+    }
+  ]
+}
+```
+
+---
+
 ### 第3章：AI对话与采集模块
 
 本章涵盖 AI 对话采集、批量导入以及多渠道数据捕捉（文档、笔记）相关接口。所有接口均需要登录认证，JWT 拦截器会从请求头 `Authorization: Bearer <token>` 中解析 `userId`，并从 header 或 token 中解析 `workspaceId`，放入 request attribute 供 Controller 使用。
@@ -1841,6 +2322,196 @@ Content-Type: application/json
   "code": 200,
   "message": "操作成功",
   "data": "笔记《Spring Boot 启动流程》捕捉完成，已提取 3 个知识点"
+}
+```
+
+---
+
+#### 3.7 会话列表
+
+- **接口名称**：会话列表
+- **请求方法和路径**：`GET /api/sessions`
+- **接口描述**：分页获取当前用户在当前工作区下的 RAG 对话会话列表。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| current | Integer | query | 否 | 当前页码，默认 1 |
+| size | Integer | query | 否 | 每页大小，默认 20 |
+
+**请求示例**
+
+```http
+GET /api/sessions?current=1&size=20
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "records": [
+      {
+        "id": 9001,
+        "userId": 88,
+        "workspaceId": 12,
+        "title": "关于 RAG 的对话",
+        "createTime": "2026-07-29 09:00:00",
+        "updateTime": "2026-07-29 09:30:00",
+        "deleted": 0
+      }
+    ],
+    "total": 1,
+    "size": 20,
+    "current": 1,
+    "pages": 1
+  }
+}
+```
+
+---
+
+#### 3.8 创建会话
+
+- **接口名称**：创建会话
+- **请求方法和路径**：`POST /api/sessions`
+- **接口描述**：在当前工作区下创建新的 RAG 对话会话。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 请求体，包含 title 字段（不传时默认为"新对话"） |
+
+**请求示例**
+
+```http
+POST /api/sessions
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "向量检索相关问题"
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 9002,
+    "userId": 88,
+    "workspaceId": 12,
+    "title": "向量检索相关问题",
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:00:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 3.9 删除会话
+
+- **接口名称**：删除会话
+- **请求方法和路径**：`DELETE /api/sessions/{id}`
+- **接口描述**：删除指定的 RAG 对话会话（逻辑删除）。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 待删除的会话ID |
+
+**请求示例**
+
+```http
+DELETE /api/sessions/9002
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": null
+}
+```
+
+---
+
+#### 3.10 消息列表
+
+- **接口名称**：消息列表
+- **请求方法和路径**：`GET /api/sessions/{id}/messages`
+- **接口描述**：分页获取指定会话下的聊天消息记录，按时间顺序排列。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 会话ID |
+| current | Integer | query | 否 | 当前页码，默认 1 |
+| size | Integer | query | 否 | 每页大小，默认 100 |
+
+**请求示例**
+
+```http
+GET /api/sessions/9001/messages?current=1&size=100
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "records": [
+      {
+        "id": 70001,
+        "sessionId": 9001,
+        "workspaceId": 12,
+        "role": "user",
+        "content": "什么是 Top-K 检索？",
+        "createTime": "2026-07-29 09:01:00",
+        "deleted": 0
+      },
+      {
+        "id": 70002,
+        "sessionId": 9001,
+        "workspaceId": 12,
+        "role": "assistant",
+        "content": "Top-K 检索是指从向量库中召回相似度最高的 K 条结果……",
+        "createTime": "2026-07-29 09:01:05",
+        "deleted": 0
+      }
+    ],
+    "total": 2,
+    "size": 100,
+    "current": 1,
+    "pages": 1
+  }
 }
 ```
 
@@ -2321,6 +2992,240 @@ Authorization: Bearer <token>
   "code": 200,
   "message": "操作成功",
   "data": 78
+}
+```
+
+---
+
+#### 4.13 获取工作区题目池列表
+
+- **接口名称**：获取工作区题目池列表
+- **请求方法和路径**：`GET /api/review/pool`
+- **接口描述**：获取指定工作区下的复习题目池列表，包含社区标签（参与人数热度）和当前用户的加入状态。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| workspaceId | Long | query | 是 | 工作区ID |
+
+**请求示例**
+
+```http
+GET /api/review/pool?workspaceId=12
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 2001,
+      "nodeId": 501,
+      "nodeTitle": "向量检索的Top-K含义",
+      "questionPreview": "在 RAG 中，Top-K 检索的作用是什么？",
+      "cardType": "essay",
+      "difficulty": 3,
+      "generationType": "auto",
+      "createUserId": 88,
+      "createTime": "2026-07-29 09:12:30",
+      "memberCount": 5,
+      "communityLabel": "green",
+      "communityText": "热门",
+      "isJoined": true,
+      "userCardId": 8001
+    }
+  ]
+}
+```
+
+---
+
+#### 4.14 获取池子题目详情
+
+- **接口名称**：获取池子题目详情
+- **请求方法和路径**：`GET /api/review/pool/{poolId}`
+- **接口描述**：根据池子题目ID获取题目完整详情，包括题目内容、答案、社区标签和当前用户加入状态。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| poolId | Long | path | 是 | 池子题目ID |
+
+**请求示例**
+
+```http
+GET /api/review/pool/2001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 2001,
+    "nodeId": 501,
+    "nodeTitle": "向量检索的Top-K含义",
+    "questionPreview": "在 RAG 中，Top-K 检索的作用是什么？",
+    "cardType": "essay",
+    "difficulty": 3,
+    "generationType": "auto",
+    "createUserId": 88,
+    "createTime": "2026-07-29 09:12:30",
+    "memberCount": 5,
+    "communityLabel": "green",
+    "communityText": "热门",
+    "isJoined": true,
+    "userCardId": 8001
+  }
+}
+```
+
+---
+
+#### 4.15 加入复习
+
+- **接口名称**：加入复习
+- **请求方法和路径**：`POST /api/review/pool/{poolId}/join`
+- **接口描述**：将指定池子题目复制生成当前用户的个人复习卡片副本，开始独立的复习进度追踪。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| poolId | Long | path | 是 | 池子题目ID |
+
+**请求示例**
+
+```http
+POST /api/review/pool/2001/join
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 8002,
+    "poolId": 2001,
+    "userId": 88,
+    "workspaceId": 12,
+    "reviewCount": 0,
+    "correctCount": 0,
+    "incorrectCount": 0,
+    "masteryLevel": 0,
+    "memoryStrength": 0.0,
+    "lastReviewTime": null,
+    "nextReviewTime": "2026-07-30 10:00:00",
+    "status": 0,
+    "isArchived": 0,
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:00:00"
+  }
+}
+```
+
+---
+
+#### 4.16 删除池子题目
+
+- **接口名称**：删除池子题目
+- **请求方法和路径**：`DELETE /api/review/pool/{poolId}`
+- **接口描述**：删除指定池子题目，仅工作区 owner 或题目创建者可执行。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| poolId | Long | path | 是 | 池子题目ID |
+
+**请求示例**
+
+```http
+DELETE /api/review/pool/2001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": null
+}
+```
+
+---
+
+#### 4.17 编辑池子题目
+
+- **接口名称**：编辑池子题目
+- **请求方法和路径**：`PUT /api/review/pool/{poolId}`
+- **接口描述**：编辑指定池子题目的题目内容和答案，仅工作区 owner 或题目创建者可执行。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| poolId | Long | path | 是 | 池子题目ID |
+| body | Object | body | 是 | 编辑请求体，包含 question 和 answer 字段 |
+
+**请求示例**
+
+```http
+PUT /api/review/pool/2001
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "question": "请说明 RAG 中 Top-K 检索的作用，并举例说明 K 值大小的影响。",
+  "answer": "Top-K 检索用于从向量库中召回相似度最高的 K 条知识……"
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 2001,
+    "nodeId": 501,
+    "workspaceId": 12,
+    "question": "请说明 RAG 中 Top-K 检索的作用，并举例说明 K 值大小的影响。",
+    "answer": "Top-K 检索用于从向量库中召回相似度最高的 K 条知识……",
+    "cardType": "essay",
+    "difficulty": 3,
+    "generationType": "auto",
+    "createUserId": 88,
+    "createTime": "2026-07-29 09:12:30",
+    "updateTime": "2026-07-29 10:30:00",
+    "deleted": 0
+  }
 }
 ```
 
@@ -3072,13 +3977,1717 @@ Content-Type: application/json
 }
 ```
 
-### 第6章：工作区模块
+#### 5.17 流式知识问答
+
+- **接口名称**：流式知识问答（SSE）
+- **请求方法和路径**：`POST /api/rag/answer/stream`
+- **接口描述**：基于知识库流式回答用户问题，采用 SSE（Server-Sent Events）逐字输出。响应类型为 `text/event-stream`，前端需根据事件名（`token`/`references`/`metrics`/`done`/`error`）分发处理。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| Accept | String | header | 是 | `text/event-stream` |
+| body | Object | body | 是 | RAG 问答请求体，包含 question/topK/includeReferences/sessionId 字段 |
+
+**请求示例**
+
+```http
+POST /api/rag/answer/stream
+Authorization: Bearer <token>
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "question": "什么是向量检索的 Top-K？",
+  "topK": 3,
+  "includeReferences": true,
+  "sessionId": 9001
+}
+```
+
+**响应示例**
+
+响应类型：`text/event-stream`，以下为 SSE 事件流示例（每行以空行分隔）：
+
+```
+event:token
+data:"在"
+
+event:token
+data:"RAG "
+
+event:token
+data:"中，Top-K "
+
+event:references
+data:"[{\"nodeId\":501,\"title\":\"向量检索的Top-K含义\",\"score\":0.91}]"
+
+event:metrics
+data:"{\"retrievalTime\":120,\"generationTime\":856}"
+
+event:done
+data:"completed"
+```
+
+事件说明：
+
+| 事件名 | data 内容 | 说明 |
+|--------|-----------|------|
+| token | 字符串片段（JSON 字符串） | AI 生成的文本片段，前端需追加显示 |
+| references | JSON 数组字符串 | 检索到的知识引用列表 |
+| metrics | JSON 对象字符串 | 性能指标，含 retrievalTime/generationTime |
+| done | "completed" | 流式生成完成 |
+| error | 错误信息字符串 | 生成失败 |
+
+---
+
+#### 5.18 可用服务商列表
+
+- **接口名称**：可用服务商列表
+- **请求方法和路径**：`GET /api/ai/providers`
+- **接口描述**：获取系统中已启用的 AI 服务商列表，供前端用户在选择模型时使用。此接口为公开接口，无需登录认证。
+- **是否需要登录认证**：否
+
+**请求参数**
+
+无
+
+**请求示例**
+
+```http
+GET /api/ai/providers
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "code": "openai",
+      "name": "OpenAI",
+      "baseUrl": "https://api.openai.com/v1",
+      "apiType": "openai_compatible",
+      "logoUrl": "https://example.com/logo/openai.png",
+      "isEnabled": 1,
+      "sortOrder": 1,
+      "createTime": "2026-07-01 00:00:00",
+      "updateTime": "2026-07-01 00:00:00"
+    },
+    {
+      "id": 2,
+      "code": "siliconflow",
+      "name": "SiliconFlow",
+      "baseUrl": "https://api.siliconflow.cn/v1",
+      "apiType": "openai_compatible",
+      "logoUrl": "https://example.com/logo/sf.png",
+      "isEnabled": 1,
+      "sortOrder": 2,
+      "createTime": "2026-07-01 00:00:00",
+      "updateTime": "2026-07-01 00:00:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 5.19 服务商下的可用模型列表
+
+- **接口名称**：服务商下的可用模型列表
+- **请求方法和路径**：`GET /api/ai/providers/{providerId}/models`
+- **接口描述**：获取指定 AI 服务商下已启用的模型列表。此接口为公开接口，无需登录认证。
+- **是否需要登录认证**：否
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| providerId | Long | path | 是 | 服务商ID |
+
+**请求示例**
+
+```http
+GET /api/ai/providers/1/models
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 10,
+      "providerId": 1,
+      "modelName": "gpt-4o",
+      "displayName": "GPT-4o",
+      "isEnabled": 1,
+      "supportedScenarios": "[\"chat\",\"embedding\"]",
+      "sortOrder": 1,
+      "createTime": "2026-07-01 00:00:00",
+      "updateTime": "2026-07-01 00:00:00"
+    },
+    {
+      "id": 11,
+      "providerId": 1,
+      "modelName": "gpt-4o-mini",
+      "displayName": "GPT-4o mini",
+      "isEnabled": 1,
+      "supportedScenarios": "[\"chat\"]",
+      "sortOrder": 2,
+      "createTime": "2026-07-01 00:00:00",
+      "updateTime": "2026-07-01 00:00:00"
+    }
+  ]
+}
+```
+
+---
+
+### 第6章：研究项目模块
+
+#### 6.1 创建研究项目
+
+- **接口名称**：创建研究项目
+- **请求方法和路径**：`POST /api/research/projects`
+- **接口描述**：创建一个新的 AI 研究项目，进入 DRAFT 草稿状态。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| body | Object | body | 是 | 创建研究项目请求体 |
+
+**请求示例**
+
+```http
+POST /api/research/projects
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "大语言模型在医疗领域的应用研究",
+  "goal": "调研 LLM 在医疗诊断、病历生成等场景的应用现状与挑战",
+  "workspaceId": null
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1001,
+    "userId": 88,
+    "workspaceId": null,
+    "title": "大语言模型在医疗领域的应用研究",
+    "goal": "调研 LLM 在医疗诊断、病历生成等场景的应用现状与挑战",
+    "status": "DRAFT",
+    "complexity": null,
+    "agentWorkflow": null,
+    "maxIterations": null,
+    "currentIteration": null,
+    "planJson": null,
+    "resultSummary": null,
+    "resultReport": null,
+    "contextSnapshot": null,
+    "idempotencyKey": null,
+    "version": 0,
+    "startedAt": null,
+    "pausedAt": null,
+    "completedAt": null,
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:00:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 6.2 查询研究项目列表
+
+- **接口名称**：查询研究项目列表
+- **请求方法和路径**：`GET /api/research/projects`
+- **接口描述**：分页查询当前用户的研究项目列表，支持按状态过滤和标题关键词搜索。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| current | int | query | 否 | 当前页码，默认 1 |
+| size | int | query | 否 | 每页大小，默认 10 |
+| status | String | query | 否 | 项目状态过滤：DRAFT/PLANNING/RESEARCHING/REVIEWING/SYNTHESIZING/COMPLETED/ARCHIVED/FAILED/PAUSED |
+| keyword | String | query | 否 | 标题关键词 |
+
+**请求示例**
+
+```http
+GET /api/research/projects?current=1&size=10&status=RESEARCHING&keyword=LLM
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "records": [
+      {
+        "id": 1001,
+        "userId": 88,
+        "workspaceId": null,
+        "title": "大语言模型在医疗领域的应用研究",
+        "goal": "调研 LLM 在医疗诊断、病历生成等场景的应用现状与挑战",
+        "status": "RESEARCHING",
+        "complexity": "DEEP",
+        "agentWorkflow": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+        "maxIterations": 5,
+        "currentIteration": 2,
+        "startedAt": "2026-07-29 10:05:00",
+        "createTime": "2026-07-29 10:00:00",
+        "updateTime": "2026-07-29 10:30:00"
+      }
+    ],
+    "total": 1,
+    "size": 10,
+    "current": 1,
+    "pages": 1
+  }
+}
+```
+
+---
+
+#### 6.3 查询研究项目详情
+
+- **接口名称**：查询研究项目详情
+- **请求方法和路径**：`GET /api/research/projects/{id}`
+- **接口描述**：根据项目 ID 查询单个研究项目的详细信息。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 1001,
+    "userId": 88,
+    "workspaceId": null,
+    "title": "大语言模型在医疗领域的应用研究",
+    "goal": "调研 LLM 在医疗诊断、病历生成等场景的应用现状与挑战",
+    "status": "RESEARCHING",
+    "complexity": "DEEP",
+    "agentWorkflow": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+    "maxIterations": 5,
+    "currentIteration": 2,
+    "planJson": "{\"tasks\":[...]}",
+    "resultSummary": null,
+    "resultReport": null,
+    "contextSnapshot": null,
+    "idempotencyKey": "exec-1001-1722218400",
+    "version": 3,
+    "startedAt": "2026-07-29 10:05:00",
+    "pausedAt": null,
+    "completedAt": null,
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:30:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 6.4 更新研究项目
+
+- **接口名称**：更新研究项目
+- **请求方法和路径**：`PUT /api/research/projects/{id}`
+- **接口描述**：更新研究项目的标题和目标描述，所有字段均为可选，仅更新非 null 字段。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| id | Long | path | 是 | 项目ID |
+| body | Object | body | 是 | 更新研究项目请求体 |
+
+**请求示例**
+
+```http
+PUT /api/research/projects/1001
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "大语言模型在医疗领域的应用研究（更新版）",
+  "goal": "深入调研 LLM 在医疗诊断、病历生成、药物研发等场景的应用现状、挑战与未来趋势"
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1001,
+    "userId": 88,
+    "workspaceId": null,
+    "title": "大语言模型在医疗领域的应用研究（更新版）",
+    "goal": "深入调研 LLM 在医疗诊断、病历生成、药物研发等场景的应用现状、挑战与未来趋势",
+    "status": "DRAFT",
+    "complexity": null,
+    "agentWorkflow": null,
+    "maxIterations": null,
+    "currentIteration": null,
+    "planJson": null,
+    "resultSummary": null,
+    "resultReport": null,
+    "contextSnapshot": null,
+    "idempotencyKey": null,
+    "version": 1,
+    "startedAt": null,
+    "pausedAt": null,
+    "completedAt": null,
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:10:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 6.5 删除研究项目
+
+- **接口名称**：删除研究项目
+- **请求方法和路径**：`DELETE /api/research/projects/{id}`
+- **接口描述**：逻辑删除指定的研究项目及其关联数据。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+DELETE /api/research/projects/1001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已删除",
+  "data": null
+}
+```
+
+---
+
+#### 6.6 启动研究
+
+- **接口名称**：启动研究
+- **请求方法和路径**：`POST /api/research/projects/{id}/execute`
+- **接口描述**：启动指定项目的研究流程，触发 Planner Agent 进行研究规划与执行。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/execute
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "研究已启动",
+  "data": {
+    "id": 1001,
+    "userId": 88,
+    "workspaceId": null,
+    "title": "大语言模型在医疗领域的应用研究",
+    "goal": "调研 LLM 在医疗诊断、病历生成等场景的应用现状与挑战",
+    "status": "PLANNING",
+    "complexity": null,
+    "agentWorkflow": null,
+    "maxIterations": null,
+    "currentIteration": 0,
+    "startedAt": "2026-07-29 10:05:00",
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:05:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 6.7 暂停研究
+
+- **接口名称**：暂停研究
+- **请求方法和路径**：`POST /api/research/projects/{id}/pause`
+- **接口描述**：暂停正在执行的研究流程，保存当前上下文快照以便后续恢复。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/pause
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已暂停",
+  "data": null
+}
+```
+
+---
+
+#### 6.8 恢复研究
+
+- **接口名称**：恢复研究
+- **请求方法和路径**：`POST /api/research/projects/{id}/resume`
+- **接口描述**：恢复已暂停的研究流程，从上下文快照继续执行。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/resume
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已恢复",
+  "data": {
+    "id": 1001,
+    "userId": 88,
+    "workspaceId": null,
+    "title": "大语言模型在医疗领域的应用研究",
+    "goal": "调研 LLM 在医疗诊断、病历生成等场景的应用现状与挑战",
+    "status": "RESEARCHING",
+    "complexity": "DEEP",
+    "currentIteration": 2,
+    "startedAt": "2026-07-29 10:05:00",
+    "createTime": "2026-07-29 10:00:00",
+    "updateTime": "2026-07-29 10:35:00",
+    "deleted": 0
+  }
+}
+```
+
+---
+
+#### 6.9 归档研究
+
+- **接口名称**：归档研究
+- **请求方法和路径**：`POST /api/research/projects/{id}/archive`
+- **接口描述**：将已完成的研究项目归档，归档后项目将进入只读状态。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| id | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/archive
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已归档",
+  "data": null
+}
+```
+
+---
+
+#### 6.10 查询任务列表
+
+- **接口名称**：查询任务列表
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/tasks`
+- **接口描述**：查询指定项目下的所有研究任务列表。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/tasks
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 2001,
+      "projectId": 1001,
+      "planId": 3001,
+      "title": "调研 LLM 在医疗诊断中的应用",
+      "description": "收集并分析 LLM 用于辅助诊断的案例与文献",
+      "question": "LLM 在医疗诊断中的准确率和局限性如何？",
+      "status": "COMPLETED",
+      "dependsOn": null,
+      "asyncTaskId": 9001,
+      "requiresExternalSearch": 1,
+      "resultSummary": "LLM 在影像诊断中表现出较高准确率，但在罕见病诊断上存在局限。",
+      "sortOrder": 1,
+      "startedAt": "2026-07-29 10:10:00",
+      "completedAt": "2026-07-29 10:25:00",
+      "createTime": "2026-07-29 10:06:00",
+      "updateTime": "2026-07-29 10:25:00"
+    },
+    {
+      "id": 2002,
+      "projectId": 1001,
+      "planId": 3001,
+      "title": "调研 LLM 在病历生成中的应用",
+      "description": "收集并分析 LLM 用于自动生成病历的实践",
+      "question": "LLM 生成的病历在临床可接受度如何？",
+      "status": "PENDING",
+      "dependsOn": 2001,
+      "asyncTaskId": null,
+      "requiresExternalSearch": 1,
+      "resultSummary": null,
+      "sortOrder": 2,
+      "startedAt": null,
+      "completedAt": null,
+      "createTime": "2026-07-29 10:06:00",
+      "updateTime": "2026-07-29 10:06:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.11 查询任务详情
+
+- **接口名称**：查询任务详情
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/tasks/{taskId}`
+- **接口描述**：根据项目ID和任务ID查询单个研究任务的详细信息。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| taskId | Long | path | 是 | 任务ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/tasks/2001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 2001,
+    "projectId": 1001,
+    "planId": 3001,
+    "title": "调研 LLM 在医疗诊断中的应用",
+    "description": "收集并分析 LLM 用于辅助诊断的案例与文献",
+    "question": "LLM 在医疗诊断中的准确率和局限性如何？",
+    "status": "COMPLETED",
+    "dependsOn": null,
+    "asyncTaskId": 9001,
+    "requiresExternalSearch": 1,
+    "resultSummary": "LLM 在影像诊断中表现出较高准确率，但在罕见病诊断上存在局限。",
+    "sortOrder": 1,
+    "startedAt": "2026-07-29 10:10:00",
+    "completedAt": "2026-07-29 10:25:00",
+    "createTime": "2026-07-29 10:06:00",
+    "updateTime": "2026-07-29 10:25:00"
+  }
+}
+```
+
+---
+
+#### 6.12 创建研究任务
+
+- **接口名称**：创建研究任务
+- **请求方法和路径**：`POST /api/research/projects/{projectId}/tasks`
+- **接口描述**：在指定项目下手动创建一个新的研究任务。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| projectId | Long | path | 是 | 项目ID |
+| body | Object | body | 是 | 创建研究任务请求体 |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/tasks
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "调研 LLM 在药物研发中的应用",
+  "description": "收集并分析 LLM 辅助药物分子设计、靶点发现的实践案例",
+  "question": "LLM 在药物研发的哪些环节最具潜力？",
+  "dependsOn": 2001,
+  "requiresExternalSearch": true,
+  "sortOrder": 3
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 2003,
+    "projectId": 1001,
+    "planId": null,
+    "title": "调研 LLM 在药物研发中的应用",
+    "description": "收集并分析 LLM 辅助药物分子设计、靶点发现的实践案例",
+    "question": "LLM 在药物研发的哪些环节最具潜力？",
+    "status": "PENDING",
+    "dependsOn": 2001,
+    "asyncTaskId": null,
+    "requiresExternalSearch": 1,
+    "resultSummary": null,
+    "sortOrder": 3,
+    "startedAt": null,
+    "completedAt": null,
+    "createTime": "2026-07-29 10:40:00",
+    "updateTime": "2026-07-29 10:40:00"
+  }
+}
+```
+
+---
+
+#### 6.13 更新研究任务
+
+- **接口名称**：更新研究任务
+- **请求方法和路径**：`PUT /api/research/projects/{projectId}/tasks/{taskId}`
+- **接口描述**：更新研究任务信息，所有字段均为可选，仅更新非 null 字段。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| projectId | Long | path | 是 | 项目ID |
+| taskId | Long | path | 是 | 任务ID |
+| body | Object | body | 是 | 更新研究任务请求体 |
+
+**请求示例**
+
+```http
+PUT /api/research/projects/1001/tasks/2002
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "调研 LLM 在病历生成中的应用（更新版）",
+  "description": "深入分析 LLM 自动生成结构化病历的实践与评估方法",
+  "question": "LLM 生成的病历在临床可接受度与合规性方面表现如何？",
+  "status": "RUNNING",
+  "dependsOn": 2001,
+  "requiresExternalSearch": true,
+  "resultSummary": null,
+  "sortOrder": 2
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 2002,
+    "projectId": 1001,
+    "planId": 3001,
+    "title": "调研 LLM 在病历生成中的应用（更新版）",
+    "description": "深入分析 LLM 自动生成结构化病历的实践与评估方法",
+    "question": "LLM 生成的病历在临床可接受度与合规性方面表现如何？",
+    "status": "RUNNING",
+    "dependsOn": 2001,
+    "asyncTaskId": null,
+    "requiresExternalSearch": 1,
+    "resultSummary": null,
+    "sortOrder": 2,
+    "startedAt": "2026-07-29 10:45:00",
+    "completedAt": null,
+    "createTime": "2026-07-29 10:06:00",
+    "updateTime": "2026-07-29 10:45:00"
+  }
+}
+```
+
+---
+
+#### 6.14 删除研究任务
+
+- **接口名称**：删除研究任务
+- **请求方法和路径**：`DELETE /api/research/projects/{projectId}/tasks/{taskId}`
+- **接口描述**：删除指定项目下的研究任务。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| taskId | Long | path | 是 | 任务ID |
+
+**请求示例**
+
+```http
+DELETE /api/research/projects/1001/tasks/2003
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已删除",
+  "data": null
+}
+```
+
+---
+
+#### 6.15 批量创建任务
+
+- **接口名称**：批量创建任务
+- **请求方法和路径**：`POST /api/research/projects/{projectId}/tasks/batch`
+- **接口描述**：在指定项目下批量创建多个研究任务，请求体为任务对象数组。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| projectId | Long | path | 是 | 项目ID |
+| body | Object | body | 是 | 批量创建任务请求体（任务对象数组） |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/tasks/batch
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  {
+    "title": "调研 LLM 在影像诊断中的应用",
+    "description": "分析 LLM 辅助医学影像诊断的案例",
+    "question": "LLM 在影像诊断中的准确率如何？",
+    "dependsOn": null,
+    "requiresExternalSearch": true,
+    "sortOrder": 1
+  },
+  {
+    "title": "调研 LLM 在病历生成中的应用",
+    "description": "分析 LLM 自动生成病历的实践",
+    "question": "LLM 生成病历的临床可接受度如何？",
+    "dependsOn": null,
+    "requiresExternalSearch": true,
+    "sortOrder": 2
+  }
+]
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "批量创建成功",
+  "data": [
+    {
+      "id": 2010,
+      "projectId": 1001,
+      "planId": null,
+      "title": "调研 LLM 在影像诊断中的应用",
+      "description": "分析 LLM 辅助医学影像诊断的案例",
+      "question": "LLM 在影像诊断中的准确率如何？",
+      "status": "PENDING",
+      "dependsOn": null,
+      "asyncTaskId": null,
+      "requiresExternalSearch": 1,
+      "resultSummary": null,
+      "sortOrder": 1,
+      "startedAt": null,
+      "completedAt": null,
+      "createTime": "2026-07-29 11:00:00",
+      "updateTime": "2026-07-29 11:00:00"
+    },
+    {
+      "id": 2011,
+      "projectId": 1001,
+      "planId": null,
+      "title": "调研 LLM 在病历生成中的应用",
+      "description": "分析 LLM 自动生成病历的实践",
+      "question": "LLM 生成病历的临床可接受度如何？",
+      "status": "PENDING",
+      "dependsOn": null,
+      "asyncTaskId": null,
+      "requiresExternalSearch": 1,
+      "resultSummary": null,
+      "sortOrder": 2,
+      "startedAt": null,
+      "completedAt": null,
+      "createTime": "2026-07-29 11:00:00",
+      "updateTime": "2026-07-29 11:00:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.16 获取最新研究计划
+
+- **接口名称**：获取最新研究计划
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/plans/latest`
+- **接口描述**：获取指定项目的最新版本研究计划。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/plans/latest
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 3001,
+    "projectId": 1001,
+    "version": 2,
+    "complexity": "DEEP",
+    "agentChain": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+    "tasksJson": "[{\"title\":\"调研诊断应用\",\"requiresExternalSearch\":true}]",
+    "rationale": "该研究涉及多个细分场景且需要外部文献支撑，判定为深度研究。",
+    "estimatedTokens": 80000,
+    "createdBy": "PLANNER_AGENT",
+    "createTime": "2026-07-29 10:06:00"
+  }
+}
+```
+
+---
+
+#### 6.17 查询所有研究计划
+
+- **接口名称**：查询所有研究计划
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/plans`
+- **接口描述**：查询指定项目下的所有研究计划版本列表。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/plans
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 3000,
+      "projectId": 1001,
+      "version": 1,
+      "complexity": "STANDARD",
+      "agentChain": "PLANNER,RESEARCHER,SYNTHESIZER",
+      "tasksJson": "[{\"title\":\"初步调研\",\"requiresExternalSearch\":false}]",
+      "rationale": "初步评估为标准研究。",
+      "estimatedTokens": 30000,
+      "createdBy": "PLANNER_AGENT",
+      "createTime": "2026-07-29 10:05:30"
+    },
+    {
+      "id": 3001,
+      "projectId": 1001,
+      "version": 2,
+      "complexity": "DEEP",
+      "agentChain": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+      "tasksJson": "[{\"title\":\"调研诊断应用\",\"requiresExternalSearch\":true}]",
+      "rationale": "该研究涉及多个细分场景且需要外部文献支撑，判定为深度研究。",
+      "estimatedTokens": 80000,
+      "createdBy": "PLANNER_AGENT",
+      "createTime": "2026-07-29 10:06:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.18 查询研究计划详情
+
+- **接口名称**：查询研究计划详情
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/plans/{planId}`
+- **接口描述**：根据计划ID查询单个研究计划的详细信息。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| planId | Long | path | 是 | 计划ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/plans/3001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 3001,
+    "projectId": 1001,
+    "version": 2,
+    "complexity": "DEEP",
+    "agentChain": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+    "tasksJson": "[{\"title\":\"调研诊断应用\",\"description\":\"...\",\"requiresExternalSearch\":true,\"dependsOn\":null}]",
+    "rationale": "该研究涉及多个细分场景且需要外部文献支撑，判定为深度研究。",
+    "estimatedTokens": 80000,
+    "createdBy": "PLANNER_AGENT",
+    "createTime": "2026-07-29 10:06:00"
+  }
+}
+```
+
+---
+
+#### 6.19 创建研究计划
+
+- **接口名称**：创建研究计划
+- **请求方法和路径**：`POST /api/research/projects/{projectId}/plans`
+- **接口描述**：为指定项目创建研究计划，通常由 Planner Agent 调用。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| Content-Type | String | header | 是 | `application/json` |
+| projectId | Long | path | 是 | 项目ID |
+| body | Object | body | 是 | 创建研究计划请求体 |
+
+**请求示例**
+
+```http
+POST /api/research/projects/1001/plans
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "complexity": "DEEP",
+  "agentChain": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+  "tasksJson": "[{\"title\":\"调研诊断应用\",\"description\":\"...\",\"requiresExternalSearch\":true,\"dependsOn\":null}]",
+  "rationale": "该研究涉及多个细分场景且需要外部文献支撑，判定为深度研究。",
+  "estimatedTokens": 80000,
+  "createdBy": "PLANNER_AGENT"
+}
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 3002,
+    "projectId": 1001,
+    "version": 3,
+    "complexity": "DEEP",
+    "agentChain": "PLANNER,RESEARCHER,REVIEWER,SYNTHESIZER",
+    "tasksJson": "[{\"title\":\"调研诊断应用\",\"description\":\"...\",\"requiresExternalSearch\":true,\"dependsOn\":null}]",
+    "rationale": "该研究涉及多个细分场景且需要外部文献支撑，判定为深度研究。",
+    "estimatedTokens": 80000,
+    "createdBy": "PLANNER_AGENT",
+    "createTime": "2026-07-29 10:50:00"
+  }
+}
+```
+
+---
+
+#### 6.20 查询研究来源
+
+- **接口名称**：查询研究来源
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/sources`
+- **接口描述**：查询指定项目下的所有研究信息来源。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/sources
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 4001,
+      "projectId": 1001,
+      "taskId": 2001,
+      "title": "LLM 在医学影像诊断中的最新研究综述",
+      "url": "https://example.com/papers/llm-medical-imaging",
+      "sourceType": "paper",
+      "snippet": "本文综述了近三年 LLM 在医学影像辅助诊断中的主要进展...",
+      "fullContent": "...完整抓取内容...",
+      "relevanceScore": 0.92,
+      "reliability": "high",
+      "contentHash": "a1b2c3d4e5f6...",
+      "fetchStatus": "success",
+      "fetchedAt": "2026-07-29 10:15:00",
+      "createTime": "2026-07-29 10:15:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.21 查询研究来源详情
+
+- **接口名称**：查询研究来源详情
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/sources/{sourceId}`
+- **接口描述**：根据来源ID查询单个研究信息来源的详细信息。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| sourceId | Long | path | 是 | 来源ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/sources/4001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 4001,
+    "projectId": 1001,
+    "taskId": 2001,
+    "title": "LLM 在医学影像诊断中的最新研究综述",
+    "url": "https://example.com/papers/llm-medical-imaging",
+    "sourceType": "paper",
+    "snippet": "本文综述了近三年 LLM 在医学影像辅助诊断中的主要进展...",
+    "fullContent": "...完整抓取内容...",
+    "relevanceScore": 0.92,
+    "reliability": "high",
+    "contentHash": "a1b2c3d4e5f6...",
+    "fetchStatus": "success",
+    "fetchedAt": "2026-07-29 10:15:00",
+    "createTime": "2026-07-29 10:15:00"
+  }
+}
+```
+
+---
+
+#### 6.22 删除研究来源
+
+- **接口名称**：删除研究来源
+- **请求方法和路径**：`DELETE /api/research/projects/{projectId}/sources/{sourceId}`
+- **接口描述**：删除指定的研究信息来源。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| sourceId | Long | path | 是 | 来源ID |
+
+**请求示例**
+
+```http
+DELETE /api/research/projects/1001/sources/4001
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "已删除",
+  "data": null
+}
+```
+
+---
+
+#### 6.23 查询任务执行步骤
+
+- **接口名称**：查询任务执行步骤
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/tasks/{taskId}/steps`
+- **接口描述**：查询指定任务下的所有 Agent 执行步骤日志，按步骤序号排序。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| taskId | Long | path | 是 | 任务ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/tasks/2001/steps
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 5001,
+      "taskId": 2001,
+      "executionId": 7001,
+      "agentName": "RESEARCHER",
+      "stepType": "THINKING",
+      "title": "分析研究问题",
+      "content": "需要先检索 LLM 在医疗诊断中的最新文献...",
+      "toolName": null,
+      "toolInput": null,
+      "toolOutput": null,
+      "tokenUsage": "{\"prompt\":1200,\"completion\":300}",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "sortOrder": 1,
+      "durationMs": 1500,
+      "createTime": "2026-07-29 10:10:05"
+    },
+    {
+      "id": 5002,
+      "taskId": 2001,
+      "executionId": 7001,
+      "agentName": "RESEARCHER",
+      "stepType": "TOOL_CALL",
+      "title": "调用搜索工具",
+      "content": "执行 web 搜索获取相关文献",
+      "toolName": "web_search",
+      "toolInput": "{\"query\":\"LLM 医疗影像诊断 2025\"}",
+      "toolOutput": "{\"results\":[...]}",
+      "tokenUsage": null,
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "sortOrder": 2,
+      "durationMs": 2300,
+      "createTime": "2026-07-29 10:10:10"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.24 查询项目所有执行步骤
+
+- **接口名称**：查询项目所有执行步骤
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/steps`
+- **接口描述**：查询指定项目下所有任务的执行步骤日志，用于整体审计和回溯。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/steps
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 5001,
+      "taskId": 2001,
+      "executionId": 7001,
+      "agentName": "RESEARCHER",
+      "stepType": "THINKING",
+      "title": "分析研究问题",
+      "content": "需要先检索 LLM 在医疗诊断中的最新文献...",
+      "toolName": null,
+      "toolInput": null,
+      "toolOutput": null,
+      "tokenUsage": "{\"prompt\":1200,\"completion\":300}",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "sortOrder": 1,
+      "durationMs": 1500,
+      "createTime": "2026-07-29 10:10:05"
+    },
+    {
+      "id": 5010,
+      "taskId": 2002,
+      "executionId": 7002,
+      "agentName": "RESEARCHER",
+      "stepType": "TOOL_CALL",
+      "title": "调用搜索工具",
+      "content": "执行 web 搜索获取病历生成相关文献",
+      "toolName": "web_search",
+      "toolInput": "{\"query\":\"LLM 自动生成病历 临床评估\"}",
+      "toolOutput": "{\"results\":[...]}",
+      "tokenUsage": null,
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "sortOrder": 1,
+      "durationMs": 2100,
+      "createTime": "2026-07-29 10:30:05"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.25 获取最新研究报告
+
+- **接口名称**：获取最新研究报告
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/report`
+- **接口描述**：获取指定项目最新版本的研究报告。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/report
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 6001,
+    "projectId": 1001,
+    "version": 2,
+    "title": "大语言模型在医疗领域的应用研究报告",
+    "summary": "本研究调研了 LLM 在医疗诊断、病历生成等场景的应用，发现其在影像辅助诊断方面表现优异，但在罕见病诊断和合规性方面存在挑战。",
+    "contentMd": "# 大语言模型在医疗领域的应用研究\n\n## 1. 研究背景\n...完整 Markdown 报告...",
+    "researchQuestions": "[\"LLM 在医疗诊断中的准确率如何？\",\"LLM 生成病历的临床可接受度如何？\"]",
+    "keyFindings": "[{\"finding\":\"LLM 在影像诊断中准确率较高\",\"confidence\":0.85}]",
+    "knowledgeGaps": "[\"罕见病诊断数据不足\",\"长期合规性评估缺失\"]",
+    "newKnowledgeIds": "[10001,10002]",
+    "newRelationIds": "[20001,20002]",
+    "sourceCount": 15,
+    "conclusionCount": 8,
+    "tokenUsageTotal": "{\"prompt\":45000,\"completion\":12000}",
+    "durationTotalMs": 1800000,
+    "generatedBy": "SYNTHESIZER",
+    "createTime": "2026-07-29 11:30:00"
+  }
+}
+```
+
+---
+
+#### 6.26 获取所有研究报告版本
+
+- **接口名称**：获取所有研究报告版本
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/reports`
+- **接口描述**：获取指定项目所有版本的研究报告列表，支持版本回溯对比。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/reports
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 6000,
+      "projectId": 1001,
+      "version": 1,
+      "title": "大语言模型在医疗领域的应用研究报告（初版）",
+      "summary": "初步调研表明 LLM 在医疗影像诊断方面具有应用潜力。",
+      "contentMd": "# 初步报告\n...",
+      "researchQuestions": "[\"LLM 在医疗诊断中的准确率如何？\"]",
+      "keyFindings": "[{\"finding\":\"LLM 在影像诊断中准确率较高\",\"confidence\":0.7}]",
+      "knowledgeGaps": "[]",
+      "newKnowledgeIds": "[10001]",
+      "newRelationIds": "[20001]",
+      "sourceCount": 8,
+      "conclusionCount": 3,
+      "tokenUsageTotal": "{\"prompt\":20000,\"completion\":5000}",
+      "durationTotalMs": 900000,
+      "generatedBy": "SYNTHESIZER",
+      "createTime": "2026-07-29 11:00:00"
+    },
+    {
+      "id": 6001,
+      "projectId": 1001,
+      "version": 2,
+      "title": "大语言模型在医疗领域的应用研究报告",
+      "summary": "本研究调研了 LLM 在医疗诊断、病历生成等场景的应用，发现其在影像辅助诊断方面表现优异，但在罕见病诊断和合规性方面存在挑战。",
+      "contentMd": "# 大语言模型在医疗领域的应用研究\n\n## 1. 研究背景\n...完整 Markdown 报告...",
+      "researchQuestions": "[\"LLM 在医疗诊断中的准确率如何？\",\"LLM 生成病历的临床可接受度如何？\"]",
+      "keyFindings": "[{\"finding\":\"LLM 在影像诊断中准确率较高\",\"confidence\":0.85}]",
+      "knowledgeGaps": "[\"罕见病诊断数据不足\",\"长期合规性评估缺失\"]",
+      "newKnowledgeIds": "[10001,10002]",
+      "newRelationIds": "[20001,20002]",
+      "sourceCount": 15,
+      "conclusionCount": 8,
+      "tokenUsageTotal": "{\"prompt\":45000,\"completion\":12000}",
+      "durationTotalMs": 1800000,
+      "generatedBy": "SYNTHESIZER",
+      "createTime": "2026-07-29 11:30:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.27 查询项目所有研究记忆
+
+- **接口名称**：查询项目所有研究记忆
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/memory`
+- **接口描述**：查询指定项目下的所有研究记忆，包括知识状态、缺口发现、搜索结果等中间状态信息。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/memory
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 8001,
+      "projectId": 1001,
+      "userId": 88,
+      "memoryKey": "diagnosis_accuracy",
+      "memoryType": "knowledge_state",
+      "content": "{\"topic\":\"影像诊断准确率\",\"value\":\"LLM 在常见病影像诊断准确率达 92%\"}",
+      "lastAccessedAt": "2026-07-29 10:25:00",
+      "expiresAt": null,
+      "createTime": "2026-07-29 10:20:00",
+      "updateTime": "2026-07-29 10:25:00"
+    },
+    {
+      "id": 8002,
+      "projectId": 1001,
+      "userId": 88,
+      "memoryKey": "rare_disease_gap",
+      "memoryType": "gap_found",
+      "content": "{\"gap\":\"罕见病诊断训练数据不足\",\"severity\":\"high\"}",
+      "lastAccessedAt": "2026-07-29 10:26:00",
+      "expiresAt": null,
+      "createTime": "2026-07-29 10:22:00",
+      "updateTime": "2026-07-29 10:26:00"
+    }
+  ]
+}
+```
+
+---
+
+#### 6.28 按类型查询研究记忆
+
+- **接口名称**：按类型查询研究记忆
+- **请求方法和路径**：`GET /api/research/projects/{projectId}/memory/{type}`
+- **接口描述**：根据记忆类型查询指定项目下的研究记忆。记忆类型包括：knowledge_state/gap_found/search_result/user_preference/decision。需要登录认证。
+- **是否需要登录认证**：是
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| Authorization | String | header | 是 | 认证 Token，格式为 `Bearer <token>` |
+| projectId | Long | path | 是 | 项目ID |
+| type | String | path | 是 | 记忆类型：knowledge_state/gap_found/search_result/user_preference/decision |
+
+**请求示例**
+
+```http
+GET /api/research/projects/1001/memory/gap_found
+Authorization: Bearer <token>
+```
+
+**响应示例**
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 8002,
+      "projectId": 1001,
+      "userId": 88,
+      "memoryKey": "rare_disease_gap",
+      "memoryType": "gap_found",
+      "content": "{\"gap\":\"罕见病诊断训练数据不足\",\"severity\":\"high\"}",
+      "lastAccessedAt": "2026-07-29 10:26:00",
+      "expiresAt": null,
+      "createTime": "2026-07-29 10:22:00",
+      "updateTime": "2026-07-29 10:26:00"
+    },
+    {
+      "id": 8005,
+      "projectId": 1001,
+      "userId": 88,
+      "memoryKey": "compliance_gap",
+      "memoryType": "gap_found",
+      "content": "{\"gap\":\"LLM 生成病历的长期合规性评估数据缺失\",\"severity\":\"medium\"}",
+      "lastAccessedAt": "2026-07-29 10:28:00",
+      "expiresAt": null,
+      "createTime": "2026-07-29 10:27:00",
+      "updateTime": "2026-07-29 10:28:00"
+    }
+  ]
+}
+```
+
+---
+
+### 第7章：工作区模块
 
 工作区模块提供工作区（多人协作空间）的创建、查询、更新、删除以及成员管理能力，是 RBAC 多租户体系的核心。所有接口均需要登录认证，部分接口还要求当前用户具备工作区所有者或管理员权限。
 
 ---
 
-#### 6.1 创建工作区
+#### 7.1 创建工作区
 
 - **接口名称**：创建工作区
 - **请求方法和路径**：`POST /api/workspace`
@@ -3126,7 +5735,7 @@ Content-Type: application/json
 
 ---
 
-#### 6.2 工作区列表
+#### 7.2 工作区列表
 
 - **接口名称**：我的工作区列表
 - **请求方法和路径**：`GET /api/workspace`
@@ -3177,7 +5786,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.3 工作区详情
+#### 7.3 工作区详情
 
 - **接口名称**：工作区详情
 - **请求方法和路径**：`GET /api/workspace/{id}`
@@ -3218,7 +5827,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.4 更新工作区
+#### 7.4 更新工作区
 
 - **接口名称**：更新工作区信息
 - **请求方法和路径**：`PUT /api/workspace/{id}`
@@ -3258,7 +5867,7 @@ Content-Type: application/json
 
 ---
 
-#### 6.5 删除工作区
+#### 7.5 删除工作区
 
 - **接口名称**：删除工作区
 - **请求方法和路径**：`DELETE /api/workspace/{id}`
@@ -3290,7 +5899,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.6 转让工作区
+#### 7.6 转让工作区
 
 - **接口名称**：转让工作区所有权
 - **请求方法和路径**：`PUT /api/workspace/{id}/transfer`
@@ -3328,7 +5937,7 @@ Content-Type: application/json
 
 ---
 
-#### 6.7 邀请成员
+#### 7.7 邀请成员
 
 - **接口名称**：添加成员
 - **请求方法和路径**：`POST /api/workspace/{id}/members`
@@ -3368,7 +5977,7 @@ Content-Type: application/json
 
 ---
 
-#### 6.8 成员列表
+#### 7.8 成员列表
 
 - **接口名称**：成员列表
 - **请求方法和路径**：`GET /api/workspace/{id}/members`
@@ -3417,7 +6026,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.9 更新成员角色
+#### 7.9 更新成员角色
 
 - **接口名称**：更新成员角色
 - **请求方法和路径**：`PUT /api/workspace/{id}/members/{targetUserId}`
@@ -3456,7 +6065,7 @@ Content-Type: application/json
 
 ---
 
-#### 6.10 接受邀请
+#### 7.10 接受邀请
 
 - **接口名称**：确认加入工作区
 - **请求方法和路径**：`PUT /api/workspace/{id}/members/accept`
@@ -3488,7 +6097,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.11 移除成员
+#### 7.11 移除成员
 
 - **接口名称**：移除成员
 - **请求方法和路径**：`DELETE /api/workspace/{id}/members/{targetUserId}`
@@ -3521,7 +6130,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.12 切换工作区
+#### 7.12 切换工作区
 
 - **接口名称**：切换到指定工作区
 - **请求方法和路径**：`PUT /api/workspace/{id}/switch`
@@ -3556,7 +6165,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 6.13 获取/创建个人工作区
+#### 7.13 获取/创建个人工作区
 
 - **接口名称**：切换到个人空间
 - **请求方法和路径**：`PUT /api/workspace/personal`
@@ -3588,13 +6197,13 @@ Authorization: Bearer <token>
 
 ---
 
-### 第7章：知识广场与分享模块
+### 第8章：知识广场与分享模块
 
-知识广场模块面向工作区之间的协作知识分享，提供帖子发布、浏览、点赞、评论、收藏、举报等互动能力；分享模块则面向外部用户，通过随机 token 将知识节点对外公开分享。除 `7.13 访问分享` 为公开接口外，其余接口均需登录认证。
+知识广场模块面向工作区之间的协作知识分享，提供帖子发布、浏览、点赞、评论、收藏、举报等互动能力；分享模块则面向外部用户，通过随机 token 将知识节点对外公开分享。除 `8.13 访问分享` 为公开接口外，其余接口均需登录认证。
 
 ---
 
-#### 7.1 发布到广场
+#### 8.1 发布到广场
 
 - **接口名称**：发布到广场
 - **请求方法和路径**：`POST /api/square/publish`
@@ -3653,7 +6262,7 @@ Content-Type: application/json
 
 ---
 
-#### 7.2 删除发布
+#### 8.2 删除发布
 
 - **接口名称**：下架帖子
 - **请求方法和路径**：`DELETE /api/square/{id}`
@@ -3685,7 +6294,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.3 广场列表
+#### 8.3 广场列表
 
 - **接口名称**：广场帖子列表
 - **请求方法和路径**：`GET /api/square/list`
@@ -3746,7 +6355,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.4 广场详情
+#### 8.4 广场详情
 
 - **接口名称**：帖子详情
 - **请求方法和路径**：`GET /api/square/{id}`
@@ -3816,7 +6425,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.5 点赞
+#### 8.5 点赞
 
 - **接口名称**：点赞/取消点赞
 - **请求方法和路径**：`POST /api/square/{id}/like`
@@ -3848,7 +6457,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.6 评论
+#### 8.6 评论
 
 - **接口名称**：发表评论
 - **请求方法和路径**：`POST /api/square/{id}/comment`
@@ -3895,7 +6504,7 @@ Content-Type: application/json
 
 ---
 
-#### 7.7 删除评论
+#### 8.7 删除评论
 
 - **接口名称**：删除评论
 - **请求方法和路径**：`DELETE /api/square/{id}/comment/{commentId}`
@@ -3928,7 +6537,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.8 收藏
+#### 8.8 收藏
 
 - **接口名称**：收藏/取消收藏
 - **请求方法和路径**：`POST /api/square/{id}/bookmark`
@@ -3960,7 +6569,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.9 收藏列表
+#### 8.9 收藏列表
 
 - **接口名称**：我的收藏列表
 - **请求方法和路径**：`GET /api/square/bookmarks`
@@ -4018,7 +6627,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.10 点赞列表
+#### 8.10 点赞列表
 
 - **接口名称**：我的点赞列表
 - **请求方法和路径**：`GET /api/square/likes`
@@ -4076,7 +6685,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.11 举报
+#### 8.11 举报
 
 - **接口名称**：举报帖子
 - **请求方法和路径**：`POST /api/square/{id}/report`
@@ -4114,7 +6723,7 @@ Content-Type: application/json
 
 ---
 
-#### 7.12 创建分享
+#### 8.12 创建分享
 
 - **接口名称**：创建分享链接
 - **请求方法和路径**：`POST /api/share`
@@ -4161,7 +6770,7 @@ Content-Type: application/json
 
 ---
 
-#### 7.13 访问分享
+#### 8.13 访问分享
 
 - **接口名称**：访问分享内容（公开）
 - **请求方法和路径**：`GET /api/share/{token}`
@@ -4199,7 +6808,7 @@ GET /api/share/a3f5c7e9b1d4f6a8c2e0b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5
 
 ---
 
-#### 7.14 删除分享
+#### 8.14 删除分享
 
 - **接口名称**：撤销分享
 - **请求方法和路径**：`DELETE /api/share/{id}`
@@ -4231,7 +6840,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 7.15 分享列表
+#### 8.15 分享列表
 
 - **接口名称**：我的分享列表
 - **请求方法和路径**：`GET /api/share/list`
@@ -4282,9 +6891,9 @@ Authorization: Bearer <token>
 }
 ```
 
-### 第8章：游戏化与统计模块
+### 第9章：游戏化与统计模块
 
-#### 8.1 游戏化档案
+#### 9.1 游戏化档案
 
 - **接口名称**：获取游戏化概览
 - **请求方法和路径**：GET /api/gamification/profile
@@ -4346,7 +6955,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 8.2 每日签到
+#### 9.2 每日签到
 
 - **接口名称**：每日签到
 - **请求方法和路径**：POST /api/gamification/check-in
@@ -4409,7 +7018,7 @@ Content-Type: application/json
 
 ---
 
-#### 8.3 成就列表
+#### 9.3 成就列表
 
 - **接口名称**：获取成就列表
 - **请求方法和路径**：GET /api/gamification/achievements
@@ -4472,7 +7081,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 8.4 排行榜
+#### 9.4 排行榜
 
 - **接口名称**：获取排行榜
 - **请求方法和路径**：GET /api/gamification/leaderboard
@@ -4538,7 +7147,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 8.5 补签
+#### 9.5 补签
 
 - **接口名称**：使用补签卡
 - **请求方法和路径**：POST /api/gamification/makeup
@@ -4603,7 +7212,7 @@ Content-Type: application/json
 
 ---
 
-#### 8.6 积分记录
+#### 9.6 积分记录
 
 - **接口名称**：获取积分流水
 - **请求方法和路径**：GET /api/gamification/points-log
@@ -4661,7 +7270,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 8.7 连续打卡日历
+#### 9.7 连续打卡日历
 
 - **接口名称**：获取签到热力图数据
 - **请求方法和路径**：GET /api/gamification/streak-calendar
@@ -4715,7 +7324,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 8.8 学习统计概览
+#### 9.8 学习统计概览
 
 - **接口名称**：获取统计数据
 - **请求方法和路径**：GET /api/statistics
@@ -4749,7 +7358,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 8.9 学习统计图表
+#### 9.9 学习统计图表
 
 - **接口名称**：获取图表数据
 - **请求方法和路径**：GET /api/statistics/chart
@@ -4792,9 +7401,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-### 第9章：通知与导出模块
+### 第10章：通知与导出模块
 
-#### 9.1 通知列表
+#### 10.1 通知列表
 
 - **接口名称**：通知列表
 - **请求方法和路径**：GET /api/notification/list
@@ -4864,7 +7473,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 9.2 未读数量
+#### 10.2 未读数量
 
 - **接口名称**：未读通知数
 - **请求方法和路径**：GET /api/notification/unread-count
@@ -4894,7 +7503,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 9.3 标记已读
+#### 10.3 标记已读
 
 - **接口名称**：标记已读
 - **请求方法和路径**：PUT /api/notification/{id}/read
@@ -4923,7 +7532,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 9.4 全部已读
+#### 10.4 全部已读
 
 - **接口名称**：全部标记已读
 - **请求方法和路径**：PUT /api/notification/read-all
@@ -4951,7 +7560,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 9.5 导出 Markdown
+#### 10.5 导出 Markdown
 
 - **接口名称**：导出为 Markdown
 - **请求方法和路径**：POST /api/export/markdown
@@ -4989,7 +7598,7 @@ HTTP/1.1 401 Unauthorized
 
 ---
 
-#### 9.6 导出 PDF
+#### 10.6 导出 PDF
 
 - **接口名称**：导出为 PDF
 - **请求方法和路径**：POST /api/export/pdf
@@ -5027,7 +7636,7 @@ HTTP/1.1 401 Unauthorized
 
 ---
 
-#### 9.7 导出 Word
+#### 10.7 导出 Word
 
 - **接口名称**：导出为 Word
 - **请求方法和路径**：POST /api/export/word
@@ -5064,7 +7673,7 @@ HTTP/1.1 401 Unauthorized
 
 ---
 
-#### 9.8 导出 JSON
+#### 10.8 导出 JSON
 
 - **接口名称**：导出为 JSON
 - **请求方法和路径**：POST /api/export/json
@@ -5112,7 +7721,7 @@ HTTP/1.1 401 Unauthorized
 
 ---
 
-#### 9.9 导出 CSV
+#### 10.9 导出 CSV
 
 - **接口名称**：导出为 CSV
 - **请求方法和路径**：POST /api/export/csv
@@ -5151,9 +7760,9 @@ HTTP/1.1 401 Unauthorized
 
 ---
 
-### 第10章：向量、系统与管理模块
+### 第11章：向量、系统与管理模块
 
-#### 10.1 重新生成向量
+#### 11.1 重新生成向量
 
 - **接口名称**：重新生成向量
 - **请求方法和路径**：POST /api/vector/regenerate/{knowledgeId}
@@ -5182,7 +7791,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 10.2 批量生成向量
+#### 11.2 批量生成向量
 
 - **接口名称**：批量生成向量
 - **请求方法和路径**：POST /api/vector/batch-generate
@@ -5210,7 +7819,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 10.3 查询异步任务状态
+#### 11.3 查询异步任务状态
 
 - **接口名称**：查询任务状态
 - **请求方法和路径**：GET /api/async-task/status/{taskNumber}
@@ -5259,7 +7868,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMH0.xxx
 
 ---
 
-#### 10.4 健康检查
+#### 11.4 健康检查
 
 - **接口名称**：健康检查
 - **请求方法和路径**：GET /api/health
@@ -5286,7 +7895,7 @@ GET /api/health
 
 ---
 
-#### 10.5 测试 DeerFlow 连接
+#### 11.5 测试 DeerFlow 连接
 
 - **接口名称**：测试 DeerFlow 连接
 - **请求方法和路径**：GET /api/test/deerflow-connection
@@ -5317,7 +7926,7 @@ GET /api/test/deerflow-connection
 
 ---
 
-#### 10.6 管理统计
+#### 11.6 管理统计
 
 - **接口名称**：平台统计
 - **请求方法和路径**：GET /api/admin/statistics
@@ -5357,7 +7966,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.7 用户列表
+#### 11.7 用户列表
 
 - **接口名称**：用户列表
 - **请求方法和路径**：GET /api/admin/users
@@ -5428,7 +8037,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.8 禁用用户
+#### 11.8 禁用用户
 
 - **接口名称**：禁用/启用用户
 - **请求方法和路径**：PUT /api/admin/users/{id}/disable
@@ -5466,7 +8075,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.9 工作区列表
+#### 11.9 工作区列表
 
 - **接口名称**：工作区列表
 - **请求方法和路径**：GET /api/admin/workspaces
@@ -5523,7 +8132,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.10 禁用工作区
+#### 11.10 禁用工作区
 
 - **接口名称**：禁用/启用工作区
 - **请求方法和路径**：PUT /api/admin/workspaces/{id}/disable
@@ -5561,7 +8170,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.11 举报列表
+#### 11.11 举报列表
 
 - **接口名称**：举报列表
 - **请求方法和路径**：GET /api/admin/reports
@@ -5625,7 +8234,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.12 处理举报
+#### 11.12 处理举报
 
 - **接口名称**：处理举报
 - **请求方法和路径**：PUT /api/admin/reports/{id}/handle
@@ -5670,7 +8279,7 @@ Content-Type: application/json
 
 ---
 
-#### 10.13 敏感词列表
+#### 11.13 敏感词列表
 
 - **接口名称**：敏感词列表
 - **请求方法和路径**：GET /api/admin/sensitive-words
@@ -5714,7 +8323,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.14 添加敏感词
+#### 11.14 添加敏感词
 
 - **接口名称**：添加敏感词
 - **请求方法和路径**：POST /api/admin/sensitive-words
@@ -5743,7 +8352,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 
 ---
 
-#### 10.15 删除敏感词
+#### 11.15 删除敏感词
 
 - **接口名称**：删除敏感词
 - **请求方法和路径**：DELETE /api/admin/sensitive-words/{id}
@@ -5777,3 +8386,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 | 版本 | 日期 | 修改人 | 修改内容 |
 |------|------|--------|----------|
 | V1.0 | 2026-07-24 | AI-SecondBrain Team | 初始版本，合并 4 个 API 文档片段，涵盖 10 个模块共 129 个接口 |
+| V2.0 | 2026-07-29 | AI-SecondBrain Team | 新增研究项目模块(28)、会话管理(4)、待确认知识点(4)、标签树(3)、题目池(5)、流式问答(1)、AI服务商(2)、用户AI配置(3)接口 |
