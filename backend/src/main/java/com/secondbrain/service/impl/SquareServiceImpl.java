@@ -4,14 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.SystemConstants;
-import com.secondbrain.entity.KnowledgeNode;
-import com.secondbrain.entity.SensitiveWord;
-import com.secondbrain.entity.SquareBookmark;
-import com.secondbrain.entity.SquareComment;
-import com.secondbrain.entity.SquareLike;
-import com.secondbrain.entity.SquarePost;
-import com.secondbrain.entity.SquareReport;
-import com.secondbrain.entity.User;
+import com.secondbrain.entity.*;
 import com.secondbrain.exception.BusinessException;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.SensitiveWordMapper;
@@ -119,15 +112,16 @@ public class SquareServiceImpl implements SquareService {
             }
             Long memberCount = workspaceMemberMapper.selectCount(
                     new LambdaQueryWrapper<com.secondbrain.entity.WorkspaceMember>()
-                            .eq(com.secondbrain.entity.WorkspaceMember::getWorkspaceId, workspaceId)
-                            .eq(com.secondbrain.entity.WorkspaceMember::getUserId, userId)
-                            .eq(com.secondbrain.entity.WorkspaceMember::getStatus, "accepted"));
+                            .eq(WorkspaceMember::getWorkspaceId, workspaceId)
+                            .eq(WorkspaceMember::getUserId, userId)
+                            .eq(WorkspaceMember::getStatus, "accepted"));
             if (memberCount == 0) {
                 throw new BusinessException(403, "您不是该工作区的成员，无法发布到工作区广场");
             }
         }
 
         // 检查敏感词
+        /// todo 后面还要考虑加上对知识点相关内容的检查
         checkSensitiveWords(recommendText);
         checkSensitiveWords(node.getTitle());
 
