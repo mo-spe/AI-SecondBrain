@@ -13,15 +13,27 @@
             </div>
 
             <div class="user-avatar-section">
-              <div class="avatar-wrapper">
-                <el-avatar
-                  :size="100"
-                  :src="userStore.userInfo.avatar || defaultAvatar"
-                  class="user-avatar"
-                >
-                  <el-icon :size="50"><User /></el-icon>
-                </el-avatar>
-              </div>
+              <el-upload
+                class="avatar-uploader"
+                :show-file-list="false"
+                :before-upload="beforeAvatarUpload"
+                :http-request="handleAvatarUpload"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+              >
+                <div class="avatar-wrapper">
+                  <el-avatar
+                    :size="100"
+                    :src="userStore.userInfo.avatar || defaultAvatar"
+                    class="user-avatar"
+                  >
+                    <el-icon :size="50"><User /></el-icon>
+                  </el-avatar>
+                  <div class="avatar-overlay">
+                    <el-icon :size="20"><Camera /></el-icon>
+                    <span>更换头像</span>
+                  </div>
+                </div>
+              </el-upload>
             </div>
 
             <div class="user-info-list">
@@ -372,6 +384,7 @@ import {
   Monitor,
   DataLine,
   WarningFilled,
+  Camera,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
@@ -469,6 +482,37 @@ const loadUserInfo = async () => {
     settingsForm.value.apiKey = data.apiKey || "";
   } catch (error) {
     ElMessage.error("加载用户信息失败：" + error.message);
+  }
+};
+
+const avatarUploading = ref(false);
+
+const beforeAvatarUpload = (file) => {
+  const allowedTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+  const isAllowed = allowedTypes.includes(file.type);
+  const isLt2M = file.size / 1024 / 1024 < 2;
+
+  if (!isAllowed) {
+    ElMessage.error("头像仅支持 PNG / JPG / GIF / WebP 格式");
+    return false;
+  }
+  if (!isLt2M) {
+    ElMessage.error("头像图片大小不能超过 2MB");
+    return false;
+  }
+  return true;
+};
+
+const handleAvatarUpload = async (options) => {
+  avatarUploading.value = true;
+  try {
+    const res = await userAPI.uploadAvatar(options.file);
+    ElMessage.success("头像更新成功");
+    await loadUserInfo();
+  } catch (error) {
+    ElMessage.error("头像上传失败：" + (error.message || "未知错误"));
+  } finally {
+    avatarUploading.value = false;
   }
 };
 
@@ -738,16 +782,52 @@ onMounted(async () => {
   margin-bottom: var(--spacing-lg);
 }
 
+.avatar-uploader {
+  display: flex;
+  justify-content: center;
+}
+
 .avatar-wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-sm);
+  cursor: pointer;
 }
 
 .user-avatar {
   border: 3px solid var(--color-primary-light);
   box-shadow: var(--shadow-md);
+  transition: filter var(--transition-base);
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-wrapper:hover .user-avatar {
+  filter: brightness(0.8);
 }
 
 .user-level {
