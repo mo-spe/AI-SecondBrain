@@ -84,7 +84,7 @@
               <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,1.5 12,7 3,12.5" fill="currentColor"/></svg>
             </button>
             <button
-              v-if="project.status === 'COMPLETED' || project.status === 'FAILED'"
+              v-if="project.status === 'COMPLETED' || project.status === 'PARTIAL' || project.status === 'FAILED'"
               class="action-btn"
               title="重新执行"
               @click.stop="retryProject(project.id)"
@@ -177,7 +177,7 @@
           </div>
           <div v-else class="memory-list">
             <div v-for="m in backgroundMemories" :key="m.id" class="memory-card">
-              <div class="memory-key">{{ m.memoryKey }}</div>
+              <div class="memory-key">{{ displayMemoryKey(m.memoryKey) }}</div>
               <div class="memory-content" v-html="renderMd(m.content)"></div>
             </div>
           </div>
@@ -191,7 +191,7 @@
           </div>
           <div v-else class="memory-list">
             <div v-for="m in gapMemories" :key="m.id" class="memory-card gap">
-              <div class="memory-key">{{ m.memoryKey }}</div>
+              <div class="memory-key">{{ displayMemoryKey(m.memoryKey) }}</div>
               <div class="memory-content" v-html="renderMd(m.content)"></div>
             </div>
           </div>
@@ -290,7 +290,7 @@
           </div>
           <div v-else class="memory-list">
             <div v-for="m in findingMemories" :key="m.id" class="memory-card finding">
-              <div class="memory-key">{{ m.memoryKey }}</div>
+              <div class="memory-key">{{ displayMemoryKey(m.memoryKey) }}</div>
               <div class="memory-content" v-html="renderMd(m.content)"></div>
             </div>
           </div>
@@ -304,7 +304,7 @@
           </div>
           <div v-else class="memory-list">
             <div v-for="m in conclusionMemories" :key="m.id" class="memory-card conclusion">
-              <div class="memory-key">{{ m.memoryKey }}</div>
+              <div class="memory-key">{{ displayMemoryKey(m.memoryKey) }}</div>
               <div class="memory-content" v-html="renderMd(m.content)"></div>
             </div>
           </div>
@@ -341,11 +341,11 @@
             <div v-for="m in candidateMemories" :key="m.id" class="candidate-item">
               <div class="candidate-content" v-html="renderMd(m.content)"></div>
               <div class="candidate-actions">
-                <button class="confirm-btn" @click="confirmKnowledge(m)">
+                <button class="confirm-btn" :disabled="candidateProcessingIds.has(m.id)" @click="confirmKnowledge(m)">
                   <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 7l3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-                  保存到知识库
+                  {{ candidateProcessingIds.has(m.id) ? "保存中…" : "保存到知识库" }}
                 </button>
-                <button class="dismiss-btn" @click="dismissKnowledge(m)">忽略</button>
+                <button class="dismiss-btn" :disabled="candidateProcessingIds.has(m.id)" @click="dismissKnowledge(m)">忽略</button>
               </div>
             </div>
           </div>
@@ -444,7 +444,7 @@
             <span>继续研究</span>
           </button>
           <button
-            v-if="currentProject.status === 'COMPLETED' || currentProject.status === 'FAILED'"
+            v-if="currentProject.status === 'COMPLETED' || currentProject.status === 'PARTIAL' || currentProject.status === 'FAILED'"
             class="ctrl-btn retry"
             @click="retryProject(currentProject.id)"
           >
@@ -545,6 +545,7 @@ const latestPlan = ref(null);
 const sources = ref([]);
 const latestReport = ref(null);
 const memories = ref([]);
+const candidateProcessingIds = ref(new Set());
 const taskSteps = ref({});
 const expandedTaskId = ref(null);
 
@@ -555,6 +556,7 @@ const agentCurrentTask = ref("");
 const agentSummary = ref("");
 const toolCalls = ref([]);
 let pollTimer = null;
+let pollInFlight = false;
 
 // ---- 来源对话框 ----
 const showSourceDialog = ref(false);
@@ -594,6 +596,7 @@ const agentStatusText = computed(() => {
     SYNTHESIZING: "综合中",
     PAUSED: "已暂停",
     COMPLETED: "已完成",
+    PARTIAL: "部分完成",
     FAILED: "失败",
     ARCHIVED: "已归档",
   };
@@ -627,9 +630,13 @@ watch(currentProject, (project) => {
     if (isNewProject) {
       activeNav.value = "goal";
       expandedTaskId.value = null;
+      loadProjectData(project.id);
     }
-    loadProjectData(project.id);
-    startPolling(project.id);
+    if (isResearchActive(project.status)) {
+      if (!pollTimer) startPolling(project.id);
+    } else {
+      stopPolling();
+    }
   } else {
     lastProjectId = null;
     stopPolling();
@@ -780,8 +787,11 @@ async function loadProjectData(projectId) {
 
 // ---- 轮询 ----
 function startPolling(projectId) {
+  if (!isResearchActive(currentProject.value?.status)) return;
   stopPolling();
   pollTimer = setInterval(async () => {
+    if (pollInFlight) return;
+    pollInFlight = true;
     try {
       const project = await researchAPI.getProject(projectId);
       if (currentProject.value?.id === projectId) {
@@ -789,9 +799,7 @@ function startPolling(projectId) {
         updateProjectInList(project);
       }
 
-      const isActive = project.status === "RESEARCHING"
-        || project.status === "REVIEWING"
-        || project.status === "SYNTHESIZING";
+      const isActive = isResearchActive(project.status);
 
       if (isActive) {
         const [stepList, memoryList, taskList] = await Promise.all([
@@ -821,11 +829,14 @@ function startPolling(projectId) {
       }
 
       // 研究已结束，停止轮询并加载最终数据
-      if (project.status === "COMPLETED" || project.status === "FAILED" || project.status === "ARCHIVED") {
+      if (project.status === "COMPLETED" || project.status === "PARTIAL" || project.status === "FAILED" || project.status === "ARCHIVED") {
         stopPolling();
         await loadProjectData(projectId);
       }
     } catch (e) { /* ignore */ }
+    finally {
+      pollInFlight = false;
+    }
   }, 3000);
 }
 
@@ -834,6 +845,7 @@ function stopPolling() {
     clearInterval(pollTimer);
     pollTimer = null;
   }
+  pollInFlight = false;
   toolCalls.value = [];
   agentPhase.value = "";
   agentCurrentTask.value = "";
@@ -848,12 +860,34 @@ function sendAgentMessage() {
 
 // ---- 知识确认 ----
 async function confirmKnowledge(memory) {
-  ElMessage.success("知识已保存到知识库");
-  memories.value = memories.value.filter((m) => m.id !== memory.id);
+  if (!currentProject.value || candidateProcessingIds.value.has(memory.id)) return;
+  setCandidateProcessing(memory.id, true);
+  try {
+    await researchAPI.acceptCandidate(currentProject.value.id, memory.id);
+    memories.value = memories.value.filter((m) => m.id !== memory.id);
+    ElMessage.success("知识已保存到知识库");
+  } finally {
+    setCandidateProcessing(memory.id, false);
+  }
 }
 
-function dismissKnowledge(memory) {
-  memories.value = memories.value.filter((m) => m.id !== memory.id);
+async function dismissKnowledge(memory) {
+  if (!currentProject.value || candidateProcessingIds.value.has(memory.id)) return;
+  setCandidateProcessing(memory.id, true);
+  try {
+    await researchAPI.dismissCandidate(currentProject.value.id, memory.id);
+    memories.value = memories.value.filter((m) => m.id !== memory.id);
+    ElMessage.success("知识候选已忽略");
+  } finally {
+    setCandidateProcessing(memory.id, false);
+  }
+}
+
+function setCandidateProcessing(memoryId, processing) {
+  const nextIds = new Set(candidateProcessingIds.value);
+  if (processing) nextIds.add(memoryId);
+  else nextIds.delete(memoryId);
+  candidateProcessingIds.value = nextIds;
 }
 
 // ---- 来源查看 ----
@@ -875,11 +909,24 @@ function statusClass(status) {
     PENDING: "st-pending",
     WAITING_USER: "st-paused",
     COMPLETED: "st-done",
+    PARTIAL: "st-partial",
     FAILED: "st-failed",
     SKIPPED: "st-skipped",
     ARCHIVED: "st-archived",
   };
   return map[status] || "";
+}
+
+function isResearchActive(status) {
+  return status === "RESEARCHING"
+    || status === "REVIEWING"
+    || status === "SYNTHESIZING";
+}
+
+function displayMemoryKey(memoryKey) {
+  if (!memoryKey) return "";
+  const separatorIndex = memoryKey.indexOf(":");
+  return separatorIndex >= 0 ? memoryKey.slice(separatorIndex + 1) : memoryKey;
 }
 
 function toolStateLabel(state) {
@@ -1124,6 +1171,11 @@ function renderMd(content) {
   background: var(--rw-success-muted);
 }
 
+.meta-tag.st-partial {
+  color: var(--rw-warning);
+  background: color-mix(in srgb, var(--rw-warning) 12%, transparent);
+}
+
 .meta-tag.st-failed {
   color: var(--rw-error);
   background: var(--rw-error-muted);
@@ -1207,6 +1259,7 @@ function renderMd(content) {
 .status-dot.st-paused { background: var(--rw-warning); }
 .status-dot.st-pending { background: var(--rw-border); }
 .status-dot.st-done { background: var(--rw-success); }
+.status-dot.st-partial { background: var(--rw-warning); }
 .status-dot.st-failed { background: var(--rw-error); }
 .status-dot.st-skipped { background: transparent; border: 1.5px dashed var(--rw-text-muted); }
 .status-dot.st-archived { background: var(--rw-text-muted); }

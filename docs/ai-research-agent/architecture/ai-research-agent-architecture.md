@@ -248,7 +248,8 @@ Planner Agent 判断逻辑：
 - `RESEARCHING`：Research Agent 执行中，检索外部信息
 - `REVIEWING`：Critic Agent 验证中
 - `SYNTHESIZING`：Synthesizer Agent 生成报告中
-- `COMPLETED`：研究完成，结果可供查看
+- `COMPLETED`：研究完整通过质量门禁，结果可供查看
+- `PARTIAL`：已产出部分结果，但存在失败、预算耗尽或质量门禁未通过
 - `ARCHIVED`：用户归档
 - `FAILED`：执行失败（外部搜索失败、LLM 调用失败等）
 
