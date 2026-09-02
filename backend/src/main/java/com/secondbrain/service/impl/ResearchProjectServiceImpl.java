@@ -32,13 +32,13 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     private static final Logger log = LoggerFactory.getLogger(ResearchProjectServiceImpl.class);
 
     /** 允许执行启动操作的状态 */
-    private static final Set<String> EXECUTABLE_STATUSES = Set.of("DRAFT", "PAUSED", "FAILED");
+    private static final Set<String> EXECUTABLE_STATUSES = Set.of("DRAFT", "PAUSED", "FAILED", "PARTIAL");
 
     /** 允许暂停操作的状态 */
     private static final Set<String> PAUSABLE_STATUSES = Set.of("RESEARCHING", "REVIEWING");
 
     /** 允许归档操作的状态 */
-    private static final Set<String> ARCHIVABLE_STATUSES = Set.of("COMPLETED", "FAILED");
+    private static final Set<String> ARCHIVABLE_STATUSES = Set.of("COMPLETED", "FAILED", "PARTIAL");
 
     private final ResearchProjectMapper researchProjectMapper;
     private final ResearchOrchestrator researchOrchestrator;
@@ -147,7 +147,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
 
         if (!EXECUTABLE_STATUSES.contains(project.getStatus())) {
             throw new BusinessException(400,
-                    "当前状态 [" + project.getStatus() + "] 不允许启动研究，仅 DRAFT/PAUSED/FAILED 状态可启动");
+                    "当前状态 [" + project.getStatus()
+                            + "] 不允许启动研究，仅 DRAFT/PAUSED/FAILED/PARTIAL 状态可启动");
         }
 
         // 首次执行时记录开始时间
@@ -212,7 +213,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
 
         if (!ARCHIVABLE_STATUSES.contains(project.getStatus())) {
             throw new BusinessException(400,
-                    "当前状态 [" + project.getStatus() + "] 不允许归档，仅 COMPLETED/FAILED 状态可归档");
+                    "当前状态 [" + project.getStatus()
+                            + "] 不允许归档，仅 COMPLETED/FAILED/PARTIAL 状态可归档");
         }
 
         project.setStatus("ARCHIVED");
@@ -298,6 +300,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             case "REVIEWING" -> "验证中";
             case "SYNTHESIZING" -> "综合中";
             case "COMPLETED" -> "已完成";
+            case "PARTIAL" -> "部分完成";
             case "ARCHIVED" -> "已归档";
             case "FAILED" -> "失败";
             case "PAUSED" -> "已暂停";

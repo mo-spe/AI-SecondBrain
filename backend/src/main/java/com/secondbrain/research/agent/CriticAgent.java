@@ -40,15 +40,12 @@ public class CriticAgent implements ResearchAgent {
     /**
      * 来源类型权威度权重.
      *
-     * <p>注意：当外部搜索引擎无结果、研究回退到 LLM 知识时，ai_knowledge 是主来源，
-     * 其权重必须足够高（>=0.8）才能将结论提升为 high 置信度，进而被 KnowledgeWriterAgent
-     * 提取为知识候选。</p>
+     * <p>权重只表达来源类型的基础质量，最终置信度还必须满足独立来源数量要求。</p>
      */
     private static final Map<String, Double> RELIABILITY_WEIGHTS = Map.of(
             "official_doc", 1.0,
             "paper", 0.95,
             "github", 0.85,
-            "ai_knowledge", 0.82,
             "article", 0.8,
             "web_search", 0.75,
             "internal", 0.9
@@ -109,6 +106,8 @@ public class CriticAgent implements ResearchAgent {
                         "speculation", 0,
                         "controversial", 0));
                 emptyOutput.put("note", "无发现需要验证");
+                emptyOutput.put("qualityGate", ResearchQualityGate.evaluate(
+                        List.of(), 0, context.getResearchGoal()));
                 return AgentResult.completed(getName(),
                         objectMapper.writeValueAsString(emptyOutput));
             }
@@ -124,18 +123,22 @@ public class CriticAgent implements ResearchAgent {
                 // 来源验证 + 可靠性评分
                 double reliabilityScore = scoreReliability(sources, finding);
 
-                // 时效性调整
-                String timeliness = assessTimeliness(sources);
+                List<Map<String, Object>> supportingSources =
+                        findSupportingSources(sources, finding);
+
+                // 时效性必须针对当前结论的支撑来源计算，不能借用其他结论的官方来源。
+                String timeliness = assessTimeliness(supportingSources);
 
                 // 确定置信度
-                String confidence = determineConfidence(reliabilityScore, timeliness, finding);
+                String confidence = determineConfidence(
+                        reliabilityScore, timeliness, finding, countIndependentSources(supportingSources));
 
                 Map<String, Object> conclusion = new LinkedHashMap<>();
                 conclusion.put("statement", statement);
                 conclusion.put("confidence", confidence);
                 conclusion.put("reliabilityScore", reliabilityScore);
                 conclusion.put("timeliness", timeliness);
-                conclusion.put("supportingSources", findSupportingSources(sources, finding));
+                conclusion.put("supportingSources", supportingSources);
 
                 conclusions.add(conclusion);
 
@@ -165,6 +168,8 @@ public class CriticAgent implements ResearchAgent {
             Map<String, Object> output = new LinkedHashMap<>();
             output.put("conclusions", conclusions);
             output.put("validationStats", validationStats);
+            output.put("qualityGate", ResearchQualityGate.evaluate(
+                    conclusions, controversialCount, context.getResearchGoal()));
 
             String outputJson = objectMapper.writeValueAsString(output);
 
@@ -214,8 +219,7 @@ public class CriticAgent implements ResearchAgent {
                     md.append("- **⚠ 存在矛盾**：该结论与其他结论存在冲突\n");
                 }
 
-                String memoryKey = statement.length() > 80
-                        ? statement.substring(0, 80) : statement;
+                String memoryKey = ResearchMemoryKey.of("CONCLUSION", statement);
                 researchMemoryService.save(projectId, userId, memoryKey, "CONCLUSION", md.toString());
             }
             log.info("conclusion_memories_persisted projectId={} count={}", projectId, conclusions.size());
@@ -264,7 +268,7 @@ public class CriticAgent implements ResearchAgent {
      * 确定最终置信度.
      */
     private String determineConfidence(double reliabilityScore, String timeliness,
-                                        Map<String, Object> finding) {
+                                        Map<String, Object> finding, int independentSourceCount) {
         String category = (String) finding.get("category");
 
         double score = reliabilityScore;
@@ -275,7 +279,8 @@ public class CriticAgent implements ResearchAgent {
         // 类别调整
         if ("contradiction".equals(category)) score -= 0.2;
 
-        if (score >= 0.7) return "high";
+        // 单一普通网页最多只能形成中置信结论，避免“有一个 URL”被误判为交叉验证。
+        if (score >= 0.7 && independentSourceCount >= 2) return "high";
         if (score >= 0.5) return "medium";
         if (score >= 0.3) return "low";
         return "speculation";
@@ -304,6 +309,27 @@ public class CriticAgent implements ResearchAgent {
             }
         }
         return supporting;
+    }
+
+    private int countIndependentSources(List<Map<String, Object>> supportingSources) {
+        return (int) supportingSources.stream()
+                .map(source -> source.get("url"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(url -> !url.isBlank())
+                .map(this::extractHost)
+                .filter(host -> !host.isBlank())
+                .distinct()
+                .count();
+    }
+
+    private String extractHost(String url) {
+        try {
+            String host = java.net.URI.create(url).getHost();
+            return host != null ? host.toLowerCase() : "";
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
     }
 
     /**

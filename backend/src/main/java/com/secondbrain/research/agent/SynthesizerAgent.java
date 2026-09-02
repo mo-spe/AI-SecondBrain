@@ -61,7 +61,8 @@ public class SynthesizerAgent implements ResearchAgent {
 
             // 提取研究发现摘要
             List<Map<String, Object>> findings = extractItems(researchOutput, "findings");
-            List<Map<String, Object>> conclusions = extractItems(criticOutput, "conclusions");
+            List<Map<String, Object>> conclusions = filterValidatedConclusions(
+                    extractItems(criticOutput, "conclusions"));
 
             // 多级回退生成报告
             String reportMarkdown = generateReportWithFallback(context.getResearchGoal(),
@@ -90,7 +91,8 @@ public class SynthesizerAgent implements ResearchAgent {
             try {
                 String fallbackReport = buildFallbackReport(context.getResearchGoal(),
                         extractItems(context.getAgentOutput("ResearchAgent"), "findings"),
-                        extractItems(context.getAgentOutput("CriticAgent"), "conclusions"));
+                        filterValidatedConclusions(extractItems(
+                                context.getAgentOutput("CriticAgent"), "conclusions")));
                 saveReport(projectId, fallbackReport, "研究自动汇总（LLM 生成失败）",
                         context.getAgentOutput("ResearchAgent"),
                         context.getAgentOutput("CriticAgent"),
@@ -284,6 +286,16 @@ public class SynthesizerAgent implements ResearchAgent {
         } catch (Exception e) {
             return List.of();
         }
+    }
+
+    private List<Map<String, Object>> filterValidatedConclusions(
+            List<Map<String, Object>> conclusions) {
+        // 低置信和推测内容只能作为待验证问题，不能进入报告的确定性结论章节。
+        return conclusions.stream()
+                .filter(conclusion -> "high".equals(conclusion.get("confidence"))
+                        || "medium".equals(conclusion.get("confidence")))
+                .filter(conclusion -> !Boolean.TRUE.equals(conclusion.get("hasConflict")))
+                .toList();
     }
 
     /**

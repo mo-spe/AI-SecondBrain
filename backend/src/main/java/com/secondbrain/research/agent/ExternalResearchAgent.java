@@ -5,6 +5,7 @@ import com.secondbrain.entity.ResearchSource;
 import com.secondbrain.enums.AiScenario;
 import com.secondbrain.mapper.ResearchSourceMapper;
 import com.secondbrain.research.orchestrator.AgentContext;
+import com.secondbrain.research.orchestrator.ToolCallBudget;
 import com.secondbrain.research.tool.ToolResult;
 import com.secondbrain.research.tool.WebFetchTool;
 import com.secondbrain.research.tool.WebSearchTool;
@@ -96,12 +97,15 @@ public class ExternalResearchAgent implements ResearchAgent {
             }
 
             // Step 3: 对每个任务执行搜索和抓取
-            List<Map<String, Object>> allSources = new ArrayList<>();
-            List<Map<String, Object>> allFindings = new ArrayList<>();
+            Map<String, Object> previousResearchData = parsePreviousResearchData(context);
+            List<Map<String, Object>> allSources = copyItems(previousResearchData, "sources");
+            List<Map<String, Object>> allFindings = copyItems(previousResearchData, "findings");
             int totalFetched = 0;
             int totalFailed = 0;
 
+            taskLoop:
             for (Map<String, Object> task : externalTasks) {
+                List<Map<String, Object>> taskSources = new ArrayList<>();
                 String taskQuestion = (String) task.getOrDefault("question",
                         task.getOrDefault("title", "研究"));
                 Object taskIdObj = task.get("taskId");
@@ -111,6 +115,12 @@ public class ExternalResearchAgent implements ResearchAgent {
 
                 // 执行搜索
                 for (String query : queries) {
+                    if (isDuplicateToolCall(context, webSearchTool.getName(), query)) {
+                        continue;
+                    }
+                    if (!reserveToolCall(context, webSearchTool.getName(), query)) {
+                        break taskLoop;
+                    }
                     Map<String, Object> searchParams = new HashMap<>();
                     searchParams.put("query", query);
                     searchParams.put("maxResults", 5);
@@ -130,6 +140,15 @@ public class ExternalResearchAgent implements ResearchAgent {
                         if (fetched >= 3) break;
                         String url = r.get("url");
                         if (url == null || url.isBlank()) continue;
+                        if (containsSourceUrl(allSources, url) || containsSourceUrl(taskSources, url)) {
+                            continue;
+                        }
+                        if (isDuplicateToolCall(context, webFetchTool.getName(), url)) {
+                            continue;
+                        }
+                        if (!reserveToolCall(context, webFetchTool.getName(), url)) {
+                            break taskLoop;
+                        }
 
                         Map<String, Object> fetchParams = new HashMap<>();
                         fetchParams.put("url", url);
@@ -163,7 +182,8 @@ public class ExternalResearchAgent implements ResearchAgent {
                             sourceInfo.put("url", url);
                             sourceInfo.put("snippet", r.get("snippet"));
                             sourceInfo.put("sourceType", "web_search");
-                            allSources.add(sourceInfo);
+                            sourceInfo.put("content", abbreviateContent(fetchResult.getData()));
+                            taskSources.add(sourceInfo);
                         } else {
                             totalFailed++;
                         }
@@ -172,42 +192,17 @@ public class ExternalResearchAgent implements ResearchAgent {
                 }
 
                 // 提取发现
-                if (!allSources.isEmpty()) {
+                if (!taskSources.isEmpty()) {
+                    int globalSourceOffset = allSources.size();
                     List<Map<String, Object>> findings = extractFindings(
-                            taskQuestion, allSources, userId);
-                    allFindings.addAll(findings);
+                            taskQuestion, taskSources, userId);
+                    allFindings.addAll(EvidenceCitationNormalizer.normalize(
+                            findings, taskSources.size(), globalSourceOffset));
+                    allSources.addAll(taskSources);
                 }
             }
 
             // Step 4: 构建输出
-            // 如果外部搜索无结果，回退到 LLM 直接生成发现
-            if (allSources.isEmpty()) {
-                // 通过 LLM 生成研究发现和模拟的搜索来源
-                List<Map<String, Object>> llmResults = generateLLMResearchResults(tasks, userId);
-                if (!llmResults.isEmpty()) {
-                    // 分离发现和来源
-                    for (Map<String, Object> item : llmResults) {
-                        Map<String, Object> sourceInfo = new LinkedHashMap<>();
-                        sourceInfo.put("title", item.getOrDefault("title", ""));
-                        sourceInfo.put("url", item.getOrDefault("url", ""));
-                        sourceInfo.put("snippet", item.getOrDefault("snippet", ""));
-                        sourceInfo.put("sourceType", item.getOrDefault("sourceType", "ai_knowledge"));
-                        allSources.add(sourceInfo);
-
-                        // 同时提取发现
-                        Object findingsObj = item.get("findings");
-                        if (findingsObj instanceof List) {
-                            @SuppressWarnings("unchecked")
-                            List<Map<String, Object>> findings = (List<Map<String, Object>>) findingsObj;
-                            allFindings.addAll(findings);
-                        }
-                    }
-                }
-            }
-
-            // 持久化来源到数据库，前端 API 才能读取
-            persistSources(projectId, allSources);
-
             // 持久化研究发现到 research_memory 表，供前端"研究发现"导航展示
             persistFindingMemories(projectId, userId, allFindings);
 
@@ -220,6 +215,13 @@ public class ExternalResearchAgent implements ResearchAgent {
                     "pagesFailed", totalFailed,
                     "sourcesCollected", allSources.size(),
                     "findingsExtracted", allFindings.size()));
+            output.put("evidenceStatus", allSources.isEmpty()
+                    ? "UNAVAILABLE" : allFindings.isEmpty() ? "INSUFFICIENT" : "AVAILABLE");
+            output.put("toolBudget", buildToolBudgetSnapshot(context));
+            if (allSources.isEmpty()) {
+                output.put("note", "外部搜索未获得可验证来源，本轮不生成外部研究发现");
+                context.setDegradedMode(true);
+            }
 
             String outputJson = objectMapper.writeValueAsString(output);
             log.info("research_agent_done projectId={} sources={} findings={}",
@@ -236,6 +238,10 @@ public class ExternalResearchAgent implements ResearchAgent {
      */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractTasks(AgentContext context) {
+        List<Map<String, Object>> followUpTasks = extractFollowUpTasks(context);
+        if (!followUpTasks.isEmpty()) {
+            return followUpTasks;
+        }
         if (context.getResearchPlan() != null
                 && context.getResearchPlan().getTasksJson() != null) {
             try {
@@ -246,6 +252,121 @@ public class ExternalResearchAgent implements ResearchAgent {
             }
         }
         return List.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractFollowUpTasks(AgentContext context) {
+        String criticOutput = context.getAgentOutput("CriticAgent");
+        if (criticOutput == null || criticOutput.isBlank()) {
+            return List.of();
+        }
+        try {
+            Map<String, Object> criticData = objectMapper.readValue(criticOutput, Map.class);
+            Object gateValue = criticData.get("qualityGate");
+            if (!(gateValue instanceof Map<?, ?> qualityGate)) {
+                return List.of();
+            }
+            Object queryValue = qualityGate.get("followUpQueries");
+            if (!(queryValue instanceof List<?> queries)) {
+                return List.of();
+            }
+
+            List<Map<String, Object>> tasks = new ArrayList<>();
+            for (Object query : queries) {
+                if (query instanceof String question && !question.isBlank()) {
+                    Map<String, Object> task = new LinkedHashMap<>();
+                    task.put("question", question);
+                    task.put("requiresExternalSearch", true);
+                    tasks.add(task);
+                }
+            }
+            return tasks;
+        } catch (Exception e) {
+            log.warn("parse_follow_up_queries_failed projectId={}", context.getProjectId(), e);
+            return List.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parsePreviousResearchData(AgentContext context) {
+        String previousOutput = context.getAgentOutput(getName());
+        if (previousOutput == null || previousOutput.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(previousOutput, Map.class);
+        } catch (Exception e) {
+            log.warn("parse_previous_research_output_failed projectId={}", context.getProjectId(), e);
+            return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> copyItems(Map<String, Object> data, String key) {
+        Object value = data.get(key);
+        if (!(value instanceof List<?> items)) {
+            return new ArrayList<>();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object item : items) {
+            if (item instanceof Map<?, ?> map) {
+                result.add(new LinkedHashMap<>((Map<String, Object>) map));
+            }
+        }
+        return result;
+    }
+
+    private boolean containsSourceUrl(List<Map<String, Object>> sources, String url) {
+        return sources.stream().anyMatch(source -> url.equals(source.get("url")));
+    }
+
+    private String abbreviateContent(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        int contentLimit = Math.min(content.length(), 3000);
+        return content.substring(0, contentLimit);
+    }
+
+    private boolean reserveToolCall(AgentContext context, String toolName, String parameter) {
+        ToolCallBudget budget = context.getToolCallBudget();
+        if (budget == null) {
+            return true;
+        }
+        String parameterHash = Integer.toHexString(parameter.hashCode());
+        if (!budget.canCall()) {
+            context.setRecoveryStopReason("TOOL_CALL_BUDGET_EXHAUSTED");
+            log.warn("research_tool_budget_exhausted tool={} projectId={} used={} max={}",
+                    toolName, context.getProjectId(), budget.getUsed(), budget.getMaxCalls());
+            return false;
+        }
+        budget.recordCall(toolName, parameterHash);
+        return true;
+    }
+
+    private boolean isDuplicateToolCall(AgentContext context, String toolName, String parameter) {
+        ToolCallBudget budget = context.getToolCallBudget();
+        if (budget == null) {
+            return false;
+        }
+        boolean duplicate = budget.isDuplicateCall(
+                toolName, Integer.toHexString(parameter.hashCode()));
+        if (duplicate) {
+            log.info("research_tool_duplicate_skipped tool={} projectId={}",
+                    toolName, context.getProjectId());
+        }
+        return duplicate;
+    }
+
+    private Map<String, Object> buildToolBudgetSnapshot(AgentContext context) {
+        ToolCallBudget budget = context.getToolCallBudget();
+        if (budget == null) {
+            return Map.of();
+        }
+        return Map.of(
+                "used", budget.getUsed(),
+                "remaining", budget.getRemaining(),
+                "max", budget.getMaxCalls());
     }
 
     /**
@@ -294,6 +415,11 @@ public class ExternalResearchAgent implements ResearchAgent {
                     snippet = snippet.substring(0, 300) + "...";
                 }
                 context_.append("摘要: ").append(snippet).append("\n\n");
+                String content = (String) s.get("content");
+                if (content != null && !content.isBlank()) {
+                    int contentLimit = Math.min(content.length(), 3000);
+                    context_.append("正文摘录: ").append(content, 0, contentLimit).append("\n\n");
+                }
             }
 
             List<Map<String, String>> messages = List.of(
@@ -321,140 +447,6 @@ public class ExternalResearchAgent implements ResearchAgent {
             log.warn("extract_findings_failed", e);
         }
         return List.of();
-    }
-
-    /**
-     * 外部搜索不可用时，通过 LLM 生成模拟研究结果的回退方案.
-     *
-     * <p>利用 LLM 训练数据中的知识，为每个研究问题生成：
-     * - 看似真实的搜索来源（含标题、URL、摘要）
-     * - 从来源中提取的关键发现
-     * 来源标注为 ai_knowledge，前端可区分于真实搜索结果。
-     *
-     * <p><b>关键：</b>url 字段锚定到知识库首页、搜索页等<b>真实可访问</b>的知名资源 URL，
-     * 避免 LLM 编造的 /@user/article-name-xxx 路径打不开（404）。
-     */
-    private List<Map<String, Object>> generateLLMResearchResults(List<Map<String, Object>> tasks, Long userId) {
-        List<Map<String, Object>> allResults = new ArrayList<>();
-        for (Map<String, Object> task : tasks) {
-            String question = (String) task.getOrDefault("question",
-                    task.getOrDefault("title", "研究"));
-            try {
-                List<Map<String, String>> messages = List.of(
-                        Map.of("role", "system", "content",
-                                "你是一个研究助手。基于你的知识，为以下研究问题生成模拟的网页搜索结果。\n"
-                                        + "请输出 JSON 数组，每个元素包含：\n"
-                                        + "- title: 来源标题（真实的学术/技术文章标题）\n"
-                                        + "- url: 真实可访问的 URL，<b>必须使用以下域名之一，且必须指向该站点的真实页面路径</b>：\n"
-                                        + "  * 维基百科：https://en.wikipedia.org/wiki/<Topic>  例如 https://en.wikipedia.org/wiki/Cache_(computing)\n"
-                                        + "  * 维基百科(中文)：https://zh.wikipedia.org/wiki/<Topic>  例如 https://zh.wikipedia.org/wiki/缓存\n"
-                                        + "  * GitHub：https://github.com/topics/<topic> 或 https://github.com/<org>/<repo>  例如 https://github.com/topics/caching\n"
-                                        + "  * Stack Overflow：https://stackoverflow.com/questions/<id>/<slug>  或  https://stackoverflow.com/tags/<tag>\n"
-                                        + "  * 技术博客站首页：https://martinfowler.com/   https://aws.amazon.com/blogs/   https://learn.microsoft.com/\n"
-                                        + "  * 论文站：https://arxiv.org/search/?query=<keyword>  或  https://scholar.google.com/scholar?q=<keyword>\n"
-                                        + "  * 官方文档首页：https://docs.oracle.com/   https://redis.io/docs/   https://www.postgresql.org/docs/\n"
-                                        + "  * MDN：https://developer.mozilla.org/zh-CN/docs/Web/<Topic>\n"
-                                        + "<b>绝对不要编造 @username/xxx-123 这类不存在的 Medium/博客 URL。</b>\n"
-                                        + "- snippet: 来源摘要（2-3 句，能准确反映内容）\n"
-                                        + "- sourceType: 固定为 ai_knowledge\n"
-                                        + "- findings: 从该来源提取的关键发现数组（每个发现 2-4 句，字段：statement, category, confidence）\n"
-                                        + "每个问题生成 3 个来源。仅输出 JSON 数组。"),
-                        Map.of("role", "user", "content",
-                                "研究问题: " + question + "\n\n请生成 3 个模拟的网页搜索结果。"));
-
-                String response = aiService.chat(userId, AiScenario.RESEARCH.getCode(), messages);
-                if (response != null) {
-                    int start = response.indexOf('[');
-                    int end = response.lastIndexOf(']');
-                    if (start >= 0 && end > start) {
-                        @SuppressWarnings("unchecked")
-                        List<Map<String, Object>> results = objectMapper.readValue(
-                                response.substring(start, end + 1), List.class);
-                        // 二次保障：若 LLM 仍输出可疑 URL，重写为维基百科的搜索 URL
-                        for (Map<String, Object> r : results) {
-                            Object urlObj = r.get("url");
-                            String url = urlObj != null ? urlObj.toString() : "";
-                            String safeUrl = sanitizeFallbackUrl(url, question);
-                            if (!safeUrl.equals(url)) {
-                                r.put("url", safeUrl);
-                            }
-                        }
-                        allResults.addAll(results);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("llm_research_fallback_failed question={}", question, e);
-            }
-        }
-        log.info("llm_fallback_results count={}", allResults.size());
-        return allResults;
-    }
-
-    /**
-     * 将 LLM 回退生成的 URL 做安全清洗，避免 404.
-     *
-     * <p>检测到包含 @username 、路径中含 -<数字> 结尾（典型的假文章链接）、
-     * 或域名不在白名单时，回退到 zh.wikipedia 的搜索页。</p>
-     */
-    private String sanitizeFallbackUrl(String url, String question) {
-        if (url == null || url.isBlank()) {
-            return "https://zh.wikipedia.org/w/index.php?search="
-                    + java.net.URLEncoder.encode(question, java.nio.charset.StandardCharsets.UTF_8);
-        }
-        // 典型假 Medium：@user/article-title-123
-        boolean looksFake = url.contains("/@")
-                || url.matches(".+-\\d{3,}($|[#?].*)")
-                || url.matches(".+/[^/]+-\\d+/?$");
-        if (looksFake) {
-            return "https://zh.wikipedia.org/w/index.php?search="
-                    + java.net.URLEncoder.encode(question, java.nio.charset.StandardCharsets.UTF_8);
-        }
-        // 白名单域名（必须真实存在）
-        List<String> safeHosts = List.of(
-                "zh.wikipedia.org", "en.wikipedia.org", "github.com", "stackoverflow.com",
-                "martinfowler.com", "aws.amazon.com", "learn.microsoft.com",
-                "developer.mozilla.org", "redis.io", "www.postgresql.org",
-                "docs.oracle.com", "arxiv.org", "scholar.google.com",
-                "www.cnblogs.com", "juejin.cn", "tech.meituan.com",
-                "ifeve.com", "www.oracle.com", "medium.com");
-        try {
-            String host = new java.net.URL(url).getHost().toLowerCase();
-            for (String safe : safeHosts) {
-                if (host.equals(safe) || host.endsWith("." + safe)) {
-                    return url;
-                }
-            }
-        } catch (Exception e) {
-            // 非 URL
-        }
-        return "https://zh.wikipedia.org/w/index.php?search="
-                + java.net.URLEncoder.encode(question, java.nio.charset.StandardCharsets.UTF_8);
-    }
-
-    /**
-     * 将搜索来源持久化到 research_source 表.
-     *
-     * <p>前端 API 从 research_source 表读取数据展示在"来源"Tab 中。
-     * 去重逻辑：相同 URL 不重复写入。</p>
-     */
-    private void persistSources(Long projectId, List<Map<String, Object>> allSources) {
-        for (Map<String, Object> source : allSources) {
-            try {
-                ResearchSource entity = new ResearchSource();
-                entity.setProjectId(projectId);
-                entity.setTitle((String) source.getOrDefault("title", ""));
-                entity.setUrl((String) source.getOrDefault("url", ""));
-                entity.setSourceType((String) source.getOrDefault("sourceType", "web_search"));
-                entity.setSnippet((String) source.getOrDefault("snippet", ""));
-                entity.setReliability("unverified");
-                entity.setFetchStatus("success");
-                entity.setFetchedAt(java.time.LocalDateTime.now());
-                researchSourceMapper.insert(entity);
-            } catch (Exception e) {
-                log.warn("persist_source_failed title={}", source.get("title"), e);
-            }
-        }
-        log.info("sources_persisted projectId={} count={}", projectId, allSources.size());
     }
 
     /**
@@ -486,8 +478,7 @@ public class ExternalResearchAgent implements ResearchAgent {
                     md.append("- **来源索引**：").append(sourceIndices).append("\n");
                 }
 
-                String memoryKey = statement.length() > 80
-                        ? statement.substring(0, 80) : statement;
+                String memoryKey = ResearchMemoryKey.of("FINDING", statement);
                 researchMemoryService.save(projectId, userId, memoryKey, "FINDING", md.toString());
             }
             log.info("finding_memories_persisted projectId={} count={}", projectId, findings.size());

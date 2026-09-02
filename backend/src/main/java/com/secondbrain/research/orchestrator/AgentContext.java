@@ -81,6 +81,26 @@ public class AgentContext {
     private int maxIterations = 3;
 
     /**
+     * LLM Token 消耗预算
+     */
+    private TokenBudget tokenBudget;
+
+    /**
+     * 外部工具调用预算
+     */
+    private ToolCallBudget toolCallBudget;
+
+    /**
+     * 单次研究项目的总时间预算
+     */
+    private TimeBudget timeBudget;
+
+    /**
+     * 补证循环停止原因，便于前端和日志解释为什么提前结束
+     */
+    private String recoveryStopReason;
+
+    /**
      * Agent 执行历史
      */
     private final List<String> agentExecutionHistory = new ArrayList<>();
@@ -200,6 +220,46 @@ public class AgentContext {
 
     public void setMaxIterations(int maxIterations) {
         this.maxIterations = maxIterations;
+    }
+
+    /** @return Token 预算 */
+    public TokenBudget getTokenBudget() {
+        return tokenBudget;
+    }
+
+    /** @param tokenBudget Token 预算 */
+    public void setTokenBudget(TokenBudget tokenBudget) {
+        this.tokenBudget = tokenBudget;
+    }
+
+    /** @return 工具调用预算 */
+    public ToolCallBudget getToolCallBudget() {
+        return toolCallBudget;
+    }
+
+    /** @param toolCallBudget 工具调用预算 */
+    public void setToolCallBudget(ToolCallBudget toolCallBudget) {
+        this.toolCallBudget = toolCallBudget;
+    }
+
+    /** @return 项目时间预算 */
+    public TimeBudget getTimeBudget() {
+        return timeBudget;
+    }
+
+    /** @param timeBudget 项目时间预算 */
+    public void setTimeBudget(TimeBudget timeBudget) {
+        this.timeBudget = timeBudget;
+    }
+
+    /** @return 补证循环停止原因 */
+    public String getRecoveryStopReason() {
+        return recoveryStopReason;
+    }
+
+    /** @param recoveryStopReason 补证循环停止原因 */
+    public void setRecoveryStopReason(String recoveryStopReason) {
+        this.recoveryStopReason = recoveryStopReason;
     }
 
     public List<String> getAgentExecutionHistory() {

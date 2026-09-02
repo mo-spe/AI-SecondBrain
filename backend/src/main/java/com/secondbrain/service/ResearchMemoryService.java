@@ -47,4 +47,22 @@ public interface ResearchMemoryService {
      * @param memoryType 记忆类型
      */
     void deleteByProjectAndType(Long projectId, Long userId, String memoryType);
+
+    /**
+     * 将研究知识候选保存到用户知识库，并在成功后移除候选记录。
+     *
+     * @param projectId 项目ID
+     * @param memoryId 候选记忆ID
+     * @param userId 用户ID
+     */
+    void acceptCandidate(Long projectId, Long memoryId, Long userId);
+
+    /**
+     * 忽略研究知识候选，并持久化移除候选记录。
+     *
+     * @param projectId 项目ID
+     * @param memoryId 候选记忆ID
+     * @param userId 用户ID
+     */
+    void dismissCandidate(Long projectId, Long memoryId, Long userId);
 }

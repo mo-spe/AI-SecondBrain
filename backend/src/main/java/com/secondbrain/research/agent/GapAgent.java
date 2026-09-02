@@ -186,7 +186,7 @@ public class GapAgent implements ResearchAgent {
                 if (desc != null) {
                     md.append(desc).append("\n");
                 }
-                String memoryKey = topic.length() > 80 ? topic.substring(0, 80) : topic;
+                String memoryKey = ResearchMemoryKey.of("KNOWLEDGE_GAP", topic);
                 researchMemoryService.save(projectId, userId, memoryKey, "KNOWLEDGE_GAP", md.toString());
             }
         } catch (Exception e) {
