@@ -2424,6 +2424,31 @@ Content-Type: application/json
 
 ---
 
+#### 3.8.1 重命名会话
+
+- **接口名称**：重命名会话
+- **请求方法和路径**：`PUT /api/sessions/{id}/title`
+- **接口描述**：修改当前用户可访问的 RAG 会话标题。标题去除首尾空格后不能为空，最长 100 个字符。
+- **是否需要登录认证**：是
+
+**请求示例**
+
+```http
+PUT /api/sessions/9002/title
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "Spring Boot 自动配置原理"
+}
+```
+
+**响应说明**
+
+成功时返回更新后的 `ChatSession`。会话不存在或不属于当前用户/工作区时返回 404。
+
+---
+
 #### 3.9 删除会话
 
 - **接口名称**：删除会话
@@ -8378,6 +8403,52 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.xxx
 }
 ```
 - **是否需要登录认证**：是（且需要 Super Admin 角色）
+
+---
+
+### 第十章：知识社区问答
+
+知识社区问答接口统一使用 `/api/community/questions` 前缀并需要登录认证。回答引用知识点时，服务端只接受当前用户拥有的知识点，并在发布时保存公开快照，避免后续私有编辑静默改变已发布回答。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/community/questions` | 发布问题，标题 5—120 字、正文 10—5000 字、最多 5 个标签 |
+| GET | `/api/community/questions` | 问题分页；支持 `sort=newest/unanswered`、`keyword`、`current`、`size` |
+| GET | `/api/community/questions/{id}` | 问题详情、回答及知识点快照 |
+| POST | `/api/community/questions/{id}/answers` | 发布回答，正文 10—10000 字，可携带最多 5 个 `knowledgeNodeIds` |
+| POST | `/api/community/questions/{id}/answers/{answerId}/accept` | 问题作者采纳回答，每个问题只能采纳一次 |
+
+社区人物关系接口统一使用 `/api/community/users` 前缀并需要登录认证。公开 Profile VO 不返回邮箱、手机号、密码、API Key 等账户敏感字段。`isBlocked` 表示任一方向存在拉黑，`isBlockedByMe` 与 `isBlockedByTarget` 用于正确呈现解除拉黑能力。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/community/users/{userId}` | 公开主页、关系状态、贡献统计及最近公开内容 |
+| PUT | `/api/community/users/me/profile` | 更新本人公开简介与擅长领域；最多 8 个标签，每个不超过 30 字 |
+| POST | `/api/community/users/{userId}/follow` | 关注用户；禁止自关注，重复关注幂等，拉黑期间禁止关注 |
+| DELETE | `/api/community/users/{userId}/follow` | 取消关注，重复操作幂等 |
+| GET | `/api/community/users/{userId}/followers` | 粉丝分页；`size` 最大为 50 |
+| GET | `/api/community/users/{userId}/following` | 关注列表分页；`size` 最大为 50 |
+| POST | `/api/community/users/{userId}/block` | 拉黑用户并删除双方关注关系 |
+| DELETE | `/api/community/users/{userId}/block` | 解除当前用户发起的拉黑 |
+
+**发布问题示例**
+
+```json
+{
+  "title": "如何准备第一次大学生程序设计竞赛？",
+  "content": "我刚学完 Java 基础，希望了解组队、刷题顺序和赛前准备。",
+  "tags": ["竞赛", "编程", "Java"]
+}
+```
+
+**发布回答示例**
+
+```json
+{
+  "content": "建议先建立基础题型清单，再进行限时训练……",
+  "knowledgeNodeIds": [101, 108]
+}
+```
 
 ---
 
