@@ -65,6 +65,30 @@ public interface ChatSessionService {
     ChatSession createSession(Long userId, Long workspaceId, String title);
 
     /**
+     * 修改会话标题。
+     *
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param title 新标题
+     * @return 更新后的会话
+     */
+    ChatSession renameSession(Long sessionId, Long userId, Long workspaceId, String title);
+
+    /**
+     * 在会话仍使用默认标题时，根据首轮问答生成标题。
+     *
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param question 首轮问题
+     * @param answer 首轮回答
+     * @return 当前会话
+     */
+    ChatSession generateTitleIfNeeded(Long sessionId, Long userId, Long workspaceId,
+                                      String question, String answer);
+
+    /**
      * 删除会话.
      *
      * @param sessionId 会话ID

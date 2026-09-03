@@ -55,7 +55,6 @@ public class RagController {
             HttpServletRequest httpRequest) {
         
         Long userId = (Long) httpRequest.getAttribute("userId");
-
         RagResponse response = ragService.answer(request, userId);
         
         return Result.success(response);
@@ -75,12 +74,13 @@ public class RagController {
             HttpServletRequest httpRequest) {
 
         Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = (Long) httpRequest.getAttribute("workspaceId");
 
         SseEmitter emitter = new SseEmitter(600_000L);
 
         CompletableFuture.runAsync(() -> {
             try {
-                ragStreamingService.streamAnswer(request, userId, event -> {
+                ragStreamingService.streamAnswer(request, userId, workspaceId, event -> {
                     try {
                         switch (event.getType()) {
                             case TOKEN:

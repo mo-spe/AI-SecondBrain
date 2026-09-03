@@ -10,6 +10,7 @@ import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.mapper.ChatMessageMapper;
 import com.secondbrain.mapper.ChatSessionMapper;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
+import com.secondbrain.service.ChatSessionService;
 import com.secondbrain.service.StreamingAiService;
 import com.secondbrain.service.VectorSearchService;
 import org.slf4j.Logger;
@@ -35,6 +36,7 @@ public class RagStreamingServiceImpl {
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
+    private final ChatSessionService chatSessionService;
 
     private static final String SYSTEM_PROMPT = """
             你是一个专业的知识问答助手。请基于以下知识内容回答用户的问题。
@@ -51,12 +53,14 @@ public class RagStreamingServiceImpl {
                                    StreamingAiService streamingAiService,
                                    KnowledgeNodeMapper knowledgeNodeMapper,
                                    ChatSessionMapper chatSessionMapper,
-                                   ChatMessageMapper chatMessageMapper) {
+                                   ChatMessageMapper chatMessageMapper,
+                                   ChatSessionService chatSessionService) {
         this.vectorSearchService = vectorSearchService;
         this.streamingAiService = streamingAiService;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.chatSessionMapper = chatSessionMapper;
         this.chatMessageMapper = chatMessageMapper;
+        this.chatSessionService = chatSessionService;
     }
 
     /**
@@ -64,9 +68,11 @@ public class RagStreamingServiceImpl {
      *
      * @param request       RAG请求
      * @param userId        用户ID
+     * @param workspaceId   工作区ID
      * @param eventConsumer 事件消费者（逐事件回调）
      */
-    public void streamAnswer(RagRequest request, Long userId, Consumer<StreamEvent> eventConsumer) {
+    public void streamAnswer(RagRequest request, Long userId, Long workspaceId,
+                             Consumer<StreamEvent> eventConsumer) {
         String question = request.getQuestion();
         int topK = request.getTopK() != null ? request.getTopK() : 3;
 
@@ -112,6 +118,8 @@ public class RagStreamingServiceImpl {
             // Step 7: 保存消息到会话
             if (request.getSessionId() != null) {
                 saveMessages(request.getSessionId(), userId, question, fullAnswer.toString());
+                chatSessionService.generateTitleIfNeeded(request.getSessionId(), userId, workspaceId,
+                        question, fullAnswer.toString());
             }
 
             // Step 8: 完成

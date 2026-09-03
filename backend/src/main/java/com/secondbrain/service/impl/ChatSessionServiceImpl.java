@@ -9,6 +9,7 @@ import com.secondbrain.entity.ChatSession;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.User;
 import com.secondbrain.enums.AiScenario;
+import com.secondbrain.exception.BusinessException;
 import com.secondbrain.mapper.ChatMessageMapper;
 import com.secondbrain.mapper.ChatSessionMapper;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 聊天会话服务实现类.
@@ -40,6 +42,9 @@ import java.util.Map;
 public class ChatSessionServiceImpl implements ChatSessionService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatSessionServiceImpl.class);
+    private static final String DEFAULT_SESSION_TITLE = "新对话";
+    private static final int AUTO_TITLE_MAX_LENGTH = 30;
+    private static final int TITLE_CONTEXT_MAX_LENGTH = 600;
 
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
@@ -155,6 +160,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
         saveMessage(session.getId(), workspaceId, "user", request.getContent());
         saveMessage(session.getId(), workspaceId, "assistant", aiResponse);
+        generateTitleIfNeeded(session.getId(), userId, workspaceId, request.getContent(), aiResponse);
 
         long endTime = System.currentTimeMillis();
         log.info("聊天完成，耗时：{}ms", endTime - startTime);
@@ -239,6 +245,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
         saveMessage(session.getId(), workspaceId, "user", request.getContent());
         saveMessage(session.getId(), workspaceId, "assistant", aiResponse);
+        generateTitleIfNeeded(session.getId(), userId, workspaceId, request.getContent(), aiResponse);
 
         long endTime = System.currentTimeMillis();
         log.info("带知识检索的聊天完成，耗时：{}ms", endTime - startTime);
@@ -354,11 +361,69 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     @Override
     public ChatSession createSession(Long userId, Long workspaceId, String title) {
         ChatSession session = new ChatSession();
-        session.setTitle(title != null ? title : "新对话");
+        session.setTitle(title != null ? title : DEFAULT_SESSION_TITLE);
         session.setUserId(userId);
         session.setWorkspaceId(workspaceId);
         chatSessionMapper.insert(session);
         return session;
+    }
+
+    /**
+     * 修改会话标题，访问校验避免跨用户或跨工作区修改数据。
+     *
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param title 新标题
+     * @return 更新后的会话
+     */
+    @Override
+    public ChatSession renameSession(Long sessionId, Long userId, Long workspaceId, String title) {
+        ChatSession session = requireAccessibleSession(sessionId, userId, workspaceId);
+        session.setTitle(title.trim());
+        chatSessionMapper.updateById(session);
+        return session;
+    }
+
+    /**
+     * 基于首轮问答生成简洁标题；AI不可用时仍用问题摘要保证会话可辨认。
+     *
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @param question 首轮问题
+     * @param answer 首轮回答
+     * @return 当前会话
+     */
+    @Override
+    public ChatSession generateTitleIfNeeded(Long sessionId, Long userId, Long workspaceId,
+                                             String question, String answer) {
+        ChatSession session = requireAccessibleSession(sessionId, userId, workspaceId);
+        if (!isDefaultTitle(session.getTitle())) {
+            return session;
+        }
+
+        String title;
+        try {
+            List<Map<String, String>> messages = List.of(
+                    Map.of("role", "system", "content", "你是会话命名助手。根据首轮问答生成一个8到20字的中文标题，只输出标题，不要引号、句号或“标题：”前缀。"),
+                    Map.of("role", "user", "content", "问题：" + abbreviate(question)
+                            + "\n回答：" + abbreviate(answer))
+            );
+            title = normalizeGeneratedTitle(aiService.chat(userId, AiScenario.CHAT.getCode(), messages));
+        } catch (RuntimeException ex) {
+            log.warn("generate_session_title_failed sessionId={} userId={}, fallbackToQuestion=true",
+                    sessionId, userId, ex);
+            title = fallbackTitle(question);
+        }
+
+        // 再次读取可防止命名生成期间用户已手动改名时被自动结果覆盖。
+        ChatSession latest = requireAccessibleSession(sessionId, userId, workspaceId);
+        if (isDefaultTitle(latest.getTitle())) {
+            latest.setTitle(title);
+            chatSessionMapper.updateById(latest);
+        }
+        return latest;
     }
 
     @Override
@@ -367,5 +432,57 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         LambdaQueryWrapper<ChatMessage> msgWrapper = new LambdaQueryWrapper<>();
         msgWrapper.eq(ChatMessage::getSessionId, sessionId);
         chatMessageMapper.delete(msgWrapper);
+    }
+
+    private ChatSession requireAccessibleSession(Long sessionId, Long userId, Long workspaceId) {
+        ChatSession session = chatSessionMapper.selectById(sessionId);
+        boolean accessible = session != null && (workspaceId != null
+                ? Objects.equals(workspaceId, session.getWorkspaceId())
+                : Objects.equals(userId, session.getUserId()));
+        if (!accessible) {
+            throw new BusinessException(404, "会话不存在或无权访问");
+        }
+        return session;
+    }
+
+    private boolean isDefaultTitle(String title) {
+        return title == null || title.isBlank() || DEFAULT_SESSION_TITLE.equals(title.trim());
+    }
+
+    private String abbreviate(String content) {
+        if (content == null) {
+            return "";
+        }
+        String compact = content.replaceAll("\\s+", " ").trim();
+        return compact.length() <= TITLE_CONTEXT_MAX_LENGTH
+                ? compact
+                : compact.substring(0, TITLE_CONTEXT_MAX_LENGTH);
+    }
+
+    private String normalizeGeneratedTitle(String generatedTitle) {
+        if (generatedTitle == null || generatedTitle.isBlank()) {
+            throw new IllegalStateException("AI未返回会话标题");
+        }
+        String title = generatedTitle.strip()
+                .replaceFirst("^(会话)?标题[：:]\\s*", "")
+                .replaceAll("[\\r\\n]+", " ")
+                .replaceAll("^[《\"“']+|[》\"”'。]+$", "")
+                .trim();
+        if (title.isBlank()) {
+            throw new IllegalStateException("AI返回的会话标题为空");
+        }
+        return title.length() <= AUTO_TITLE_MAX_LENGTH
+                ? title
+                : title.substring(0, AUTO_TITLE_MAX_LENGTH);
+    }
+
+    private String fallbackTitle(String question) {
+        String title = abbreviate(question).replaceAll("[？?。！!]+$", "");
+        if (title.isBlank()) {
+            return DEFAULT_SESSION_TITLE;
+        }
+        return title.length() <= AUTO_TITLE_MAX_LENGTH
+                ? title
+                : title.substring(0, AUTO_TITLE_MAX_LENGTH - 1) + "…";
     }
 }
