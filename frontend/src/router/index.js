@@ -105,6 +105,18 @@ const routes = [
         meta: { title: "知识广场" },
       },
       {
+        path: "community",
+        name: "CommunityQuestions",
+        component: () => import("@/views/CommunityQuestions.vue"),
+        meta: { title: "问答社区" },
+      },
+      {
+        path: "community/users/:id",
+        name: "CommunityUserProfile",
+        component: () => import("@/views/CommunityUserProfile.vue"),
+        meta: { title: "社区个人主页" },
+      },
+      {
         path: "notifications",
         name: "Notifications",
         component: () => import("@/views/Notifications.vue"),

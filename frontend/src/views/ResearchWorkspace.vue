@@ -1,5 +1,6 @@
 <template>
   <div class="research-workspace">
+    <a class="skip-link" href="#research-main">跳到研究内容</a>
     <!-- ===== 项目列表视图 ===== -->
     <div v-if="!currentProject" class="project-list-view">
       <div class="list-header">
@@ -39,7 +40,11 @@
           v-for="project in projects"
           :key="project.id"
           class="project-item"
+          role="button"
+          tabindex="0"
           @click="selectProject(project)"
+          @keydown.enter="selectProject(project)"
+          @keydown.space.prevent="selectProject(project)"
         >
           <div class="item-status">
             <span class="status-dot" :class="statusClass(project.status)"></span>
@@ -63,6 +68,7 @@
               v-if="project.status === 'RESEARCHING'"
               class="action-btn warn"
               title="暂停"
+              aria-label="暂停研究"
               @click.stop="pauseProject(project.id)"
             >
               <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="2" width="3.5" height="10" rx="0.5" fill="currentColor"/><rect x="8.5" y="2" width="3.5" height="10" rx="0.5" fill="currentColor"/></svg>
@@ -71,6 +77,7 @@
               v-if="project.status === 'PAUSED'"
               class="action-btn primary"
               title="继续"
+              aria-label="继续研究"
               @click.stop="resumeProject(project.id)"
             >
               <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,1.5 12,7 3,12.5" fill="currentColor"/></svg>
@@ -79,6 +86,7 @@
               v-if="project.status === 'DRAFT'"
               class="action-btn primary"
               title="启动"
+              aria-label="启动研究"
               @click.stop="startProject(project.id)"
             >
               <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,1.5 12,7 3,12.5" fill="currentColor"/></svg>
@@ -87,11 +95,12 @@
               v-if="project.status === 'COMPLETED' || project.status === 'PARTIAL' || project.status === 'FAILED'"
               class="action-btn"
               title="重新执行"
+              aria-label="重新执行研究"
               @click.stop="retryProject(project.id)"
             >
               <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5A5 5 0 0111 5.5M11 5.5V2.5M11 5.5H8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M11 8.5A5 5 0 013 8.5M3 8.5v3M3 8.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             </button>
-            <button class="action-btn" title="删除" @click.stop="deleteProject(project.id)">
+            <button class="action-btn" title="删除" aria-label="删除研究" @click.stop="deleteProject(project.id)">
               <svg width="14" height="14" viewBox="0 0 14 14"><path d="M4 4.5l.7 7h4.6l.7-7M2.5 4.5h9M5.5 4.5V3a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             </button>
           </div>
@@ -111,16 +120,36 @@
 
     <!-- ===== 研究空间视图 ===== -->
     <div v-else class="workspace-view">
+      <header class="mobile-workspace-bar">
+        <button class="mobile-icon-btn" aria-label="返回研究列表" @click="goBackToList">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="mobile-project-title">{{ currentProject.title }}</div>
+        <button class="mobile-icon-btn" aria-label="打开研究导航" :aria-expanded="mobileNavOpen" @click="leftCollapsed = false; mobileNavOpen = true">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="mobile-icon-btn" aria-label="打开研究上下文" :aria-expanded="mobileContextOpen" @click="rightCollapsed = false; mobileContextOpen = true">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M9 8v4M9 5.5h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <button
+        v-if="mobileNavOpen || mobileContextOpen"
+        class="mobile-panel-backdrop"
+        aria-label="关闭侧边面板"
+        @click="closeMobilePanels"
+      ></button>
+
       <!-- 左侧面板：研究导航 -->
-      <aside class="left-panel" :class="{ collapsed: leftCollapsed }">
+      <aside class="left-panel" :class="{ collapsed: leftCollapsed, 'mobile-open': mobileNavOpen }">
         <div class="panel-header">
-          <button v-show="!leftCollapsed" class="back-btn" @click="goBackToList" title="返回列表">
+          <button v-show="!leftCollapsed" class="back-btn" aria-label="返回研究列表" @click="goBackToList" title="返回列表">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
           <div class="panel-title" v-show="!leftCollapsed">{{ currentProject.title }}</div>
-          <button class="collapse-btn" @click="leftCollapsed = !leftCollapsed" :title="leftCollapsed ? '展开' : '收起'">
+          <button class="collapse-btn" :aria-label="leftCollapsed ? '展开研究导航' : '收起研究导航'" @click="leftCollapsed = !leftCollapsed; mobileNavOpen = false" :title="leftCollapsed ? '展开' : '收起'">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"
                 :style="{ transform: leftCollapsed ? 'scaleX(-1)' : '' }"/>
@@ -134,7 +163,8 @@
             :key="item.key"
             class="nav-item"
             :class="{ active: activeNav === item.key }"
-            @click="activeNav = item.key"
+            :aria-current="activeNav === item.key ? 'page' : undefined"
+            @click="selectNavigation(item.key)"
           >
             <span class="nav-icon" v-html="item.icon"></span>
             <span class="nav-label">{{ item.label }}</span>
@@ -157,9 +187,36 @@
       </aside>
 
       <!-- 中间面板：研究内容 -->
-      <main class="center-panel">
+      <main id="research-main" class="center-panel" :aria-busy="loadingWorkspace">
+        <header class="research-command-header">
+          <div class="command-kicker">
+            <span class="status-dot" :class="statusClass(currentProject.status)"></span>
+            <span>{{ agentStatusText }}</span>
+            <span class="command-divider"></span>
+            <span>{{ activeSectionLabel }}</span>
+          </div>
+          <div class="command-heading-row">
+            <div>
+              <h1>{{ currentProject.title }}</h1>
+              <p v-if="activeNav !== 'goal'">{{ currentProject.goal || "尚未设定研究目标" }}</p>
+            </div>
+            <div class="command-metrics" aria-label="研究概览">
+              <div><strong>{{ progressPercent }}%</strong><span>任务进度</span></div>
+              <div><strong>{{ sources.length }}</strong><span>有效来源</span></div>
+              <div><strong>{{ candidateMemories.length }}</strong><span>知识候选</span></div>
+            </div>
+          </div>
+          <div v-if="isResearchActive(currentProject.status)" class="live-progress" role="status" aria-live="polite">
+            <span class="live-progress-bar" :style="{ width: Math.max(progressPercent, 4) + '%' }"></span>
+          </div>
+        </header>
+
+        <div v-if="loadingWorkspace" class="workspace-skeleton" aria-label="正在加载研究数据">
+          <span></span><span></span><span></span>
+        </div>
+
         <!-- 研究目标 -->
-        <div v-if="activeNav === 'goal'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'goal'" class="content-section">
           <div class="section-label">研究目标</div>
           <h2 class="section-heading">{{ currentProject.goal || '未设定研究目标' }}</h2>
           <div class="section-meta" v-if="currentProject.complexity || currentProject.maxIterations">
@@ -170,7 +227,7 @@
         </div>
 
         <!-- 知识背景 -->
-        <div v-if="activeNav === 'background'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'background'" class="content-section">
           <div class="section-label">知识背景</div>
           <div v-if="backgroundMemories.length === 0" class="empty-section">
             <p>启动研究后，AI 将从你的知识库中检索相关背景知识。</p>
@@ -184,7 +241,7 @@
         </div>
 
         <!-- 知识缺口 -->
-        <div v-if="activeNav === 'gaps'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'gaps'" class="content-section">
           <div class="section-label">知识缺口</div>
           <div v-if="gapMemories.length === 0" class="empty-section">
             <p>Knowledge Agent 运行后将自动识别知识缺口。</p>
@@ -198,7 +255,7 @@
         </div>
 
         <!-- 研究计划 -->
-        <div v-if="activeNav === 'plan'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'plan'" class="content-section">
           <div class="section-label">研究计划</div>
           <div v-if="!latestPlan" class="empty-section">
             <p>启动研究后，Planner Agent 将自动生成研究计划。</p>
@@ -214,7 +271,7 @@
         </div>
 
         <!-- 研究任务 -->
-        <div v-if="activeNav === 'tasks'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'tasks'" class="content-section">
           <div class="section-label">研究任务</div>
           <div v-if="tasks.length === 0" class="empty-section">
             <p>任务由 Planner Agent 自动生成，启动研究后即可查看。</p>
@@ -226,14 +283,14 @@
               class="task-item"
               :class="{ active: expandedTaskId === task.id }"
             >
-              <div class="task-header" @click="expandedTaskId = expandedTaskId === task.id ? null : task.id">
+              <button class="task-header" :aria-expanded="expandedTaskId === task.id" @click="expandedTaskId = expandedTaskId === task.id ? null : task.id">
                 <span class="task-status-dot" :class="statusClass(task.status)"></span>
                 <span class="task-title">{{ task.title }}</span>
                 <span class="task-status-label">{{ task.statusLabel }}</span>
                 <svg class="task-chevron" :class="{ open: expandedTaskId === task.id }" width="12" height="12" viewBox="0 0 12 12">
                   <path d="M4 2.5L7.5 6 4 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                 </svg>
-              </div>
+              </button>
               <div class="task-body" v-if="expandedTaskId === task.id">
                 <p class="task-desc" v-if="task.description">{{ task.description }}</p>
                 <p class="task-question" v-if="task.question"><strong>研究问题：</strong>{{ task.question }}</p>
@@ -255,7 +312,7 @@
         </div>
 
         <!-- 研究来源 -->
-        <div v-if="activeNav === 'sources'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'sources'" class="content-section">
           <div class="section-label">研究来源</div>
           <div v-if="sources.length === 0" class="empty-section">
             <p>Research Agent 发现并抓取的外部资料将展示在此。</p>
@@ -265,7 +322,11 @@
               v-for="source in sources"
               :key="source.id"
               class="source-item"
+              role="button"
+              tabindex="0"
               @click="viewSource(source)"
+              @keydown.enter="viewSource(source)"
+              @keydown.space.prevent="viewSource(source)"
             >
               <div class="source-header">
                 <span class="source-reliability" :class="'rel-' + (source.reliability || 'UNKNOWN').toLowerCase()">
@@ -283,7 +344,7 @@
         </div>
 
         <!-- 研究发现 -->
-        <div v-if="activeNav === 'findings'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'findings'" class="content-section">
           <div class="section-label">研究发现</div>
           <div v-if="findingMemories.length === 0" class="empty-section">
             <p>研究 Agent 完成分析后，发现将汇总于此。</p>
@@ -297,7 +358,7 @@
         </div>
 
         <!-- 研究结论 -->
-        <div v-if="activeNav === 'conclusion'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'conclusion'" class="content-section">
           <div class="section-label">研究结论</div>
           <div v-if="conclusionMemories.length === 0" class="empty-section">
             <p>所有研究任务完成后，Critic Agent 验证后的结论将展示在此。</p>
@@ -311,7 +372,7 @@
         </div>
 
         <!-- 研究报告 -->
-        <div v-if="activeNav === 'report'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'report'" class="content-section">
           <div class="section-label">研究报告</div>
           <div v-if="!latestReport" class="empty-section">
             <p>Synthesizer Agent 完成综合后将生成最终研究报告。</p>
@@ -332,7 +393,7 @@
         </div>
 
         <!-- 知识候选 -->
-        <div v-if="activeNav === 'candidates'" class="content-section">
+        <div v-if="!loadingWorkspace && activeNav === 'candidates'" class="content-section">
           <div class="section-label">知识候选项</div>
           <div v-if="candidateMemories.length === 0" class="empty-section">
             <p>研究过程中发现的有价值知识将出现在此，由你来决定是否沉淀到知识库。</p>
@@ -353,10 +414,10 @@
       </main>
 
       <!-- 右侧面板：上下文 -->
-      <aside class="right-panel" :class="{ collapsed: rightCollapsed }">
+      <aside class="right-panel" :class="{ collapsed: rightCollapsed, 'mobile-open': mobileContextOpen }">
         <div class="panel-header">
           <span class="panel-label" v-show="!rightCollapsed">上下文</span>
-          <button class="collapse-btn" @click="rightCollapsed = !rightCollapsed" :title="rightCollapsed ? '展开' : '收起'">
+          <button class="collapse-btn" :aria-label="rightCollapsed ? '展开研究上下文' : '收起研究上下文'" @click="rightCollapsed = !rightCollapsed; mobileContextOpen = false" :title="rightCollapsed ? '展开' : '收起'">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M9 3l-4 4 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"
                 :style="{ transform: rightCollapsed ? 'scaleX(-1)' : '' }"/>
@@ -466,6 +527,7 @@
             @click="sendAgentMessage"
             :disabled="!agentMessage.trim() || (currentProject.status !== 'RESEARCHING' && currentProject.status !== 'DRAFT')"
             title="发送"
+            aria-label="发送指令"
           >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
               <path d="M2 2l11 5.5L2 13V8.5L9 7.5 2 6.5V2z" fill="currentColor"/>
@@ -537,6 +599,8 @@ const createForm = ref({ title: "", goal: "" });
 const currentProject = ref(null);
 const leftCollapsed = ref(false);
 const rightCollapsed = ref(false);
+const mobileNavOpen = ref(false);
+const mobileContextOpen = ref(false);
 const activeNav = ref("goal");
 
 // ---- 研究数据 ----
@@ -546,6 +610,7 @@ const sources = ref([]);
 const latestReport = ref(null);
 const memories = ref([]);
 const candidateProcessingIds = ref(new Set());
+const loadingWorkspace = ref(false);
 const taskSteps = ref({});
 const expandedTaskId = ref(null);
 
@@ -576,9 +641,13 @@ const navSections = computed(() => {
     { key: "findings", label: "研究发现", icon: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v3M7 9.5v3M1.5 7h3M9.5 7h3M3.5 3.5l2 2M8.5 5.5l2-2M3.5 10.5l2-2M8.5 8.5l2 2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>', badge: 0 },
     { key: "conclusion", label: "研究结论", icon: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polygon points="7,1.5 13,5 7,8.5 1,5" stroke="currentColor" stroke-width="1" fill="none"/><polygon points="7,8.5 13,5 13,10 7,13.5 1,10 1,5" stroke="currentColor" stroke-width="1" fill="none" opacity="0.5"/></svg>', badge: 0 },
     { key: "report", label: "研究报告", icon: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2.5" y="1.5" width="9" height="11" rx="1" stroke="currentColor" stroke-width="1.1"/><rect x="5" y="4" width="4" height="1" fill="currentColor" opacity="0.5"/><rect x="5" y="6" width="4" height="1" fill="currentColor" opacity="0.5"/><rect x="5" y="8" width="3" height="1" fill="currentColor" opacity="0.5"/></svg>', badge: 0 },
-    { key: "candidates", label: "知识候选", icon: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v4M7 10.5h0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>', badge: 0 },
+    { key: "candidates", label: "知识候选", icon: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v4M7 10.5h0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>', badge: candidateMemories.value.length },
   ];
 });
+
+const activeSectionLabel = computed(() => (
+  navSections.value.find((item) => item.key === activeNav.value)?.label || "研究内容"
+));
 
 // ---- 计算属性 ----
 const progressPercent = computed(() => {
@@ -662,8 +731,19 @@ function selectProject(project) {
 }
 
 function goBackToList() {
+  closeMobilePanels();
   currentProject.value = null;
   stopPolling();
+}
+
+function selectNavigation(key) {
+  activeNav.value = key;
+  mobileNavOpen.value = false;
+}
+
+function closeMobilePanels() {
+  mobileNavOpen.value = false;
+  mobileContextOpen.value = false;
 }
 
 async function createProject() {
@@ -761,6 +841,7 @@ async function refreshCurrentProject() {
 
 // ---- 工作空间数据加载 ----
 async function loadProjectData(projectId) {
+  loadingWorkspace.value = true;
   try {
     const [taskList, plan, sourceList, report, memoryList, stepList] = await Promise.all([
       researchAPI.listTasks(projectId).catch(() => []),
@@ -782,7 +863,11 @@ async function loadProjectData(projectId) {
       stepsByTask[s.taskId].push(s);
     });
     taskSteps.value = stepsByTask;
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    ElMessage.error("加载研究数据失败");
+  } finally {
+    loadingWorkspace.value = false;
+  }
 }
 
 // ---- 轮询 ----
@@ -964,7 +1049,7 @@ function renderMd(content) {
   --rw-accent-hover: rgba(184, 114, 58, 0.18);
   --rw-text: #1E1B18;
   --rw-text-secondary: #6B6458;
-  --rw-text-muted: #9B9488;
+  --rw-text-muted: #6F695F;
   --rw-success: #3B7D5A;
   --rw-success-muted: rgba(59, 125, 90, 0.1);
   --rw-warning: #B8723A;
@@ -992,6 +1077,33 @@ function renderMd(content) {
   font-size: 15px;
   line-height: 1.6;
   overflow: hidden;
+}
+
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 100;
+  padding: 9px 14px;
+  border-radius: var(--rw-radius);
+  background: var(--rw-text);
+  color: var(--rw-surface);
+  font-family: var(--rw-font-ui);
+  font-size: 13px;
+  transform: translate(-50%, -160%);
+  transition: transform 0.18s ease;
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--rw-primary);
+  outline-offset: 3px;
 }
 
 /* ===== 项目列表视图 ===== */
@@ -1171,6 +1283,11 @@ function renderMd(content) {
   background: var(--rw-success-muted);
 }
 
+.project-item:focus-visible {
+  background: var(--rw-surface);
+  border-color: var(--rw-primary);
+}
+
 .meta-tag.st-partial {
   color: var(--rw-warning);
   background: color-mix(in srgb, var(--rw-warning) 12%, transparent);
@@ -1197,7 +1314,8 @@ function renderMd(content) {
   transition: opacity 0.15s;
 }
 
-.project-item:hover .item-actions {
+.project-item:hover .item-actions,
+.project-item:focus-within .item-actions {
   opacity: 1;
 }
 
@@ -1272,9 +1390,16 @@ function renderMd(content) {
 /* ===== 工作空间视图 ===== */
 .workspace-view {
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
   position: relative;
+}
+
+.mobile-workspace-bar,
+.mobile-panel-backdrop {
+  display: none;
 }
 
 /* ===== 左侧面板 ===== */
@@ -1286,6 +1411,9 @@ function renderMd(content) {
   background: var(--rw-surface);
   border-right: 1px solid var(--rw-border);
   transition: width 0.2s ease;
+  grid-column: 1;
+  grid-row: 1 / 3;
+  min-height: 0;
 }
 
 .left-panel.collapsed {
@@ -1450,14 +1578,162 @@ function renderMd(content) {
 
 /* ===== 中间面板 ===== */
 .center-panel {
-  flex: 1;
+  grid-column: 2;
+  grid-row: 1;
   overflow-y: auto;
-  padding: 32px 36px;
+  padding: 0 40px 48px;
   min-width: 0;
+  scroll-behavior: smooth;
 }
 
 .content-section {
-  max-width: 780px;
+  max-width: 860px;
+  animation: content-enter 0.24s ease-out;
+}
+
+.research-command-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  max-width: 1040px;
+  margin: 0 -12px 30px;
+  padding: 24px 12px 18px;
+  background: color-mix(in srgb, var(--rw-bg) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--rw-border) 72%, transparent);
+}
+
+.command-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--rw-text-muted);
+  font-family: var(--rw-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.command-divider {
+  width: 18px;
+  height: 1px;
+  background: var(--rw-border);
+}
+
+.command-heading-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.command-heading-row h1 {
+  max-width: 680px;
+  margin: 0;
+  font-family: var(--rw-font-display);
+  font-size: clamp(25px, 3vw, 38px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.command-heading-row p {
+  display: -webkit-box;
+  max-width: 660px;
+  margin: 9px 0 0;
+  overflow: hidden;
+  color: var(--rw-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.command-metrics {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--rw-border-light);
+  border-radius: var(--rw-radius);
+  background: var(--rw-border-light);
+}
+
+.command-metrics > div {
+  min-width: 78px;
+  padding: 9px 11px;
+  background: color-mix(in srgb, var(--rw-surface) 86%, transparent);
+  text-align: right;
+}
+
+.command-metrics strong,
+.command-metrics span {
+  display: block;
+  font-family: var(--rw-font-ui);
+}
+
+.command-metrics strong {
+  color: var(--rw-text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.command-metrics span {
+  margin-top: 3px;
+  color: var(--rw-text-muted);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+
+.live-progress {
+  position: absolute;
+  right: 12px;
+  bottom: -1px;
+  left: 12px;
+  height: 2px;
+  overflow: hidden;
+  background: var(--rw-border-light);
+}
+
+.live-progress-bar {
+  display: block;
+  height: 100%;
+  background: var(--rw-primary);
+  transition: width 0.45s ease;
+}
+
+.workspace-skeleton {
+  display: grid;
+  max-width: 860px;
+  gap: 12px;
+}
+
+.workspace-skeleton span {
+  display: block;
+  height: 76px;
+  border: 1px solid var(--rw-border-light);
+  border-radius: var(--rw-radius);
+  background: linear-gradient(90deg, var(--rw-surface) 25%, var(--rw-surface-hover) 50%, var(--rw-surface) 75%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.workspace-skeleton span:first-child {
+  width: 62%;
+  height: 28px;
+}
+
+@keyframes content-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes skeleton-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
 }
 
 .section-label {
@@ -1593,12 +1869,16 @@ function renderMd(content) {
 }
 
 .task-header {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 13px 16px;
   cursor: pointer;
   user-select: none;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .task-status-dot {
@@ -1725,6 +2005,11 @@ function renderMd(content) {
   border-radius: var(--rw-radius);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
+}
+
+.source-item:focus-visible {
+  border-color: var(--rw-primary);
+  background: var(--rw-surface-hover);
 }
 
 .source-item:hover {
@@ -1865,6 +2150,12 @@ function renderMd(content) {
 
 .confirm-btn:hover { background: var(--rw-primary-light); }
 
+.confirm-btn:disabled,
+.dismiss-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .dismiss-btn {
   padding: 8px 18px;
   background: transparent;
@@ -1891,6 +2182,9 @@ function renderMd(content) {
   background: var(--rw-surface);
   border-left: 1px solid var(--rw-border);
   transition: width 0.2s ease;
+  grid-column: 3;
+  grid-row: 1 / 3;
+  min-height: 0;
 }
 
 .panel-label {
@@ -2062,6 +2356,9 @@ function renderMd(content) {
   background: var(--rw-surface);
   border-top: 1px solid var(--rw-border);
   min-height: 52px;
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
 }
 
 .agent-controls {
@@ -2289,6 +2586,7 @@ function renderMd(content) {
 
 /* ===== Markdown 内容样式 ===== */
 .memory-content :deep(p),
+.candidate-content :deep(p),
 .plan-rationale :deep(p),
 .report-summary :deep(p),
 .report-body :deep(p),
@@ -2302,6 +2600,9 @@ function renderMd(content) {
 .memory-content :deep(h1),
 .memory-content :deep(h2),
 .memory-content :deep(h3),
+.candidate-content :deep(h1),
+.candidate-content :deep(h2),
+.candidate-content :deep(h3),
 .report-body :deep(h1),
 .report-body :deep(h2),
 .report-body :deep(h3) {
@@ -2311,16 +2612,21 @@ function renderMd(content) {
 }
 
 .memory-content :deep(h1),
+.candidate-content :deep(h1),
 .report-body :deep(h1) { font-size: 18px; }
 
 .memory-content :deep(h2),
+.candidate-content :deep(h2),
 .report-body :deep(h2) { font-size: 16px; }
 
 .memory-content :deep(h3),
+.candidate-content :deep(h3),
 .report-body :deep(h3) { font-size: 14px; }
 
 .memory-content :deep(ul),
 .memory-content :deep(ol),
+.candidate-content :deep(ul),
+.candidate-content :deep(ol),
 .report-body :deep(ul),
 .report-body :deep(ol) {
   padding-left: 20px;
@@ -2328,6 +2634,7 @@ function renderMd(content) {
 }
 
 .memory-content :deep(li),
+.candidate-content :deep(li),
 .report-body :deep(li) {
   font-size: 14px;
   color: var(--rw-text-secondary);
@@ -2335,6 +2642,7 @@ function renderMd(content) {
 }
 
 .memory-content :deep(code),
+.candidate-content :deep(code),
 .report-body :deep(code) {
   background: var(--rw-surface-hover);
   padding: 2px 6px;
@@ -2345,6 +2653,7 @@ function renderMd(content) {
 }
 
 .memory-content :deep(pre),
+.candidate-content :deep(pre),
 .report-body :deep(pre) {
   background: var(--rw-bg);
   padding: 14px;
@@ -2355,6 +2664,7 @@ function renderMd(content) {
 }
 
 .memory-content :deep(pre code),
+.candidate-content :deep(pre code),
 .report-body :deep(pre code) {
   background: transparent;
   padding: 0;
@@ -2362,11 +2672,13 @@ function renderMd(content) {
 }
 
 .memory-content :deep(a),
+.candidate-content :deep(a),
 .report-body :deep(a) {
   color: var(--rw-primary);
 }
 
 .memory-content :deep(blockquote),
+.candidate-content :deep(blockquote),
 .report-body :deep(blockquote) {
   border-left: 2px solid var(--rw-primary);
   margin: 10px 0;
@@ -2433,6 +2745,257 @@ function renderMd(content) {
 
 :deep(.el-message-box__message) {
   color: var(--rw-text-secondary);
+}
+
+@media (max-width: 1180px) {
+  .left-panel { width: 220px; }
+  .right-panel { width: 240px; }
+  .center-panel { padding-right: 26px; padding-left: 26px; }
+  .command-metrics > div { min-width: 66px; }
+}
+
+@media (max-width: 900px) {
+  .project-list-view {
+    padding: 28px 24px;
+  }
+
+  .workspace-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 52px minmax(0, 1fr) auto;
+  }
+
+  .mobile-workspace-bar {
+    z-index: 10;
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--rw-border);
+    background: color-mix(in srgb, var(--rw-surface) 94%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-project-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--rw-text);
+    font-family: var(--rw-font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-icon-btn {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--rw-radius);
+    background: transparent;
+    color: var(--rw-text-secondary);
+    cursor: pointer;
+  }
+
+  .mobile-icon-btn:hover {
+    background: var(--rw-surface-hover);
+    color: var(--rw-text);
+  }
+
+  .mobile-panel-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgba(30, 27, 24, 0.35);
+    backdrop-filter: blur(2px);
+  }
+
+  .left-panel,
+  .left-panel.collapsed,
+  .right-panel,
+  .right-panel.collapsed {
+    position: absolute;
+    z-index: 30;
+    top: 0;
+    bottom: 0;
+    width: min(82vw, 310px);
+    min-height: 0;
+    box-shadow: 0 18px 54px rgba(30, 27, 24, 0.18);
+    transition: transform 0.22s ease;
+  }
+
+  .left-panel,
+  .left-panel.collapsed {
+    left: 0;
+    transform: translateX(-105%);
+  }
+
+  .right-panel,
+  .right-panel.collapsed {
+    right: 0;
+    transform: translateX(105%);
+  }
+
+  .left-panel.mobile-open,
+  .right-panel.mobile-open {
+    transform: translateX(0);
+  }
+
+  .left-panel.collapsed .panel-header,
+  .right-panel.collapsed .panel-header {
+    justify-content: initial;
+    padding: 12px;
+  }
+
+  .left-panel.collapsed .panel-title,
+  .left-panel.collapsed .back-btn,
+  .left-panel.collapsed .research-nav,
+  .left-panel.collapsed .panel-status,
+  .right-panel.collapsed .panel-label,
+  .right-panel.collapsed .context-content {
+    display: initial;
+  }
+
+  .left-panel.collapsed .research-nav,
+  .right-panel.collapsed .context-content {
+    display: block;
+  }
+
+  .center-panel {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 0 20px 32px;
+  }
+
+  .bottom-bar {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .research-command-header {
+    margin-bottom: 24px;
+    padding-top: 20px;
+  }
+
+  .command-heading-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .command-metrics {
+    width: 100%;
+  }
+
+  .command-metrics > div {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .item-actions {
+    opacity: 1;
+  }
+
+  .action-btn,
+  .ctrl-btn,
+  .confirm-btn,
+  .dismiss-btn {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 600px) {
+  .project-list-view {
+    padding: 22px 16px;
+  }
+
+  .list-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .view-title { font-size: 26px; }
+  .create-btn { justify-content: center; min-height: 44px; }
+
+  .project-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 16px 12px;
+  }
+
+  .item-body { width: calc(100% - 24px); }
+  .item-actions { width: 100%; padding-left: 22px; }
+  .item-meta { flex-wrap: wrap; }
+
+  .center-panel { padding-right: 15px; padding-left: 15px; }
+  .research-command-header { margin-right: -5px; margin-left: -5px; }
+  .command-heading-row h1 { font-size: 27px; }
+  .command-heading-row p { font-size: 13px; }
+
+  .command-metrics span { font-size: 8px; }
+  .command-metrics > div { padding: 8px; }
+
+  .section-heading { font-size: 21px; }
+  .section-meta, .report-stats { flex-wrap: wrap; gap: 8px 14px; }
+  .memory-card, .candidate-item, .report-detail, .plan-detail { padding: 16px; }
+
+  .candidate-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .confirm-btn,
+  .dismiss-btn {
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .step-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .bottom-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 9px 12px;
+  }
+
+  .agent-controls { width: 100%; }
+  .ctrl-btn { justify-content: center; width: 100%; }
+  .agent-input, .send-btn { min-height: 40px; }
+  .agent-summary { display: none; }
+
+  :deep(.research-dialog) {
+    width: calc(100vw - 24px) !important;
+    margin-top: 5vh !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>
 

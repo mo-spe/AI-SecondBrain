@@ -207,7 +207,13 @@
               <h3 class="rag-title">RAG 知识问答</h3>
             </div>
             <div class="rag-header-actions">
-              <el-button size="small" class="history-btn" @click="showSessionList = !showSessionList">
+              <el-button
+                size="small"
+                class="history-btn"
+                aria-label="查看历史会话"
+                title="查看历史会话"
+                @click="showSessionList = !showSessionList"
+              >
                 <el-icon size="14"><Clock /></el-icon>
               </el-button>
               <el-button size="small" class="history-btn" @click="handleNewSession" :disabled="isStreaming">
@@ -236,14 +242,28 @@
               >
                 <div class="session-title">{{ s.title }}</div>
                 <div class="session-time">{{ formatTime(s.updateTime || s.createTime) }}</div>
-                <el-button
-                  text
-                  size="small"
-                  class="session-delete"
-                  @click.stop="handleDeleteSession(s.id)"
-                >
-                  <el-icon size="12"><Close /></el-icon>
-                </el-button>
+                <div class="session-actions">
+                  <el-button
+                    text
+                    size="small"
+                    class="session-action"
+                    aria-label="重命名会话"
+                    title="重命名"
+                    @click.stop="handleRenameSession(s)"
+                  >
+                    <el-icon size="13"><EditPen /></el-icon>
+                  </el-button>
+                  <el-button
+                    text
+                    size="small"
+                    class="session-action session-delete"
+                    aria-label="删除会话"
+                    title="删除"
+                    @click.stop="handleDeleteSession(s.id)"
+                  >
+                    <el-icon size="12"><Close /></el-icon>
+                  </el-button>
+                </div>
               </div>
               <div v-if="sessions.length === 0" class="session-empty">暂无历史会话</div>
             </div>
@@ -379,6 +399,7 @@ import {
   Close,
   Check,
   Clock,
+  EditPen,
 } from "@element-plus/icons-vue";
 import request from "@/utils/request";
 import { useRouter } from "vue-router";
@@ -591,6 +612,31 @@ const switchSession = async (sessionId) => {
 const handleNewSession = async () => {
   await createNewSession();
   showSessionList.value = false;
+};
+
+const handleRenameSession = async (session) => {
+  try {
+    const { value } = await ElMessageBox.prompt("为这次会话设置一个更容易识别的名称", "重命名会话", {
+      inputValue: session.title,
+      inputPlaceholder: "例如：Spring Boot 自动配置原理",
+      inputValidator: (title) => {
+        const normalized = title?.trim();
+        if (!normalized) return "会话名称不能为空";
+        if (normalized.length > 100) return "会话名称不能超过100个字符";
+        return true;
+      },
+      confirmButtonText: "保存",
+      cancelButtonText: "取消",
+      autofocus: true,
+    });
+    const updated = await request.put(`/sessions/${session.id}/title`, { title: value.trim() });
+    sessions.value = sessions.value.map((item) => (item.id === session.id ? updated : item));
+    ElMessage.success("会话名称已更新");
+  } catch (error) {
+    if (error !== "cancel" && error !== "close") {
+      ElMessage.error("重命名失败：" + (error.message || "未知错误"));
+    }
+  }
 };
 
 const handleDeleteSession = async (sessionId) => {
@@ -1836,14 +1882,28 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.session-delete {
+.session-actions {
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
-.session-item:hover .session-delete {
+.session-action {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.session-item:hover .session-actions,
+.session-item:focus-within .session-actions {
   opacity: 1;
+}
+
+.session-delete:hover {
+  color: var(--color-danger);
 }
 
 .session-empty {
