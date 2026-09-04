@@ -44,6 +44,18 @@ public class BusinessException extends RuntimeException {
     }
 
     /**
+     * 创建带业务状态码和原始原因的异常。
+     *
+     * @param code 业务错误码
+     * @param message 对外错误消息
+     * @param cause 原始技术异常
+     */
+    public BusinessException(Integer code, String message, Throwable cause) {
+        super(message, cause);
+        this.code = code;
+    }
+
+    /**
      * 获取错误码.
      *
      * @return 错误码

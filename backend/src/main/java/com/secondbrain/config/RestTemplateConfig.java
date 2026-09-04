@@ -54,4 +54,20 @@ public class RestTemplateConfig {
         factory.setReadTimeout(600_000);
         return new RestTemplate(factory);
     }
+
+    /**
+     * 创建用于第三方 OAuth 换票的无日志客户端。
+     *
+     * <p>微信换票 URL 携带 app-secret，不能经过通用请求日志拦截器，避免凭证进入应用日志。</p>
+     *
+     * @return 无敏感信息日志的短超时客户端
+     */
+    @Bean("oauthRestTemplate")
+    public RestTemplate oauthRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setBufferRequestBody(false);
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(10_000);
+        return new RestTemplate(factory);
+    }
 }

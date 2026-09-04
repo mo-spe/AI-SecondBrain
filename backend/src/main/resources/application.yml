@@ -140,6 +140,11 @@ jwt:
   secret: ${JWT_SECRET:ai-second-brain-secret-key-2024-very-long-and-secure-key-for-jwt-token-generation-and-validation-256-bits-minimum}
   expiration: ${JWT_EXPIRATION:86400000}
 
+wechat:
+  # 微信小程序后台配置；未配置时接口会明确返回不可用，不会降级为伪登录。
+  app-id: ${WECHAT_APP_ID:}
+  app-secret: ${WECHAT_APP_SECRET:}
+
 aliyun:
   oss:
     endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}

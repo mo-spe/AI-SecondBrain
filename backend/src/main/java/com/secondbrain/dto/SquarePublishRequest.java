@@ -1,9 +1,10 @@
 package com.secondbrain.dto;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.List;
 
 /**
  * 发布到知识广场请求DTO.
@@ -13,9 +14,16 @@ import lombok.Setter;
 public class SquarePublishRequest {
 
     /**
-     * 知识节点ID
+     * 要发布的知识节点ID列表，按合集展示顺序传入，最多10个。
      */
-    @NotNull(message = "请选择知识节点")
+    @Size(max = 10, message = "一次最多发布10个知识点")
+    private List<Long> nodeIds;
+
+    /**
+     * 旧版单知识节点字段。
+     *
+     * <p>仅当 {@link #nodeIds} 未提供节点时作为兼容回退使用。</p>
+     */
     private Long nodeId;
 
     /**

@@ -36,6 +36,13 @@ public class SquarePostVO {
     private String nodeSummary;
 
     /**
+     * 合集中的知识节点，按发布时的顺序返回。
+     *
+     * <p>旧帖子没有关联记录时，会由历史 {@code nodeId} 自动补成单个节点。</p>
+     */
+    private List<SquarePostKnowledgeNodeVO> knowledgeNodes;
+
+    /**
      * 推荐语
      */
     private String recommendText;
