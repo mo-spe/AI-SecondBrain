@@ -285,7 +285,12 @@
                 <el-tag :type="getSystemTagType(card.systemId || card.nodeId)" size="small" effect="light">
                   {{ card.nodeTitle || getSystemName(card.systemId) || "未关联" }}
                 </el-tag>
-                <button class="card-menu" @click.stop="handleCardMenu(card)">
+                <button
+                  class="card-menu"
+                  type="button"
+                  aria-label="设置知识点复习提醒"
+                  @click.stop="handleCardMenu(card)"
+                >
                   <el-icon size="14"><MoreFilled /></el-icon>
                 </button>
               </div>
@@ -576,6 +581,11 @@
         </aside>
       </div>
     </section>
+    <ReviewPreferencesDialog v-model="showReviewSettings" />
+    <KnowledgeReviewReminderDialog
+      v-model="showReminderDialog"
+      :node="reminderNode"
+    />
     </div>
 </template>
 
@@ -585,6 +595,8 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { reviewAPI } from "@/api/review";
 import { statisticsAPI } from "@/api/statistics";
 import CheckInButton from "@/components/CheckInButton.vue";
+import ReviewPreferencesDialog from "@/components/ReviewPreferencesDialog.vue";
+import KnowledgeReviewReminderDialog from "@/components/KnowledgeReviewReminderDialog.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import {
   Setting,
@@ -654,6 +666,9 @@ const activeTab = ref("myPlan");
 const poolList = ref([]);
 const poolLoading = ref(false);
 const currentWorkspaceId = computed(() => workspaceStore.currentId);
+const showReviewSettings = ref(false);
+const showReminderDialog = ref(false);
+const reminderNode = ref(null);
 
 let timerInterval = null;
 let startTime = null;
@@ -992,10 +1007,12 @@ const getLastReviewText = (card) => {
 };
 
 const handleCardMenu = (card) => {
-  // 防止点按钮触发卡片开始复习；这里仅占位给扩展下拉菜单
-  if (!card || !card.id) return;
-  // 点击 ... 时给一个轻提示，保证按钮有响应，避免用户点击毫无反馈
-  ElMessage.info(`卡片 #${card.id} 操作菜单`);
+  if (!card?.nodeId) {
+    ElMessage.warning("这张卡片没有可设置提醒的知识点");
+    return;
+  }
+  reminderNode.value = { id: card.nodeId, title: card.nodeTitle || "关联知识点" };
+  showReminderDialog.value = true;
 };
 
 const parseQuestionText = (question) => {
@@ -1379,7 +1396,7 @@ const nextReview = () => {
 };
 
 const handleReviewSettings = () => {
-  ElMessage.info("复习设置功能开发中");
+  showReviewSettings.value = true;
 };
 
 const generateReviewCards = async () => {
@@ -1926,6 +1943,11 @@ onUnmounted(() => {
 }
 
 .card-menu {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -1938,6 +1960,11 @@ onUnmounted(() => {
 .card-menu:hover {
   background: var(--bg-input);
   color: var(--text-primary);
+}
+
+.card-menu:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .card-title {

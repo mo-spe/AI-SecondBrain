@@ -6,13 +6,9 @@
         <p class="page-subtitle">可视化您的知识网络，构建完整的知识体系</p>
       </div>
       <div class="header-actions">
-        <el-button type="primary" @click="handleAutoGenerate" :loading="autoGenerating">
-          <el-icon><MagicStick /></el-icon>
-          自动生成关系
-        </el-button>
-        <el-button @click="handleRefresh">
-          <el-icon><Refresh /></el-icon>
-          刷新
+        <el-button type="primary" @click="goGraphWorkspace">
+          <el-icon><Connection /></el-icon>
+          打开全屏图谱
         </el-button>
       </div>
     </div>
@@ -34,42 +30,45 @@
               <div class="stat-label">连接关系</div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon green"></div>
-            <div class="stat-content">
-              <div class="stat-value">{{ categoryCount }}</div>
-              <div class="stat-label">主题领域</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon orange"></div>
-            <div class="stat-content">
-              <div class="stat-value">{{ pathCount }}</div>
-              <div class="stat-label">学习路径</div>
-            </div>
-          </div>
         </div>
 
         <div class="knowledge-tree-card">
           <div class="tree-header">
-            <h3 class="tree-title">知识体系目录</h3>
+            <div>
+              <span class="tree-kicker">KNOWLEDGE TAGS</span>
+              <h3 class="tree-title">知识标签</h3>
+            </div>
+            <button type="button" class="manage-tags-btn" aria-label="前往知识管理标签" @click="openKnowledgeManagement">
+              管理
+            </button>
           </div>
           <div class="tree-search-box">
             <el-icon size="14" color="#94a3b8"><Search /></el-icon>
             <input
               type="text"
               v-model="searchQuery"
-              placeholder="搜索知识..."
+              placeholder="搜索标签..."
               class="tree-search-input"
             />
           </div>
-          <div class="tree-body">
+          <div v-if="tagLoading" class="tree-state" role="status">正在加载标签…</div>
+          <div v-else-if="tagError" class="tree-state tree-error" role="alert">
+            <span>标签暂时无法加载</span>
+            <button type="button" @click="loadTagTree">重试</button>
+          </div>
+          <div v-else-if="tagTree.length === 0" class="tree-state tree-empty">
+            <span>还没有知识标签</span>
+            <button type="button" @click="openKnowledgeManagement">去创建标签</button>
+          </div>
+          <div v-else class="tree-body">
             <el-tree
               ref="treeRef"
               :data="treeData"
               :props="treeProps"
               :highlight-current="true"
-              :default-expand-all="false"
+              :default-expanded-keys="['all-knowledge']"
+              :filter-node-method="filterTreeNode"
+              node-key="id"
               @node-click="handleNodeClick"
               class="knowledge-tree"
             >
@@ -79,7 +78,7 @@
                     <component :is="data.icon || Document" />
                   </el-icon>
                   <span class="node-label">{{ node.label }}</span>
-                  <span v-if="data.count" class="node-count">{{ data.count }}</span>
+                  <span class="node-count">{{ data.count || 0 }}</span>
                 </div>
               </template>
             </el-tree>
@@ -88,100 +87,38 @@
       </div>
 
       <div class="middle-panel">
-        <div class="graph-card">
-          <div class="graph-header">
-            <h3>
+        <section class="graph-launcher" aria-label="全屏知识图谱入口">
+          <div class="launcher-grid" aria-hidden="true"></div>
+          <div class="launcher-constellation" aria-hidden="true">
+            <span class="constellation-line line-one"></span>
+            <span class="constellation-line line-two"></span>
+            <span class="constellation-line line-three"></span>
+            <span class="constellation-orbit orbit-one"></span>
+            <span class="constellation-orbit orbit-two"></span>
+            <i class="constellation-point point-core"></i>
+            <i class="constellation-point point-one"></i>
+            <i class="constellation-point point-two"></i>
+            <i class="constellation-point point-three"></i>
+            <i class="constellation-point point-four"></i>
+          </div>
+          <div class="launcher-topbar">
+            <span class="launcher-status"><i></i> 图谱已就绪</span>
+            <div class="launcher-live-stats" aria-label="图谱实时统计">
+              <span><strong>{{ nodeCount }}</strong> 知识点</span>
+              <span><strong>{{ edgeCount }}</strong> 连接</span>
+            </div>
+          </div>
+          <div class="launcher-content">
+            <span class="launcher-kicker">KNOWLEDGE GRAPH · EXPLORATION MODE</span>
+            <h2>让每一条知识<br /><em>找到它的关联。</em></h2>
+            <p>用完整画布追踪概念之间的脉络：缩放、拖拽、聚焦关联，并从一个节点进入知识详情。</p>
+            <el-button type="primary" @click="goGraphWorkspace">
+              开始探索知识网络
               <el-icon><Connection /></el-icon>
-              知识网络图
-            </h3>
-            <div class="graph-actions">
-              <button class="graph-action-btn" @click="handleResetView">
-                <el-icon size="14"><ZoomIn /></el-icon>
-                重置视图
-              </button>
-              <button class="graph-action-btn" @click="handleFitView">
-                <el-icon size="14"><FullScreen /></el-icon>
-                自适应
-              </button>
-            </div>
-          </div>
-          <div class="graph-body">
-            <div ref="graphContainer" class="graph-container"></div>
-          </div>
-          <div class="graph-footer">
-            <div class="legend">
-              <div class="legend-item">
-                <span class="legend-dot" style="background: #7c3aed;"></span>
-                <span>核心主题</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot" style="background: #3b82f6;"></span>
-                <span>重要主题</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot" style="background: #22c55e;"></span>
-                <span>相关主题</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot" style="background: #f59e0b;"></span>
-                <span>扩展主题</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot" style="background: #ef4444;"></span>
-                <span>待学习</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="recommendations.length > 0" class="recommendation-card">
-          <div class="recommendation-header">
-            <h3>
-              <el-icon><StarFilled /></el-icon>
-              AI 智能关系推荐
-            </h3>
-            <el-button @click="closeRecommendations" size="small" text>
-              <el-icon><Close /></el-icon>
-              关闭
             </el-button>
           </div>
-          <div class="recommendation-body">
-            <div class="recommendation-list">
-              <div
-                v-for="(rec, index) in recommendations"
-                :key="index"
-                class="recommendation-item"
-              >
-                <div class="recommendation-content">
-                  <div class="recommendation-info">
-                    <div class="recommendation-title">
-                      <el-tag size="small" type="success">{{ rec.recommendedTypeName }}</el-tag>
-                      <span class="similarity">相似度：{{ (rec.similarity * 100).toFixed(1) }}%</span>
-                    </div>
-                    <div class="recommendation-target">{{ rec.targetKnowledge?.title || rec.targetKnowledgeTitle }}</div>
-                  </div>
-                  <div class="recommendation-actions">
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click="handleAcceptRecommendation(rec)"
-                    >
-                      <el-icon><Check /></el-icon>
-                      接受
-                    </el-button>
-                    <el-button
-                      size="small"
-                      @click="handleRejectRecommendation(index)"
-                    >
-                      <el-icon><Close /></el-icon>
-                      拒绝
-                    </el-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          <p class="launcher-footer-note">空间布局仅在本次浏览中保留</p>
+        </section>
       </div>
 
       <div class="right-panel" :class="{ collapsed: ragPanelCollapsed, dragging: isDragging }">
@@ -375,7 +312,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Document,
@@ -388,41 +325,29 @@ import {
   ArrowLeft,
   Search,
   Connection,
-  MagicStick,
-  Refresh,
-  ZoomIn,
-  FullScreen,
-  Link,
-  Folder,
-  MapLocation,
-  StarFilled,
   Close,
-  Check,
   Clock,
   EditPen,
 } from "@element-plus/icons-vue";
 import request from "@/utils/request";
+import { tagsAPI } from "@/api/tags";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import * as echarts from "echarts";
 
 const router = useRouter();
 const userStore = useUserStore();
 
-const graphContainer = ref(null);
 const treeRef = ref(null);
-let chart = null;
-let clickHandler = null;
 
 const userAvatar = "https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png";
 
-const nodeCount = ref(253);
-const edgeCount = ref(72);
-const categoryCount = ref(12);
-const pathCount = ref(8);
+const nodeCount = ref(0);
+const edgeCount = ref(0);
 
 const searchQuery = ref("");
-const autoGenerating = ref(false);
+const tagTree = ref([]);
+const tagLoading = ref(false);
+const tagError = ref("");
 const loading = ref(false);
 const isStreaming = ref(false);
 const abortController = ref(null);
@@ -435,8 +360,6 @@ const streamingReferences = ref([]);
 const currentSessionId = ref(null);
 const sessions = ref([]);
 const ragBodyRef = ref(null);
-const recommendations = ref([]);
-const currentKnowledgeId = ref(null);
 
 const ragPanelCollapsed = ref(false);
 const ragPanelWidth = ref(Number(localStorage.getItem('ragPanelWidth')) || 380);
@@ -475,66 +398,45 @@ const toggleRagPanel = () => {
   ragPanelCollapsed.value = !ragPanelCollapsed.value;
 };
 
-const treeData = ref([
-  {
-    id: 1,
-    label: "全部知识",
-    count: 253,
-    color: "#7c3aed",
-    icon: Notebook,
-    children: [
-      { id: 11, label: "后端开发", count: 128, icon: DocumentCopy },
-      { id: 12, label: "数据库", count: 45, icon: FolderOpened },
-      { id: 13, label: "分布式系统", count: 32, icon: DocumentCopy },
-      { id: 14, label: "微服务架构", count: 28, icon: DocumentCopy },
-      { id: 15, label: "前端开发", count: 20, icon: DocumentCopy },
-    ],
-  },
-  {
-    id: 2,
-    label: "Java 核心技术",
-    count: 45,
-    color: "#3b82f6",
-    icon: Notebook,
-    children: [
-      { id: 21, label: "Spring Boot", count: 12 },
-      { id: 22, label: "JVM", count: 10 },
-      { id: 23, label: "多线程", count: 9 },
-      { id: 24, label: "设计模式", count: 8 },
-      { id: 25, label: "集合框架", count: 6 },
-    ],
-  },
-  {
-    id: 3,
-    label: "数据库系统",
-    count: 32,
-    color: "#22c55e",
-    icon: FolderOpened,
-    children: [
-      { id: 31, label: "MySQL", count: 15 },
-      { id: 32, label: "Redis", count: 8 },
-      { id: 33, label: "MongoDB", count: 5 },
-      { id: 34, label: "PostgreSQL", count: 4 },
-    ],
-  },
-  {
-    id: 4,
-    label: "分布式系统",
-    count: 28,
-    color: "#f59e0b",
-    icon: DocumentCopy,
-    children: [
-      { id: 41, label: "消息队列", count: 10 },
-      { id: 42, label: "分布式缓存", count: 8 },
-      { id: 43, label: "分布式事务", count: 6 },
-      { id: 44, label: "服务治理", count: 4 },
-    ],
-  },
-]);
+const toTreeNode = (tag) => ({
+  id: `tag-${tag.id}`,
+  tagId: tag.id,
+  label: tag.tagName || "未命名标签",
+  count: Number(tag.nodeCount) || 0,
+  color: tag.tagColor || "#5d9279",
+  icon: Array.isArray(tag.children) && tag.children.length ? FolderOpened : DocumentCopy,
+  children: Array.isArray(tag.children) ? tag.children.map(toTreeNode) : [],
+});
+
+const treeData = computed(() => [{
+  id: "all-knowledge",
+  label: "全部知识",
+  count: nodeCount.value,
+  color: "#2b5f4b",
+  icon: Notebook,
+  isAllKnowledge: true,
+  children: tagTree.value.map(toTreeNode),
+}]);
 
 const treeProps = {
   label: "label",
   children: "children",
+};
+
+const filterTreeNode = (keyword, data) => !keyword || data.label.toLocaleLowerCase().includes(keyword.toLocaleLowerCase());
+
+const loadTagTree = async () => {
+  tagLoading.value = true;
+  tagError.value = "";
+  try {
+    const data = await tagsAPI.getTree();
+    tagTree.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    tagTree.value = [];
+    tagError.value = error?.message || "请检查网络后重试";
+  } finally {
+    tagLoading.value = false;
+  }
 };
 
 const quickQuestions = [
@@ -681,277 +583,28 @@ watch(() => messages.value.length, () => {
   scrollToBottom();
 });
 
+watch(searchQuery, (keyword) => {
+  treeRef.value?.filter(keyword);
+});
+
 const initGraph = async () => {
   try {
     const graph = await request.get("/knowledge/relation/graph");
-    nodeCount.value = graph.nodes.length;
-    edgeCount.value = graph.edges.length;
-    renderGraph(graph);
+    nodeCount.value = Array.isArray(graph?.nodes) ? graph.nodes.length : 0;
+    edgeCount.value = Array.isArray(graph?.edges) ? graph.edges.length : 0;
   } catch (error) {
-    renderMockGraph();
+    // 入口页只反映真实关系数据；请求失败时不以示例数据误导用户。
+    nodeCount.value = 0;
+    edgeCount.value = 0;
   }
-};
-
-const renderMockGraph = () => {
-  const nodes = [
-    { id: 1, label: "Spring Boot 核心技术", size: 55, color: "#f87171", importance: 5, masteryLevel: 5 },
-    { id: 2, label: "JVM 运行时数据区", size: 48, color: "#f87171", importance: 4, masteryLevel: 4 },
-    { id: 3, label: "Java 并发编程核心方法", size: 45, color: "#fb923c", importance: 4, masteryLevel: 3 },
-    { id: 4, label: "Redis 缓存", size: 42, color: "#60a5fa", importance: 3, masteryLevel: 3 },
-    { id: 5, label: "JVM", size: 40, color: "#60a5fa", importance: 3, masteryLevel: 4 },
-    { id: 6, label: "垃圾回收机制", size: 38, color: "#4ade80", importance: 3, masteryLevel: 2 },
-    { id: 7, label: "线程池与并发容器", size: 36, color: "#4ade80", importance: 3, masteryLevel: 3 },
-    { id: 8, label: "MySQL 优化", size: 34, color: "#60a5fa", importance: 3, masteryLevel: 2 },
-    { id: 9, label: "微服务架构", size: 44, color: "#fb923c", importance: 4, masteryLevel: 3 },
-    { id: 10, label: "消息队列", size: 32, color: "#4ade80", importance: 2, masteryLevel: 2 },
-    { id: 11, label: "分布式缓存", size: 30, color: "#4ade80", importance: 2, masteryLevel: 2 },
-    { id: 12, label: "API 网关", size: 28, color: "#60a5fa", importance: 2, masteryLevel: 1 },
-    { id: 13, label: "Python 基础", size: 30, color: "#a78bfa", importance: 2, masteryLevel: 1 },
-    { id: 14, label: "Python 数据结构", size: 26, color: "#a78bfa", importance: 2, masteryLevel: 0 },
-    { id: 15, label: "Python 装饰器", size: 24, color: "#a78bfa", importance: 2, masteryLevel: 1 },
-    { id: 16, label: "进程管理", size: 22, color: "#60a5fa", importance: 2, masteryLevel: 2 },
-    { id: 17, label: "信息通信方式", size: 20, color: "#f87171", importance: 2, masteryLevel: 1 },
-  ];
-
-  const edges = [
-    { source: 1, target: 2, label: "依赖", strength: 0.9 },
-    { source: 1, target: 3, label: "应用", strength: 0.85 },
-    { source: 1, target: 4, label: "集成", strength: 0.8 },
-    { source: 1, target: 9, label: "架构", strength: 0.75 },
-    { source: 2, target: 5, label: "基础", strength: 0.9 },
-    { source: 2, target: 6, label: "机制", strength: 0.85 },
-    { source: 3, target: 7, label: "组件", strength: 0.8 },
-    { source: 5, target: 6, label: "基础", strength: 0.75 },
-    { source: 4, target: 8, label: "配合", strength: 0.8 },
-    { source: 9, target: 10, label: "组件", strength: 0.8 },
-    { source: 9, target: 11, label: "组件", strength: 0.75 },
-    { source: 9, target: 12, label: "组件", strength: 0.7 },
-    { source: 13, target: 14, label: "基础", strength: 0.85 },
-    { source: 13, target: 15, label: "特性", strength: 0.75 },
-    { source: 16, target: 17, label: "机制", strength: 0.7 },
-  ];
-
-  renderGraph({ nodes, edges });
-};
-
-const renderGraph = (graph) => {
-  if (!chart) {
-    chart = echarts.init(graphContainer.value);
-  }
-  setTimeout(() => {
-    if (chart) chart.resize();
-  }, 100);
-
-  const option = {
-    backgroundColor: "#1a1a2e",
-    tooltip: {
-      backgroundColor: "rgba(26, 26, 46, 0.95)",
-      borderColor: "#7c3aed",
-      borderWidth: 1,
-      textStyle: { color: "#fff" },
-      formatter: function (params) {
-        if (params.dataType === "node") {
-          return `
-            <div style="padding: 12px; background: rgba(26,26,46,0.95); border-radius: 8px; border: 1px solid #7c3aed;">
-              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #fff;">${params.name}</div>
-              <div style="font-size: 12px; margin-bottom: 4px; color: #a78bfa;">重要程度：${"⭐".repeat(params.data.importance || 0)}</div>
-              <div style="font-size: 12px; color: #a78bfa;">掌握程度：${getMasteryLevelText(params.data.masteryLevel)}</div>
-            </div>
-          `;
-        } else {
-          return `
-            <div style="padding: 8px 12px; background: rgba(26,26,46,0.95); border-radius: 6px; border: 1px solid #7c3aed;">
-              <div style="font-weight: bold; font-size: 13px; color: #fff;">${params.data.label}</div>
-            </div>
-          `;
-        }
-      },
-    },
-    series: [
-      {
-        type: "graph",
-        layout: "force",
-        draggable: true,
-        data: graph.nodes.map((node) => ({
-          id: node.id,
-          name: node.label,
-          symbolSize: node.size,
-          itemStyle: {
-            color: node.color,
-            borderColor: "#fff",
-            borderWidth: 2,
-            shadowBlur: 20,
-            shadowColor: node.color,
-          },
-          importance: node.importance,
-          masteryLevel: node.masteryLevel,
-          label: {
-            show: true,
-            position: "bottom",
-            fontSize: 11,
-            fontWeight: 500,
-            color: "#e2e8f0",
-            textBorderColor: "transparent",
-            textBorderWidth: 0,
-          },
-        })),
-        links: graph.edges.map((edge) => ({
-          source: edge.source,
-          target: edge.target,
-          label: {
-            show: true,
-            formatter: edge.label,
-            fontSize: 9,
-            fontWeight: 500,
-            color: "#94a3b8",
-          },
-          lineStyle: {
-            width: edge.strength * 1.5 + 0.5,
-            color: "rgba(148, 163, 184, 0.4)",
-            curveness: 0.2,
-          },
-          strength: edge.strength,
-        })),
-        roam: true,
-        force: {
-          repulsion: 500,
-          edgeLength: [100, 250],
-          gravity: 0.05,
-          friction: 0.6,
-          layoutAnimation: true,
-        },
-        emphasis: {
-          focus: "adjacency",
-          lineStyle: {
-            width: 3,
-            color: "#a855f7",
-          },
-          itemStyle: {
-            shadowBlur: 30,
-            shadowColor: "#a855f7",
-          },
-        },
-        blur: {
-          itemStyle: { opacity: 0.2 },
-          lineStyle: { opacity: 0.05 },
-        },
-      },
-    ],
-  };
-
-  chart.setOption(option, true);
-
-  if (clickHandler) {
-    chart.off("click", clickHandler);
-  }
-
-  clickHandler = function (params) {
-    if (params.dataType === "node") {
-      showRecommendations(params.data.id);
-    }
-  };
-
-  chart.on("click", clickHandler);
-};
-
-const getMasteryLevelText = (level) => {
-  const levels = {
-    5: "专家",
-    4: "精通",
-    3: "掌握",
-    2: "熟悉",
-    1: "入门",
-    0: "未掌握",
-  };
-  return levels[level] || "未知";
 };
 
 const handleNodeClick = (data) => {
-  if (data.id) {
-    showRecommendations(data.id);
-  }
+  router.push(data.isAllKnowledge ? "/knowledge" : { path: "/knowledge", query: { tagId: String(data.tagId) } });
 };
 
-const handleAutoGenerate = async () => {
-  autoGenerating.value = true;
-  try {
-    await request.post("/knowledge/relation/auto-generate");
-    ElMessage.success("自动生成完成");
-    await initGraph();
-  } catch (error) {
-    ElMessage.error("自动生成失败：" + error.message);
-  } finally {
-    autoGenerating.value = false;
-  }
-};
-
-const handleRefresh = () => {
-  initGraph();
-};
-
-const handleResetView = () => {
-  if (chart) {
-    chart.dispatchAction({ type: "restore" });
-  }
-};
-
-const handleFitView = () => {
-  if (chart) {
-    chart.resize();
-    const option = chart.getOption();
-    if (option.series && option.series[0]) {
-      option.series[0].force = {
-        repulsion: 500,
-        edgeLength: [100, 250],
-        gravity: 0.05,
-        friction: 0.6,
-        layoutAnimation: true,
-      };
-      chart.setOption(option);
-    }
-  }
-};
-
-const showRecommendations = async (knowledgeId) => {
-  try {
-    currentKnowledgeId.value = knowledgeId;
-    const data = await request.get(`/knowledge/relation/recommend/${knowledgeId}`);
-    recommendations.value = data || [];
-    if (recommendations.value.length > 0) {
-      ElMessage.success(`为您推荐了 ${recommendations.value.length} 个知识关系`);
-    } else {
-      ElMessage.info("暂无推荐关系");
-    }
-  } catch (error) {
-    ElMessage.error("获取推荐失败：" + error.message);
-  }
-};
-
-const handleAcceptRecommendation = async (recommendation) => {
-  try {
-    await request.post("/knowledge/relation", {
-      sourceId: currentKnowledgeId.value,
-      targetId: recommendation.targetKnowledge?.id || recommendation.targetKnowledgeId,
-      relationType: recommendation.recommendedType,
-      relationName: recommendation.recommendedTypeName,
-      relationStrength: Math.round(recommendation.similarity * 5),
-    });
-    ElMessage.success("关系创建成功");
-    await initGraph();
-    recommendations.value = recommendations.value.filter((r) => r !== recommendation);
-  } catch (error) {
-    ElMessage.error("关系创建失败：" + error.message);
-  }
-};
-
-const handleRejectRecommendation = (index) => {
-  recommendations.value.splice(index, 1);
-  ElMessage.info("已拒绝推荐");
-};
-
-const closeRecommendations = () => {
-  recommendations.value = [];
-};
+const openKnowledgeManagement = () => router.push("/knowledge");
+const goGraphWorkspace = () => router.push("/knowledge-graph");
 
 const askQuestion = (text) => {
   question.value = text;
@@ -1137,34 +790,24 @@ const handleStop = () => {
 onMounted(async () => {
   await nextTick();
   initSession();
-  if (graphContainer.value) {
-    initGraph();
-  }
-  window.addEventListener("resize", () => {
-    if (chart) chart.resize();
-  });
-});
-
-onUnmounted(() => {
-  if (chart) {
-    if (clickHandler) {
-      chart.off("click", clickHandler);
-    }
-    chart.dispose();
-  }
+  initGraph();
+  loadTagTree();
 });
 </script>
 
 <style scoped>
 .knowledge-system-container {
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--navbar-height));
+  min-height: 660px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .header-left .page-title {
@@ -1187,9 +830,10 @@ onUnmounted(() => {
 
 .content-wrapper {
   display: grid;
+  flex: 1;
   grid-template-columns: 260px 1fr var(--rag-panel-width, 380px);
   gap: 16px;
-  min-height: calc(100vh - 180px);
+  min-height: 0;
 }
 
 .content-wrapper:has(.right-panel.collapsed) {
@@ -1203,7 +847,8 @@ onUnmounted(() => {
 .left-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  min-height: 0;
+  gap: 14px;
 }
 
 .stats-cards {
@@ -1262,8 +907,21 @@ onUnmounted(() => {
 }
 
 .tree-header {
-  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 16px 12px;
   border-bottom: 1px solid var(--border-lighter);
+}
+
+.tree-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-primary);
+  font-family: var(--font-family-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
 }
 
 .tree-title {
@@ -1274,8 +932,25 @@ onUnmounted(() => {
   margin: 0;
 }
 
+.manage-tags-btn {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-primary);
+  font: 600 12px var(--font-family-ui);
+  cursor: pointer;
+}
+
+.manage-tags-btn:hover,
+.manage-tags-btn:focus-visible {
+  background: var(--color-primary-alpha-10);
+  outline: none;
+}
+
 .tree-search-box {
-  margin: 12px 16px;
+  margin: 10px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1302,6 +977,33 @@ onUnmounted(() => {
   flex: 1;
   padding: 0 8px 12px;
   overflow: auto;
+}
+
+.tree-state {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: start;
+  gap: 8px;
+  padding: 20px 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tree-state button {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: 600 12px var(--font-family-ui);
+  cursor: pointer;
+}
+
+.tree-state button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .knowledge-tree {
@@ -1332,7 +1034,201 @@ onUnmounted(() => {
 .middle-panel {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 0;
+}
+
+.graph-launcher {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(65, 94, 80, 0.65);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 72% 38%, rgba(107, 177, 136, 0.17), transparent 30%),
+    radial-gradient(circle at 44% 105%, rgba(46, 114, 85, 0.2), transparent 35%),
+    linear-gradient(137deg, #0c1511 0%, #122119 54%, #17291f 100%);
+  box-shadow: 0 22px 46px rgba(18, 38, 28, 0.14);
+}
+
+.launcher-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(200, 226, 211, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 226, 211, 0.055) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(90deg, black 5%, rgba(0, 0, 0, 0.55) 66%, transparent);
+}
+
+.launcher-constellation {
+  position: absolute;
+  z-index: 0;
+  top: 7%;
+  right: 4%;
+  width: min(58%, 620px);
+  height: 78%;
+  opacity: 0.9;
+}
+
+.constellation-line,
+.constellation-orbit {
+  position: absolute;
+  display: block;
+  transform-origin: left center;
+}
+
+.constellation-line {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(175, 225, 192, 0.05), rgba(175, 225, 192, 0.58), rgba(175, 225, 192, 0.08));
+}
+
+.line-one { top: 28%; left: 11%; width: 55%; transform: rotate(24deg); }
+.line-two { top: 57%; left: 25%; width: 49%; transform: rotate(-33deg); }
+.line-three { top: 41%; left: 45%; width: 38%; transform: rotate(59deg); }
+
+.constellation-orbit {
+  width: 46%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(168, 219, 184, 0.14);
+  border-radius: 50%;
+}
+
+.orbit-one { top: 12%; left: 30%; }
+.orbit-two { right: -8%; bottom: 4%; width: 58%; border-color: rgba(168, 219, 184, 0.09); }
+
+.constellation-point {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(225, 243, 231, 0.76);
+  border-radius: 50%;
+  background: #76b58c;
+  box-shadow: 0 0 0 7px rgba(118, 181, 140, 0.09), 0 0 22px rgba(126, 203, 152, 0.34);
+}
+
+.point-core { top: 39%; left: 43%; width: 22px; height: 22px; background: #a8e48b; box-shadow: 0 0 0 10px rgba(168, 228, 139, 0.1), 0 0 36px rgba(168, 228, 139, 0.52); }
+.point-one { top: 17%; left: 12%; background: #709bcd; }
+.point-two { top: 26%; right: 9%; background: #d3ac69; }
+.point-three { bottom: 16%; left: 25%; background: #c27672; }
+.point-four { bottom: 9%; right: 12%; background: #8fbf9a; }
+
+.launcher-topbar {
+  position: absolute;
+  z-index: 1;
+  top: 22px;
+  right: 24px;
+  left: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #b7cbc0;
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+}
+
+.launcher-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  letter-spacing: 0.04em;
+}
+
+.launcher-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #93d4a3;
+  box-shadow: 0 0 0 4px rgba(147, 212, 163, 0.1);
+}
+
+.launcher-live-stats {
+  display: flex;
+  gap: 13px;
+}
+
+.launcher-live-stats span {
+  padding-left: 13px;
+  border-left: 1px solid rgba(198, 229, 210, 0.15);
+}
+
+.launcher-live-stats strong {
+  margin-right: 4px;
+  color: #edf6f0;
+  font-size: 13px;
+}
+
+.launcher-content {
+  position: relative;
+  z-index: 1;
+  max-width: 515px;
+  margin: 0 0 10% 7%;
+  padding: 29px 30px 29px 26px;
+  border-left: 2px solid rgba(167, 211, 178, 0.78);
+  background: linear-gradient(90deg, rgba(10, 22, 15, 0.9), rgba(10, 22, 15, 0.54), transparent);
+  color: #edf5ef;
+}
+
+.launcher-kicker {
+  display: block;
+  margin-bottom: 14px;
+  color: #a7d3b2;
+  font-family: var(--font-family-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.launcher-content h2 {
+  margin: 0 0 14px;
+  color: #f1f8f3;
+  font-family: var(--font-family-display);
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.launcher-content h2 em {
+  color: #a6d9ad;
+  font-style: normal;
+}
+
+.launcher-content p {
+  max-width: 460px;
+  margin: 0 0 26px;
+  color: #c4d4cb;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.launcher-content :deep(.el-button) {
+  min-height: 44px;
+  padding: 0 17px;
+  border-color: rgba(170, 222, 181, 0.62);
+  background: #317257;
+  box-shadow: 0 9px 22px rgba(4, 16, 9, 0.27);
+  font-weight: 650;
+}
+
+.launcher-content :deep(.el-button:hover) {
+  border-color: #b5e3ba;
+  background: #3d8565;
+  transform: translateY(-1px);
+}
+
+.launcher-footer-note {
+  position: absolute;
+  z-index: 1;
+  right: 24px;
+  bottom: 18px;
+  margin: 0;
+  color: rgba(190, 211, 200, 0.58);
+  font-family: var(--font-family-ui);
+  font-size: 10px;
 }
 
 .graph-card {
@@ -1996,8 +1892,15 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1200px) {
+  .knowledge-system-container {
+    height: auto;
+    min-height: 100%;
+  }
+
   .content-wrapper {
+    flex: none;
     grid-template-columns: 1fr;
+    min-height: auto;
     gap: 20px;
   }
 

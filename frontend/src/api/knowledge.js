@@ -79,6 +79,13 @@ export const knowledgeAPI = {
     });
   },
 
+  getRelationGraph() {
+    return request({
+      url: "/knowledge/relation/graph",
+      method: "get",
+    });
+  },
+
   // ========== 待确认知识点 ==========
 
   getPendingKnowledge(params) {

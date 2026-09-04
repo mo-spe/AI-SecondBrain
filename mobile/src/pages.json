@@ -1,0 +1,176 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^sb-(.*)": "@/components/sb-$1/sb-$1.vue",
+      "^AppIcon$": "@/components/AppIcon.vue",
+      "^WorkspaceDrawer$": "@/components/WorkspaceDrawer.vue",
+      "^PageHeader$": "@/components/PageHeader.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/review/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/review/answer",
+      "style": {
+        "navigationBarTitleText": "答题"
+      }
+    },
+    {
+      "path": "pages/review/done",
+      "style": {
+        "navigationBarTitleText": "复习完成"
+      }
+    },
+    {
+      "path": "pages/checkin/index",
+      "style": {
+        "navigationBarTitleText": "签到"
+      }
+    },
+    {
+      "path": "pages/knowledge/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/knowledge/detail",
+      "style": {
+        "navigationBarTitleText": "知识详情"
+      }
+    },
+    {
+      "path": "pages/knowledge/create",
+      "style": {
+        "navigationBarTitleText": "创建知识"
+      }
+    },
+    {
+      "path": "pages/knowledge/graph",
+      "style": {
+        "navigationBarTitleText": "知识图谱"
+      }
+    },
+    {
+      "path": "pages/search/index",
+      "style": {
+        "navigationBarTitleText": "搜索"
+      }
+    },
+    {
+      "path": "pages/square/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/community/index",
+      "style": {
+        "navigationBarTitleText": "问答社区"
+      }
+    },
+    {
+      "path": "pages/community/detail",
+      "style": {
+        "navigationBarTitleText": "问题详情"
+      }
+    },
+    {
+      "path": "pages/community/profile",
+      "style": {
+        "navigationBarTitleText": "社区主页"
+      }
+    },
+    {
+      "path": "pages/ai/chat",
+      "style": {
+        "navigationBarTitleText": "AI 问答"
+      }
+    },
+    {
+      "path": "pages/ai/research",
+      "style": {
+        "navigationBarTitleText": "AI 研究"
+      }
+    },
+    {
+      "path": "pages/ai/report",
+      "style": {
+        "navigationBarTitleText": "研究报告"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationBarTitleText": "设置"
+      }
+    },
+    {
+      "path": "pages/notification/index",
+      "style": {
+        "navigationBarTitleText": "通知中心"
+      }
+    },
+    {
+      "path": "pages/achievements/index",
+      "style": {
+        "navigationBarTitleText": "成就殿堂"
+      }
+    },
+    {
+      "path": "pages/leaderboard/index",
+      "style": {
+        "navigationBarTitleText": "排行榜"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "AI-SecondBrain",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F3F6F5"
+  },
+  "tabBar": {
+    "color": "#74807C",
+    "selectedColor": "#174A45",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/review/index",
+        "text": "复习"
+      },
+      {
+        "pagePath": "pages/knowledge/index",
+        "text": "知识"
+      },
+      {
+        "pagePath": "pages/square/index",
+        "text": "广场"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  }
+}

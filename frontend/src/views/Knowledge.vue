@@ -553,8 +553,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { knowledgeAPI } from "@/api/knowledge";
 import { reviewAPI } from "@/api/review";
@@ -589,6 +589,7 @@ import {
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
+const route = useRoute();
 
 const loading = ref(false);
 const selectedKnowledgeIds = ref([]);
@@ -617,6 +618,11 @@ const selectTag = (tagId) => {
   selectedTagId.value = tagId;
   pagination.value.current = 1;
   loadKnowledgeList();
+};
+
+const applyTagFromRoute = (tagId) => {
+  const parsedTagId = Number(tagId);
+  selectedTagId.value = Number.isFinite(parsedTagId) && parsedTagId > 0 ? parsedTagId : "";
 };
 
 const loadTagTree = async () => {
@@ -1063,9 +1069,16 @@ const handleTabChange = (tab) => {
 };
 
 onMounted(() => {
+  applyTagFromRoute(route.query.tagId);
   loadTagTree();
   loadKnowledgeList();
   loadPendingItems();
+});
+
+watch(() => route.query.tagId, (tagId) => {
+  applyTagFromRoute(tagId);
+  pagination.value.current = 1;
+  loadKnowledgeList();
 });
 </script>
 

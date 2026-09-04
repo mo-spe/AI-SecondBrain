@@ -109,7 +109,6 @@ import {
   Setting,
   Platform,
   Trophy,
-  Medal,
   ChatDotRound,
 } from "@element-plus/icons-vue";
 
@@ -132,8 +131,7 @@ const navItems = [
   { path: "/search", label: "知识搜索", icon: Search },
   { path: "/knowledge-system", label: "知识体系", icon: Share },
   { path: "/review", label: "复习中心", icon: Bell },
-  { path: "/achievements", label: "成就殿堂", icon: Trophy },
-  { path: "/leaderboard", label: "排行榜", icon: Medal },
+  { path: "/growth", label: "成长中心", icon: Trophy },
   { path: "/ai-research", label: "AI研究", icon: TrendCharts },
   { path: "/settings", label: "个人设置", icon: Setting },
 ];
