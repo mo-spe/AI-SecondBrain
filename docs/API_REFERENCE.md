@@ -1,7 +1,7 @@
 # AI-SecondBrain API 接口文档
 
-版本：V2.0
-更新日期：2026-07-29
+版本：V2.1
+更新日期：2026-09-03
 维护人：AI-SecondBrain Team
 
 ---
@@ -183,6 +183,35 @@ Content-Type: application/json
   }
 }
 ```
+
+---
+
+#### 1.2.1 微信小程序登录
+
+- **接口名称**：微信小程序登录
+- **请求方法和路径**：`POST /api/auth/wx-login`
+- **接口描述**：接收 `wx.login` 返回的一次性 code，由服务端向微信换取 openid 并绑定本地用户，返回与账号密码登录一致的 JWT。
+- **是否需要登录认证**：否
+- **前置配置**：服务端通过 `WECHAT_APP_ID` 与 `WECHAT_APP_SECRET` 注入小程序凭证；未配置时返回 503，不创建伪账户。
+- **隐私说明**：仅保存 provider + openid 映射，微信 `session_key` 不落库、不回传。
+
+**请求参数**
+
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| code | String | body | 是 | `wx.login` 返回的一次性登录凭证 |
+
+**请求示例**
+
+```json
+{
+  "code": "微信一次性 code"
+}
+```
+
+**响应示例**
+
+响应结构与 1.2 用户登录相同，`data.token` 为平台 JWT，`data.userInfo.username` 为系统生成的公开昵称。
 
 ---
 
