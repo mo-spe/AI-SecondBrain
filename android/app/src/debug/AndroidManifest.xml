@@ -1,0 +1,4 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Local Spring Boot development uses HTTP; this manifest is merged into Debug builds only. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>
