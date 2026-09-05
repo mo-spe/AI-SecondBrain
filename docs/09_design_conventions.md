@@ -765,11 +765,68 @@ export const favoriteAPI = {
 
 ---
 
-## 7. 代码审查检查清单
+---
+
+## 7. 多端设计规范
+
+后端只有一套，但前端有 5 个形态。以下规范保证"同一功能在不同端体验一致但不互相绑死"。
+
+### 7.1 前后端契约规范（5 端共用）
+
+所有端共享同一套后端 API，契约一旦定下来不能随便改（改了 5 端都要跟着改）。
+
+| 规范 | 说明 | 反面例子 |
+|-----|------|---------|
+| 路径统一 `/api/xxx` | 所有接口前缀 `/api`，Nginx 按此前缀转发 | 有的接口 `/xxx` 有的 `/api/xxx` |
+| 统一 `Result<T>` 响应 | `{code, message, data}` | 有的接口直接返回数组 |
+| 分页参数统一 | `current`（页号，从 1 开始）+ `size`（每页条数） | 有的用 `pageNo/pageSize` 有的用 `offset/limit` |
+| 时间格式统一 | `yyyy-MM-dd HH:mm:ss`（后端 LocalDateTime 序列化） | 有的返回时间戳有的返回字符串 |
+| 鉴权方式统一 | `Authorization: Bearer <token>` | 有的用 token 查询参数 |
+| 工作区参数统一 | 所有业务接口带 `workspaceId`（从 token 或请求体传） | 有的接口漏 workspaceId 导致跨工作区 |
+
+> **改契约 = 5 端联调**：如果必须改响应字段，优先"加字段不删字段"，让旧端继续能用。
+
+### 7.2 uni-app 移动端规范
+
+| 规范 | 说明 |
+|-----|------|
+| 页面路由只走 pages.json | 不能动态注册路由，所有页面必须静态声明 |
+| 存储只用 `uni.*` API | 禁止用 `localStorage`、`sessionStorage`，小程序没有 |
+| HTTP 只用 `uni.request` | 不能用 axios（小程序无 XMLHttpRequest） |
+| 跳转不超 10 层 | `navigateTo` 栈深上限 10，深链路用 `redirectTo` 或 `reLaunch` |
+| 图片用网络路径或 base64 | 小程序不能直接引用本地 `file://` 路径 |
+| TabBar 页面放一级功能 | TabBar 是高频入口，只放 AI/知识/复习/广场/我的 |
+| 样式用 rpx 单位 | rpx 是小程序响应式单位（750rpx = 屏幕宽） |
+
+### 7.3 Chrome 扩展规范
+
+| 规范 | 说明 |
+|-----|------|
+| 不用 npm 包 | 扩展直接跑在 Chrome 里，不能打包 node_modules，所有逻辑手写原生 JS |
+| DOM 解析必须容错 | 平台随时改版，选择器失效要 try/catch 并提示用户 |
+| 状态只存 `chrome.storage.local` | Service Worker 随时休眠，不能用全局变量当持久状态 |
+| 异步消息要 `return true` | `onMessage` 回调里有异步操作必须返回 true，否则 Chrome 会提前结束 |
+| 权限最小化 | manifest.json 的 host_permissions 只加实际要用的域名 |
+| content.js 不直接发网络请求 | 跨域受限，统一交给 background.js 转发 |
+
+### 7.4 DeerFlow Python 规范
+
+| 规范 | 说明 |
+|-----|------|
+| 配置只走环境变量 | 不写死 API Key、Base URL，用 `os.getenv()` |
+| 用户 key 优先 | `api_key = user_api_key or QWEN_API_KEY`，不强制用户用平台 key |
+| 异常返回 None，不抛 500 | `requests` 异常捕获后返回 None，由 Java 侧判断 |
+| 路由以 `/api/research/` 开头 | 和 Java 后端的 `/api/deerflow/**` 代理路径对应 |
+| 必须有 `/health` 端点 | docker-compose healthcheck 依赖它 |
+| 不引入重型框架 | Flask 够用，不上 FastAPI/Django，保持单文件可读懂 |
+
+---
+
+## 8. 代码审查检查清单
 
 写完代码后，对照这个清单自查一遍。能过这 20 条，代码质量就有保障了。
 
-### 7.1 命名检查
+### 8.1 命名检查
 
 - [ ] 类名、方法名、变量名见名知意，不用缩写（除了大家都懂的（id、vo、dto）
 - [ ] 后端命名符合规范（Controller/Service/Mapper/Entity/DTO/VO）
@@ -777,7 +834,7 @@ export const favoriteAPI = {
 - [ ] API 路径是 RESTful 风格（名词复数，GET/POST/PUT/DELETE）
 - [ ] 数据库表名/列名是下划线
 
-### 7.2 分层检查
+### 8.2 分层检查
 
 - [ ] Controller 只做参数校验和调用 Service，不写业务逻辑
 - [ ] Service 里不直接返回 Entity 给前端，用 VO 转一道
@@ -785,7 +842,7 @@ export const favoriteAPI = {
 - [ ] 没有循环依赖（A 调 B，B 又调 A）
 - [ ] 一个类/文件职责单一，一句话能说清楚
 
-### 7.3 安全检查
+### 8.3 安全检查
 
 - [ ] 接口都校验了 userId + workspaceId，不会越权
 - [ ] 参数都加了校验注解（@NotNull、@NotBlank 等）
@@ -793,13 +850,21 @@ export const favoriteAPI = {
 - [ ] 没有 SQL 拼接（用 QueryWrapper 或 XML）
 - [ ] 异常都记录了日志，没有吞异常
 
-### 7.4 数据格式检查
+### 8.4 数据格式检查
 
 - [ ] 接口返回统一的 Result 格式
 - [ ] 分页用 MyBatis-Plus 的 Page 对象
 - [ ] 没有返回 null 的字段，空的用空数组/空字符串
 - [ ] 日期格式是 yyyy-MM-dd HH:mm:ss
 - [ ] 布尔值用 is 前缀（isRead、isDeleted）
+
+### 8.5 多端检查
+
+- [ ] 如果改了后端契约，Web/移动/扩展三端是否都同步改了？
+- [ ] 移动端有没有误用 `localStorage` / axios？
+- [ ] 扩展有没有在 content.js 里直接发网络请求？
+- [ ] DeerFlow 有没有把 API Key 写死在代码里？
+- [ ] 新增的 Research Agent/Tool 有没有考虑预算约束（Token/Time/ToolCall）？
 
 ---
 

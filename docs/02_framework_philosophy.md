@@ -434,6 +434,176 @@ public long calculateNextReviewInterval(int reviewCount, boolean isCorrect) {
 
 ---
 
+### 思想 9：多端一致但不强行复用 —— 一次后端，五端个性体验
+
+#### 问题
+知识管理是跨场景的：PC 端适合深度整理知识、手机端适合碎片复习和快速记笔记、微信小程序适合分享和低频使用、浏览器扩展适合在 AI 对话页面"顺手采集"。如果只做 Web 端，很多场景覆盖不到；如果每端都重写一套 UI 和 API，维护成本爆炸。
+
+#### 解法
+**后端只写一套**（所有端共享 `/api/*` 契约、JWT、工作区权限），但**每端的交互独立设计**，不强行复用前端组件。类比：同一家餐厅，堂食有菜单和服务员、外卖有打包盒和 App 点餐——菜是同一份（后端），餐具和点餐流程按场景适配。
+
+```
+               ┌──────────────────────────────────────────┐
+               │        统一后端 /api/*（Spring Boot）      │
+               │  JWT 鉴权 · 工作区 RBAC · Result<T> 格式  │
+               └──────────┬──────────┬──────────┬──────────┘
+                          │          │          │
+         深度整理/研究     │          │          │   AI平台顺手采集
+     ┌──────────────┐     │          │          │  ┌──────────────┐
+     │  Web Vue 3   │◄────┘          │          └─►│ Chrome 扩展   │
+     │  30+ 页面    │                │             │ content.js   │
+     │  侧边栏+仪表板│                │             │ popup 面板   │
+     └──────────────┘                │             └──────────────┘
+                                     │
+                          碎片复习/快速笔记        Python 微服务
+         ┌──────────────────────────┐  │     ┌───────────────────┐
+         │  uni-app 多端             │  └────►│  DeerFlow (Flask) │
+         │  pages.json  TabBar       │        │  长文报告生成     │
+         │  mobile/src/pages/ 25+页  │◄───────┤  深度研究         │
+         │  产物：H5/小程序/App      │  用户API_key 透传        │
+         └──────────────────────────┘         └───────────────────┘
+```
+
+**关键设计细节：**
+1. **Token 三载体**：Web 端存 `localStorage`，移动端用 `uni.setStorageSync`，扩展用 `chrome.storage.local`（因为扩展 Service Worker 无 localStorage）。
+2. **工作区在移动端的呈现形式不同**：Web 端是顶栏 `WorkspaceSwitcher` 下拉；移动端屏幕窄，换成 `WorkspaceDrawer` 抽屉滑出。
+3. **扩展不直连 Nginx**：它是 Chrome 里的 JS，直接请求 `http://localhost:8080` 或生产域名，走 `host_permissions` 白名单（`extension/manifest.json:7`）。
+4. **DeerFlow 走内部 HTTP**：不对外直接暴露，用户请求先到 Java 后端 → 后端鉴权后调 `http://deerflow:8000`（docker-compose 内网），这样 DeerFlow 不需要独立处理登录。
+
+#### 价值
+- **一套后端，五端复用**：新功能只需写一次后端 + 每端写一次 UI 适配，不用重复写业务逻辑
+- **体验不妥协**：每端按自己的交互习惯设计，不会出现"把 Web 端硬塞进手机"的违和感
+- **安全边界清晰**：扩展和 DeerFlow 都通过后端鉴权网关，不直接暴露核心 API
+
+#### 代价
+每端都要独立做 UI 联调和回归测试，5 端 × 新功能 = 工作量约等于 2 端 Web 开发。如果功能非常简单，可能"重写一套 UI"比"抽出跨端组件"更划算。
+
+---
+
+### 思想 10：Research Agent 预算硬约束 —— 防止 AI 无限循环和烧钱
+
+#### 问题
+Agent 自主研究一旦放开约束，有两种典型故障：
+1. **无限自循环**：Planner → KnowledgeAgent → GapAgent → Planner… 无休止往复，用户等到天荒地老。
+2. **token 爆炸**：WebFetch 抓了 50 篇长文全部塞给 LLM，单次调用上万美元账单。
+
+这不是"bug"，是 Agent 的**天然行为倾向**——缺了边界约束它就会乱跑。`AGENTS.md` 中"AI Research Agent 开发约束"第 10~12 条（禁止无限 Agent Loop、禁止单 Agent 无限调 Tool、禁止单 Research Task 无限重试）就是为了管住它。
+
+#### 解法
+在 `ResearchOrchestrator` 里挂三条**独立预算**，任何一条超了立即终止，并把状态写回 `ResearchProject`：
+
+```
+  ResearchOrchestrator.start()
+       │
+       ├─► AgentContext 初始化 3 条预算：
+       │    ├── TokenBudget       max 60000 token（总消耗）
+       │    ├── ToolCallBudget    max 60 次工具调用
+       │    └── TimeBudget        max 600000 ms（10 分钟超时）
+       │
+       ▼  每次 Agent / Tool 执行后扣减
+       │
+       │  if (任一预算超支) {
+       │      标记项目 status = FAILED_BUDGET_EXCEEDED;
+       │      写 ResearchHistory 记录超支点;
+       │      return;
+       │  }
+```
+
+**真实代码（research/orchestrator/ResearchOrchestrator.java:55）**：
+
+```java
+public ResearchOrchestrator(...,
+    @Value("${research.budget.max-tokens:60000}") long maxTokens,
+    @Value("${research.budget.max-tool-calls:60}") int maxToolCalls,
+    @Value("${research.budget.project-timeout-ms:600000}") long projectTimeoutMs) { ... }
+```
+
+配合 `ResearchQualityGate` 评审：如果 CriticAgent 发现输出质量不达标，允许**有限次数**重试，但不能超过预算。
+
+#### 价值
+- **稳定性有兜底**：无论 LLM 怎么胡来，项目一定在 10 分钟/60000 token 内结束
+- **成本可控**：单用户的一次研究账单有上限，不会出现"月底吓死"的情况
+- **可观测**：预算消耗写入 ResearchHistory，事后可以调参数（比如让重度研究放宽到 120k token）
+
+#### 代价
+约束过严会让深度研究"意犹未尽"——比如还没查到核心资料就因 token 用尽被切了。需要通过分档（普通研究/深度研究）给用户选择权，而不是一套参数套所有场景。
+
+---
+
+### 思想 11：知识分级 + PendingKnowledge 中间态 —— 不替用户做决定
+
+#### 问题
+AI 自动采集对话 → 直接写入 knowledge_node 表 → 用户回来发现一堆自己不想留的内容，还得逐条删除。信任一旦被破坏，用户就再也不敢开自动采集了。
+
+#### 解法
+所有"AI 推荐的知识"（对话采集、DeerFlow 提炼、RAG 关联推荐）**先落到 `pending_knowledge` 表**，给用户一个"确认 / 修改 / 丢弃"的过程：
+
+```
+ extension content.js 采集对话
+         │ POST /capture
+         ▼
+ KnowledgeCaptureService.createPending()
+         │  AI 抽摘要、重要性、标签建议
+         ▼
+ pending_knowledge 表（中间态）
+         │
+         │  用户在"待确认"列表里操作：
+         │    ✅ 确认入库 → 转 knowledge_node + 发积分
+         │    ✏️ 编辑后确认 → 同上
+         │    🗑 丢弃 → 仅删除 pending 记录
+         ▼
+ knowledge_node（正式知识）
+```
+
+这和邮件"垃圾邮件夹"、微信"好友申请"是同一个道理——**推荐类操作必须经用户确认**，AI 只能建议不能代替决定。
+
+**相关文件：**
+- 表结构：`sql/V8__add_pending_knowledge.sql`
+- Entity：`entity/PendingKnowledge.java`
+- Service：`PendingKnowledgeService.java`
+- Controller：`CaptureController.java`（采集入口）+ `KnowledgeController` 的 pending 接口
+
+#### 价值
+- **用户掌控感强**：知识库是"我的"，不是"AI 随便塞的"
+- **AI 可以更激进**：反正走中间态，AI 多推荐几条也不会污染主库
+- **采集场景体验完整**：从 Chrome 里一键采集 → 回到 Web/移动端"待确认"二次处理 → 入库，形成闭环
+
+#### 代价
+采集到入库多了一步确认，部分用户嫌麻烦。后续可以加"工作区级信任阈值"：如果 AI 推荐最近 N 条用户都没改，就允许它自动入库一小部分，但必须保留"一键撤销"。
+
+---
+
+### 思想 12：知识广场与问答社区 —— 公私双空间，信任第一
+
+#### 问题
+知识如果只存私人工作区，用户只能"闭门造车"，没法借别人的知识、没法提问、也没动力产出精品内容。但如果公开和私有混在同一张表，很容易出现"把私有笔记误发公开区"的事故。
+
+#### 解法
+**物理分表**，而非"加一个 is_public 标记"——公开内容和私有内容是两种完全不同的业务：
+
+| 空间 | 表 / 实体 | 权限模型 | 信任机制 |
+|-----|----------|---------|---------|
+| 私人空间 | knowledge_node（workspace 隔离） | 工作区 RBAC | 仅成员可见 |
+| 知识广场 | square_post + square_post_node | 发布后任何登录用户可看 | 点赞/收藏/评论/举报 + 敏感词过滤 + 管理员处理 |
+| 问答社区 | community_question + community_answer | 提问者采纳、关注、用户资料 | 关注关系 + CommunityUserProfile 声誉 |
+
+**物理分表的好处**：即使 SQL 写错，`SELECT * FROM square_post` 也绝不会查出某人私人知识。这和"工作区双保险"思路一脉相承——安全永远靠架构不靠"记得加条件"。
+
+**相关文件：**
+- 广场：`SquareService` / `SquarePost` / `SquareController`
+- 社区：`CommunityQuestionService` / `CommunityUserService` / `CommunityQuestionController`
+- 举报/审核：`SquareReport` / `SensitiveWord` / `controller/admin/AdminAiProviderController.java`（管理员入口）
+
+#### 价值
+- **数据安全底线**：公有/私有物理分离，杜绝"私有笔记被公开"
+- **社交属性驱动内容**：公开区让用户有动力写精品、回答问题
+- **信任机制可迭代**：举报、敏感词、积分激励都可以单独调，不影响私有功能
+
+#### 代价
+同一份知识从"私人笔记→公开广场"需要显式"发布"流程，用户要走 SquarePublishRequest；广场内容无法自动反向同步回私人知识库（因为担心版本分叉），后续可以做"一键另存为我的笔记"补齐。
+
+---
+
 ## 3. 设计思想汇总表
 
 | 序号 | 设计思想 | 解决的问题 | 核心手段 | 主要代价 |
@@ -446,7 +616,11 @@ public long calculateNextReviewInterval(int reviewCount, boolean isCorrect) {
 | 6 | 可插拔组件 | 部署环境依赖不统一 | enabled 开关 + 空实现降级 | 多写一套空实现 |
 | 7 | 艾宾浩斯复习 | 学了就忘 | 遗忘曲线算法 + 动态间隔 | 参数调优需要经验 |
 | 8 | 游戏化激励 | 用户粘性低 | 积分 + 成就 + 排行榜 + 签到 | 过度激励导致刷量 |
+| 9 | 多端一致不强行复用 | 场景覆盖不足+维护爆炸 | 一套后端 / 每端独立 UI / 共享契约 | 多端 UI 联调成本 |
+| 10 | Agent 预算硬约束 | 无限循环 / token 爆炸 | Token/Time/ToolCall 三条独立预算 | 深度研究可能"意犹未尽" |
+| 11 | PendingKnowledge 中间态 | AI 乱塞污染知识库 | pending_knowledge 表 + 用户二次确认 | 用户多一步操作 |
+| 12 | 公私双空间物理分表 | 私人笔记被公开的安全风险 | square_post / community_question 独立表 | 发布流程稍繁琐 |
 
 ---
 
-> **速记口诀**：三层架构保清晰，统一响应省心力，JWT 好扩容，工作区护数据，异步解耦防卡死，可插拔好部署，艾宾浩斯记得牢，游戏化用得久。
+> **速记口诀**：三层清晰响应省，JWT 扩容工作区安；异步解耦可插拔，艾宾浩斯记又玩；五端个性预算兜，待确中间双空间。

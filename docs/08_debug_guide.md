@@ -388,7 +388,76 @@ log.debug("收到请求，参数：{}", registerDTO);
 | 图片加载失败 | Network 看图片请求的状态 | 路径错了、文件不存在、权限问题 |
 | 页面卡顿 | Performance 面板录屏 | JS 执行太久、渲染太频繁、接口太慢 |
 
-### 5.3 通用调试心法
+### 5.3 移动端（微信小程序）问题速查
+
+| 问题现象 | 第一步操作 | 常见原因 |
+|---------|-----------|---------|
+| 小程序白屏 | 微信开发者工具看 Console | main.js 用了 `createApp` 而非 `createSSRApp`、JS 语法不兼容 ES5 |
+| 接口 401 | Network 面板看请求头 | token 没存进 `uni.setStorageSync`、请求封装没加 Authorization |
+| `navigateTo:fail page not found` | 检查 pages.json | 页面路径没在 pages.json 注册、路径拼写错 |
+| TabBar 不显示 | 检查 pages.json 的 tabBar | list 少于 2 项或多于 5 项、iconPath 路径错 |
+| `uni.request` 跨域（H5 端） | 看 vite.config.js proxy | H5 端浏览器 CORS，需要配代理；小程序端无此问题 |
+| 图片不显示 | 看 Network | 路径是相对还是绝对、小程序不能直接用本地 file:// 路径 |
+| 真机预览报"不在以下 request 合法域名" | 微信公众平台后台 | 没把后端域名加到"服务器域名"白名单 |
+| 数据不更新 | Vue DevTools（HBuilderX 自带） | 小程序的 setData 机制，大列表要手动 `this.$forceUpdate()` |
+
+### 5.4 浏览器扩展问题速查
+
+| 问题现象 | 第一步操作 | 常见原因 |
+|---------|-----------|---------|
+| 扩展图标灰了 / 点不开 | chrome://extensions 看错误 | manifest.json 语法错、权限声明不全 |
+| content.js 没注入 | 目标页面 F12 → Sources → Content scripts | manifest.json 的 `matches` 不匹配当前域名 |
+| 点"采集"没反应 | 目标页面 F12 Console | content.js 报错（DOM 选择器失效）、消息没发到 background |
+| background.js 报错 | chrome://extensions → 点"Service Worker"打开 DevTools | `chrome.runtime.onMessage` 回调没 `return true` 导致异步失败 |
+| 调后端报 CORS | background DevTools Network | manifest.json `host_permissions` 没加后端域名 |
+| 改了代码不生效 | chrome://extensions 刷新按钮 | 必须手动重新加载扩展，热更新不生效 |
+| popup 打开白屏 | 右键 popup → 检查 | popup.html 里的 `<script src>` 路径错 |
+
+### 5.5 DeerFlow 问题速查
+
+| 问题现象 | 第一步操作 | 常见原因 |
+|---------|-----------|---------|
+| Java 调 DeerFlow 报 Connection refused | `curl http://localhost:8000/health` | DeerFlow 没启动、`DEERFLOW_API_URL` 配错 |
+| `/health` 返回 healthy 但业务接口 500 | 看 DeerFlow 控制台日志 | 通义千问 API Key 无效、model 名错、网络不通 |
+| 返回内容为 null | 看 DeerFlow 日志的 print | `requests.post` 超时（300s）或 API 返回非 200 |
+| 响应很慢 | DeerFlow 日志看调用耗时 | 通义千问本身慢、prompt 太长导致 max_tokens 不够 |
+| Docker 里 DeerFlow 反复重启 | `docker-compose logs deerflow` | `.env` 没配 `QWEN_API_KEY` 导致启动后立即报错 |
+
+### 5.6 Kafka 问题速查
+
+| 问题现象 | 第一步操作 | 常见原因 |
+|---------|-----------|---------|
+| 消息发不出去 | 看 `KafkaProducerService` 日志 | Kafka 没启动、`bootstrap-servers` 配错、topic 不存在 |
+| 消息发出去了但没消费 | `docker-compose logs kafka` 看 topic 列表 | 消费者组没起来、`max-poll-records` 配错、消息被路由到没消费者的 partition |
+| 消费报错"被踢出消费组" | 看消费者处理时长 | 单条消息处理超过 `max.poll.interval.ms`（默认 5 分钟） |
+| 重复消费 | 看 async_task 表状态 | 消费者处理成功但 offset 没提交、应用异常退出 |
+| Kafka 启动失败 | `docker-compose logs kafka` | Zookeeper 没启动、磁盘满了、端口占用 |
+
+> **调试 Kafka 的神器**：`kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic async-task-topic --from-beginning` 直接看 topic 里有什么消息。
+
+### 5.7 Elasticsearch 问题速查
+
+| 问题现象 | 第一步操作 | 常见原因 |
+|---------|-----------|---------|
+| ES 搜索返回空 | `curl http://localhost:9200/_cat/indices` | 索引不存在、数据没同步、查询 DSL 写错 |
+| 同步知识到 ES 失败 | 看 `ElasticsearchServiceImpl` 日志 | ES 没启动、mapping 不匹配、字段超长 |
+| ES 启动失败 | `docker-compose logs elasticsearch` | 内存不够（`ES_JAVA_OPTS` 太小）、磁盘空间不足、vm.max_map_count 太小 |
+| 搜索结果不准 | 看 ES 查询 DSL | 分词器不对、应该用 match 却用了 term、boost 权重不合理 |
+
+> **ES 没启用时**：项目会自动降级到 MySQL 模糊搜索（`NoOpElasticsearchService`），所以搜索功能"能用但不准"不一定是 bug，可能是 ES 关了。
+
+### 5.8 Redis 问题速查
+
+| 问题现象 | 第一步操作 | 常见原因 |
+|---------|-----------|---------|
+| 缓存不生效 | `redis-cli get <key>` 看有没有 | 缓存 key 拼错、TTL 过期、Redis 连不上 |
+| Redis 连不上 | `redis-cli -a <password> ping` | Redis 没启动、密码错、`spring.redis.host` 配错 |
+| 缓存和 DB 数据不一致 | 看代码有没有删缓存 | 更新 DB 后没 `redisTemplate.delete(key)`、分布式并发问题 |
+| 验证码/登录态丢失 | `redis-cli keys "session:*"` | Redis 重启丢了内存数据、TTL 设太短 |
+
+---
+
+### 5.9 通用调试心法
 
 最后送你几条调试经验：
 

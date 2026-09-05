@@ -874,6 +874,189 @@ const routes = [
 
 ---
 
+## 第十一步：给移动端加同名页面（uni-app）
+
+后端接口写好后，移动端要复用它。移动端没有 vue-router，路由在 `pages.json` 里。
+
+**新增页面 3 步**：
+
+1. **建页面文件**：`mobile/src/pages/notifications/index.vue`
+
+```vue
+<template>
+  <view class="page">
+    <page-header title="通知中心" />
+    <view v-for="item in list" :key="item.id" class="item">
+      {{ item.title }}
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { notificationAPI } from '@/api/notification';  // 复用和 Web 同构的 API 封装
+
+const list = ref([]);
+onMounted(async () => {
+  list.value = await notificationAPI.getList();
+});
+</script>
+```
+
+2. **在 pages.json 注册**（必须，否则 `navigateTo` 报 page not found）：
+
+```json
+{
+  "path": "pages/notifications/index",
+  "style": { "navigationBarTitleText": "通知中心" }
+}
+```
+
+3. **在需要的地方加跳转入口**（比如个人中心页里加一个列表项）：
+
+```javascript
+uni.navigateTo({ url: '/pages/notifications/index' });
+```
+
+> **API 复用原则**：移动端 `mobile/src/api/notification.js` 里的函数签名、URL 路径要和 Web 端 `frontend/src/api/notification.js` 保持一致——因为后端契约是同一套。差别只在请求封装（`uni.request` vs axios）。
+
+---
+
+## 第十二步：给浏览器扩展加新能力（支持新 AI 平台）
+
+假设要让扩展支持采集"字节扣子"平台的对话。扩展是纯 JS，加一个平台只需改 content.js 的 DOM 解析逻辑 + manifest.json 的白名单。
+
+**3 步**：
+
+1. **manifest.json 加白名单**：
+
+```json
+{
+  "host_permissions": ["https://www.coze.cn/*"],
+  "content_scripts": [{
+    "matches": ["https://www.coze.cn/*"],
+    "js": ["content.js"], "css": ["content.css"]
+  }]
+}
+```
+
+2. **content.js 加平台解析器**：
+
+```javascript
+function parseConversationFromDOM() {
+  const host = location.hostname;
+  if (host.includes('coze.cn')) return parseCoze();
+  if (host.includes('chatgpt.com')) return parseChatGPT();
+  // ... 已有平台
+}
+
+function parseCoze() {
+  // 根据扣子页面的 DOM 结构抽取用户消息和 AI 回复
+  const msgs = document.querySelectorAll('.coze-message-item');
+  return Array.from(msgs).map(el => ({
+    role: el.classList.contains('user') ? 'user' : 'assistant',
+    content: el.innerText
+  }));
+}
+```
+
+3. **重新加载扩展**：chrome://extensions → 刷新按钮。
+
+> **注意**：扩展不能用 npm 包，所有逻辑手写原生 JS。解析 DOM 时要做好容错——平台改版会让选择器失效，至少包一层 try/catch，解析失败时提示用户手动复制。
+
+---
+
+## 第十三步：给 DeerFlow 加新接口
+
+如果要让 DeerFlow 支持"生成思维导图"这种新能力，在 `deerflow/app.py` 加一个路由即可，不需要动 Java 后端的结构。
+
+**deerflow/app.py**：
+
+```python
+@app.route('/api/research/mindmap', methods=['POST'])
+def generate_mindmap():
+    prompt = request.json.get('prompt', '')
+    api_key = request.json.get('api_key')
+    content = call_qwen_api(
+        f"请把以下内容整理成 Markdown 思维导图格式：\n{prompt}",
+        user_api_key=api_key
+    )
+    if content is None:
+        return jsonify({'error': '生成失败'}), 500
+    return jsonify({'mindmap': content})
+```
+
+**Java 后端加代理方法**（`DeerFlowResearchServiceImpl`）：
+
+```java
+public String generateMindmap(String prompt, String userApiKey) {
+    String url = deerflowApiUrl + "/api/research/mindmap";
+    Map<String, Object> body = Map.of("prompt", prompt, "api_key", userApiKey);
+    return restTemplate.postForObject(url, body, String.class);
+}
+```
+
+**Controller 暴露给前端**：`DeerFlowResearchController` 加一个 `@PostMapping("/mindmap")` 方法。
+
+> **为什么不在 Java 里直接调通义千问？** 可以，但 DeerFlow 已经封装了"用户 key 优先 + 平台 key 兜底 + 超时处理"的逻辑，复用更省事。如果新能力需要 Java 生态（比如调本地模型），才考虑直接在 Java 里做。
+
+---
+
+## 第十四步：给 Research Agent 加新工具或新 Agent
+
+研究子系统是插件式的：新工具实现 `Tool` 接口、新 Agent 实现 `ResearchAgent` 接口，注册到 Spring 即可被编排器发现。
+
+### 加一个新工具（比如"调内部 CRM 查客户信息"）
+
+1. 实现 `Tool` 接口：
+
+```java
+// backend/src/main/java/com/secondbrain/research/tool/CrmLookupTool.java
+@Component
+public class CrmLookupTool implements Tool {
+
+    @Override
+    public String getName() { return "crm_lookup"; }
+
+    @Override
+    public String getDescription() {
+        return "根据客户名称查询 CRM 系统中的客户信息";
+    }
+
+    @Override
+    public ToolResult execute(Map<String, Object> params) {
+        String customerName = (String) params.get("customerName");
+        // 调内部 CRM API...
+        return ToolResult.success(customerInfo);
+    }
+}
+```
+
+2. `ToolRegistry` 会自动扫描所有 `Tool` Bean（`@Component`），Agent 可以通过名字调用它。
+
+### 加一个新 Agent（比如"数据可视化 Agent"）
+
+1. 实现 `ResearchAgent` 接口，加 `@Component`：
+
+```java
+@Component
+public class VisualizationAgent implements ResearchAgent {
+    @Override
+    public AgentResult execute(AgentContext ctx) {
+        // 1. 从 ctx 拿已有的研究结论
+        // 2. 调图表生成工具
+        // 3. 把结果写回 ctx
+        return AgentResult.success(...);
+    }
+}
+```
+
+2. 在 `ResearchPlan` 的 `agentChain` 里加上它的名字（存在 DB 的 research_plan 表），编排器就会按顺序调度。
+
+> **约束提醒**：AGENTS.md 规定"禁止单 Agent 无限调 Tool"——你的 Agent 循环调用工具时必须有退出条件，或依赖 `ToolCallBudget` 兜底。
+
+---
+
 ## 完整调用流程
 
 从用户操作到数据落库，再到页面展示，完整链路是这样的：
