@@ -1,0 +1,8 @@
+
+com.secondbrain.android.ui.MobileFlowsTest:........
+
+Time: 25.953
+
+OK (8 tests)
+
+

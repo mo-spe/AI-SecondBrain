@@ -206,15 +206,22 @@ class MobileFlowsTest {
         } }
         compose.onNode(hasSetTextAction()).performScrollTo().performTextInput("先明确共享资源的边界，再选择锁的粒度。")
         compose.onNodeWithText("发布回答").performScrollTo().performClick()
-        compose.onNodeWithText("连接失败，草稿已保留").performScrollTo().assertIsDisplayed()
+        compose.waitUntil(5_000) { vm.state.value.error != null }
+        assertEquals(1, attempts)
+        compose.onNodeWithTag("question-content").performScrollToNode(hasText("连接失败，草稿已保留"))
+        compose.onNodeWithText("连接失败，草稿已保留").assertIsDisplayed()
         assertTrue(vm.state.value.draft.isNotBlank())
         compose.onNodeWithText("发布回答").performScrollTo().performClick()
-        compose.onNodeWithText("回答已发布，可在上方查看").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("先明确共享资源的边界，再选择锁的粒度。").performScrollTo().assertIsDisplayed()
+        compose.waitUntil(5_000) { vm.state.value.published }
+        compose.onNodeWithTag("question-content").performScrollToNode(hasText("回答已发布，可在上方查看"))
+        compose.onNodeWithText("回答已发布，可在上方查看").assertIsDisplayed()
+        compose.onNodeWithTag("question-content").performScrollToNode(hasText("先明确共享资源的边界，再选择锁的粒度。"))
+        compose.onNodeWithText("先明确共享资源的边界，再选择锁的粒度。").assertIsDisplayed()
         snapshot("question-published")
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithText("重新进入").performClick()
-        compose.onNodeWithText("先明确共享资源的边界，再选择锁的粒度。").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("question-content").performScrollToNode(hasText("先明确共享资源的边界，再选择锁的粒度。"))
+        compose.onNodeWithText("先明确共享资源的边界，再选择锁的粒度。").assertIsDisplayed()
         assertEquals(2, attempts)
         assertEquals(1, vm.state.value.question?.answerCount)
     }

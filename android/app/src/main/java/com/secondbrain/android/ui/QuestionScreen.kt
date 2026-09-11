@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -20,7 +21,7 @@ internal fun QuestionScreen(id: Long, onBack: () -> Unit, viewModel: QuestionVie
         if (state.published) { keyboard?.hide(); onPublished() }
     }
     ReadingScaffold("问答 · 讨论详情", onBack) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).imePadding(), state = listState,
+        LazyColumn(Modifier.fillMaxSize().padding(padding).imePadding().testTag("question-content"), state = listState,
             contentPadding = PaddingValues(20.dp, 12.dp, 20.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             if (state.loading) item { LoadingContent("正在读取问题…") }
             state.question?.let { question ->
@@ -50,18 +51,18 @@ internal fun QuestionScreen(id: Long, onBack: () -> Unit, viewModel: QuestionVie
                         placeholder = { Text("写下思路、解释或具体例子…") }, minLines = 4, maxLines = 10,
                         supportingText = { Text("${state.draft.trim().length} / 10000 · 至少 10 个字") },
                         modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
-                    Button(onClick = viewModel::submit, enabled = !state.submitting && !state.loading && state.draft.trim().length in 10..10000,
+                    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 12.dp)) }
+                    Button(onClick = { keyboard?.hide(); viewModel.submit() }, enabled = !state.submitting && !state.loading && state.draft.trim().length in 10..10000,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text(if (state.submitting) "正在发布…" else "发布回答")
                     }
                     if (state.published) Text("回答已发布，可在上方查看", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp))
                 }
             }
-            state.error?.let { message -> item {
-                Text(message, color = MaterialTheme.colorScheme.error)
-                if (state.question == null) OutlinedButton(onClick = { viewModel.load(id) }) { Text("重新加载") }
-                else Text("内容已保留。发布遇到网络中断时，可先重新进入确认是否已发布。", style = MaterialTheme.typography.bodyMedium)
+            if (state.question == null) state.error?.let { message -> item {
+                RetryContent(message) { viewModel.load(id) }
             } }
+
         }
     }
 }
