@@ -40,6 +40,8 @@ internal fun ReadingScaffold(title: String, onBack: () -> Unit, content: @Compos
 
 @Composable
 internal fun KnowledgeDetailScreen(id: Long, onBack: () -> Unit, loadDetail: suspend (Long) -> KnowledgeNode) {
+    var reminderNode by remember(id) { mutableStateOf<KnowledgeNode?>(null) }
+    reminderNode?.let { KnowledgeReminderDialog(it, onDismiss = { reminderNode = null }) }
     var state by remember(id) { mutableStateOf<LoadState<KnowledgeNode>>(LoadState.Loading) }
     var retry by remember(id) { mutableIntStateOf(0) }
     LaunchedEffect(id, retry) {
@@ -61,6 +63,7 @@ internal fun KnowledgeDetailScreen(id: Long, onBack: () -> Unit, loadDetail: sus
                     value.value.summary?.takeIf { it.isNotBlank() }?.let { summary -> item { Text(summary, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                     item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
                     item { ReadingBody(value.value.contentMd?.takeIf { it.isNotBlank() } ?: "这条知识暂未添加正文。") }
+                    item { OutlinedButton(onClick = { reminderNode = value.value }) { Icon(Icons.Outlined.Notifications, null); Spacer(Modifier.width(8.dp)); Text("安排复习提醒") } }
                 }
                 is LoadState.Empty -> item { Text(value.message) }
             }
@@ -237,3 +240,27 @@ internal fun ReadingBody(markdown: String) {
         }
     }
 }
+
+
+@Composable
+internal fun RagReferences(json: String) {
+    val references = remember(json) {
+        runCatching {
+            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, RagReference::class.java)
+            com.squareup.moshi.Moshi.Builder().add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory()).build()
+                .adapter<List<RagReference>>(type).fromJson(json).orEmpty()
+        }.getOrDefault(emptyList())
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("参考知识", style = MaterialTheme.typography.titleMedium)
+        if (references.isEmpty()) Text("本次未提供可展示的知识引用", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        references.forEachIndexed { index, reference ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("${index + 1}. ${reference.title ?: "知识来源"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                (reference.matchedContent ?: reference.summary)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+            }
+        }
+    }
+}
+
+internal data class RagReference(val knowledgeId: Long? = null, val title: String? = null, val summary: String? = null, val matchedContent: String? = null)

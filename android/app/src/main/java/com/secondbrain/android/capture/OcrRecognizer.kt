@@ -11,9 +11,7 @@ import kotlinx.coroutines.tasks.await
 class OcrRecognizer {
     suspend fun recognize(context: Context, uri: Uri): String {
         val image = InputImage.fromFilePath(context, uri)
-        return TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
-            .process(image)
-            .await()
-            .text
+        val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
+        return try { recognizer.process(image).await().text } finally { recognizer.close() }
     }
 }

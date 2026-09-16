@@ -238,14 +238,18 @@ private fun CaptureScreen(onBack: () -> Unit, viewModel: com.secondbrain.android
             }, enabled = !state.recognizing, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 Text("打开相机拍摄")
             }
-            state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
+            OutlinedButton(onClick = viewModel::createManual, enabled = state.ready && !state.recognizing, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("手动输入知识") }
+            state.message?.let { Text(it, color = if (it.startsWith("已保存") || it.startsWith("知识已保存")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
             cameraError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
         } else {
-            var title by remember(draft.id) { androidx.compose.runtime.mutableStateOf(draft.title) }
-            var content by remember(draft.id) { androidx.compose.runtime.mutableStateOf(draft.content) }
-            OutlinedTextField(title, { title = it; viewModel.update(title, content) }, label = { Text("知识标题") }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
-            OutlinedTextField(content, { content = it; viewModel.update(title, content) }, label = { Text("识别正文，可编辑") }, modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 12.dp))
-            Button(onClick = viewModel::saveConfirmed, enabled = !state.saving && title.isNotBlank() && content.isNotBlank(), modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            val title = draft.title
+            val content = draft.content
+            Text(if (state.localSaved) "草稿已保存到本机" else if (state.message != null) "草稿尚未保存" else "正在保存草稿…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!state.localSaved && state.message != null) TextButton(onClick = { viewModel.update(title, content) }, enabled = !state.saving) { Text("重试保存草稿") }
+            if (draft.workspaceId != state.workspaceId) Text("请切回草稿所属空间后保存", color = MaterialTheme.colorScheme.error)
+            OutlinedTextField(title, { viewModel.update(it, content) }, enabled = !state.saving, label = { Text("知识标题") }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
+            OutlinedTextField(content, { viewModel.update(title, it) }, enabled = !state.saving, label = { Text("识别正文，可编辑") }, modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 12.dp))
+            Button(onClick = viewModel::saveConfirmed, enabled = state.ready && !state.saving && draft.workspaceId == state.workspaceId && title.isNotBlank() && content.isNotBlank(), modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 Text(if (state.saving) "正在保存…" else "确认保存到知识库")
             }
             state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
@@ -451,7 +455,7 @@ private fun LearningHero(count: Int, onReview: () -> Unit, reviewEnabled: Boolea
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag.RagViewModel = hiltViewModel()) {
+internal fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag.RagViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -468,6 +472,7 @@ private fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag
         item {
             OutlinedTextField(
                 value = state.question,
+                enabled = !state.asking,
                 onValueChange = viewModel::updateQuestion,
                 label = { Text("你想了解什么？") },
                 placeholder = { Text("例如：Redis 的持久化机制有什么差别？") },
@@ -478,10 +483,11 @@ private fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag
         item {
             Button(
                 onClick = viewModel::ask,
-                enabled = !state.asking,
+                enabled = state.ready && !state.asking && state.question.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp)
             ) { Text(if (state.asking) "正在检索知识…" else "开始问答") }
+            if (state.asking) TextButton(onClick = viewModel::stop, modifier = Modifier.fillMaxWidth()) { Text("停止生成") }
         }
         state.error?.let { error ->
             item {
@@ -493,13 +499,13 @@ private fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag
                     Column(Modifier.padding(16.dp)) {
                         Text("这次问答没有完成", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onErrorContainer)
                         Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 4.dp))
-                        Text("检查服务端模型配置或稍后重试。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 10.dp))
+                        Text("稍后重试，已收到的内容会保留。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 10.dp))
                     }
                 }
             }
         }
-        state.answer.takeIf { it.isNotBlank() }?.let { answer -> item { InsightCard("回答", answer) } }
-        state.references?.let { references -> item { InsightCard("引用知识", references) } }
+        state.answer.takeIf { it.isNotBlank() }?.let { answer -> item { ReadingBody(answer) } }
+        state.references?.let { references -> item { RagReferences(references) } }
     }
 }
 
@@ -649,20 +655,13 @@ private fun DraftRecoveryScreen(
 private fun ReminderSettingsScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.reminder.ReminderViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
-    var nodeIdText by remember { androidx.compose.runtime.mutableStateOf("") }
-    var timeText by remember { androidx.compose.runtime.mutableStateOf("") }
     androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.load() }
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { TopAppBar(title = { Text("复习提醒") }, navigationIcon = { BackNavigation(onBack) }) }
         item {
-            Text("设置或更新提醒", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(nodeIdText, { nodeIdText = it }, label = { Text("知识点 ID") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true)
-            OutlinedTextField(timeText, { timeText = it }, label = { Text("提醒时间，如 2026-09-06T09:00:00") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true)
-            Button(
-                onClick = { nodeIdText.toLongOrNull()?.let { viewModel.save(context, it, timeText) } },
-                enabled = nodeIdText.toLongOrNull() != null && timeText.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            ) { Text("保存提醒") }
+            Text("让知识在合适的时间回来", style = MaterialTheme.typography.titleMedium)
+            Text("打开一条知识，在详情中点击「安排复习提醒」，选择日期与时间。已设置的提醒会显示在这里。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+            NotificationPermissionHint()
         }
         state.message?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
         if (state.reminders.isEmpty()) {
@@ -672,7 +671,7 @@ private fun ReminderSettingsScreen(onBack: () -> Unit, viewModel: com.secondbrai
             Card {
                 Column(Modifier.padding(20.dp)) {
                     Text("知识点 #" + reminder.nodeId, style = MaterialTheme.typography.titleMedium)
-                    Text("计划时间：" + reminder.scheduledAt, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+                    Text("计划时间：" + reminder.scheduledAt.replace('T', ' ').take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                     Button(onClick = { viewModel.cancel(context, reminder.nodeId) }, modifier = Modifier.padding(top = 12.dp)) { Text("取消提醒") }
                 }
             }

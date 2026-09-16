@@ -34,19 +34,26 @@ object NetworkModule {
     fun provideDatabase(@ApplicationContext context: Context): SecondBrainDatabase =
         Room.databaseBuilder(context, SecondBrainDatabase::class.java, "secondbrain.db").build()
 
+    @Provides
+    fun provideDraftDao(database: SecondBrainDatabase) = database.ocrDraftDao()
+
+    @Provides
+    fun provideRagSource(client: com.secondbrain.android.rag.RagStreamClient): com.secondbrain.android.rag.RagAnswerSource = client
+
     @Provides @Singleton
     fun provideClient(sessionStore: SessionStore): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(Interceptor { chain ->
             val token = runBlocking { sessionStore.token() }
             val request = chain.request().newBuilder().apply {
-                token?.let { header("Authorization", "Bearer $it") }
+                if (chain.request().header("Authorization") == null) token?.let { header("Authorization", "Bearer $it") }
             }.build()
             chain.proceed(request)
         })
         .addInterceptor(Interceptor { chain ->
             val response = chain.proceed(chain.request())
             if (response.code == 401) {
-                runBlocking { sessionStore.clear() }
+                val failedToken = response.request.header("Authorization")?.removePrefix("Bearer ")
+                runBlocking { sessionStore.clearIfTokenMatches(failedToken) }
             }
             response
         })

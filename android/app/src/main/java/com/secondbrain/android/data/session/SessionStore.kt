@@ -29,6 +29,14 @@ class SessionStore @Inject constructor(private val store: DataStore<Preferences>
         it.remove(WORKSPACE_ID)
     }
 
+    /** 旧请求的 401 不能注销刚切换工作区得到的新会话。 */
+    suspend fun clearIfTokenMatches(token: String?) = store.edit {
+        if (token != null && it[TOKEN] == token) {
+            it.remove(TOKEN)
+            it.remove(WORKSPACE_ID)
+        }
+    }
+
     private companion object {
         val TOKEN = stringPreferencesKey("auth_token")
         val WORKSPACE_ID = longPreferencesKey("workspace_id")
