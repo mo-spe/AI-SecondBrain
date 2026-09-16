@@ -21,8 +21,10 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -153,6 +155,45 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
 
         log.info("删除知识点，id：{}", id);
+    }
+
+    /**
+     * 批量删除知识节点.
+     *
+     * @param ids          知识点ID列表
+     * @param userId       用户ID
+     * @param workspaceId  工作区ID
+     * @return 实际删除的知识点数量
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteBatchByIds(List<Long> ids, Long userId, Long workspaceId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalStateException("请选择要删除的知识点");
+        }
+
+        // 先逐个校验存在性与权限，全部通过后才执行删除，避免删了一半才报错
+        List<KnowledgeNode> nodes = new ArrayList<>(ids.size());
+        for (Long id : ids) {
+            KnowledgeNode node = knowledgeNodeMapper.selectById(id);
+            if (node == null) {
+                throw new IllegalStateException("知识点不存在，id：" + id);
+            }
+            if (!hasAccess(node, userId, workspaceId)) {
+                throw new IllegalStateException("无权删除此知识点，id：" + id);
+            }
+            nodes.add(node);
+        }
+
+        for (KnowledgeNode node : nodes) {
+            knowledgeNodeMapper.deleteById(node.getId());
+            if (elasticsearchService != null) {
+                elasticsearchService.deleteKnowledgeNode(node.getId());
+            }
+        }
+
+        log.info("批量删除知识点，userId：{}，数量：{}", userId, nodes.size());
+        return nodes.size();
     }
 
     /**

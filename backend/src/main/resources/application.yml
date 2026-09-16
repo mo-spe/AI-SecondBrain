@@ -1,5 +1,5 @@
-server:
-  port: 8080
+﻿server:
+  port: 8081
   servlet:
     context-path: /api
     encoding:
@@ -11,12 +11,12 @@ spring:
   application:
     name: ai-second-brain
 
-# 这里host在本地测试时可以连接我的本机数据库
-  # IP：10.65.59.104
-  #端口：3306
-  #账号：dev
-  #密码：123456
-# 选择连接自己的数据库，需要建表，完整建表语句在sql目录下
+# 杩欓噷host鍦ㄦ湰鍦版祴璇曟椂鍙互杩炴帴鎴戠殑鏈満鏁版嵁搴?
+  # IP锛?0.65.59.104
+  #绔彛锛?306
+  #璐﹀彿锛歞ev
+  #瀵嗙爜锛?23456
+# 閫夋嫨杩炴帴鑷繁鐨勬暟鎹簱锛岄渶瑕佸缓琛紝瀹屾暣寤鸿〃璇彞鍦╯ql鐩綍涓?
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -100,20 +100,20 @@ knife4j:
   production: false
 
 # ============================================================
-# AI 服务商配置（@Deprecated — 已迁移到数据库驱动）
-# 新架构下用户通过「个人设置」页配置服务商、模型和API Key，
-# 配置存储在 ai_provider / ai_model / user_ai_config 表中。
-# 以下 application.yml 配置仅作为旧调用方的兜底，逐步移除。
+# AI 鏈嶅姟鍟嗛厤缃紙@Deprecated 鈥?宸茶縼绉诲埌鏁版嵁搴撻┍鍔級
+# 鏂版灦鏋勪笅鐢ㄦ埛閫氳繃銆屼釜浜鸿缃€嶉〉閰嶇疆鏈嶅姟鍟嗐€佹ā鍨嬪拰API Key锛?
+# 閰嶇疆瀛樺偍鍦?ai_provider / ai_model / user_ai_config 琛ㄤ腑銆?
+# 浠ヤ笅 application.yml 閰嶇疆浠呬綔涓烘棫璋冪敤鏂圭殑鍏滃簳锛岄€愭绉婚櫎銆?
 # ============================================================
 ai:
-  # AES-256-GCM 密钥，用于加密数据库中存储的用户 API Key
+  # AES-256-GCM 瀵嗛挜锛岀敤浜庡姞瀵嗘暟鎹簱涓瓨鍌ㄧ殑鐢ㄦ埛 API Key
   encryption:
     key: ai-secondbrain-dev-key-32bytes!!
 
-  # 是否使用数据库驱动的用户AI配置（true=新架构，false=旧application.yml配置）
+  # 鏄惁浣跨敤鏁版嵁搴撻┍鍔ㄧ殑鐢ㄦ埛AI閰嶇疆锛坱rue=鏂版灦鏋勶紝false=鏃pplication.yml閰嶇疆锛?
   use-new-config: ${AI_USE_NEW_CONFIG:true}
 
-  # ---- 以下配置已弃用，仅用于旧代码兼容 ----
+  # ---- 浠ヤ笅閰嶇疆宸插純鐢紝浠呯敤浜庢棫浠ｇ爜鍏煎 ----
   provider: ${AI_PROVIDER:qwen}
   deepseek:
     api-key: ${DEEPSEEK_API_KEY:}
@@ -171,3 +171,4 @@ logging:
     name: logs/ai-second-brain.log
     max-size: 10MB
     max-history: 30
+

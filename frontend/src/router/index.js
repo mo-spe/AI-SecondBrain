@@ -104,6 +104,18 @@ const routes = [
         component: () => import("@/views/Leaderboard.vue"),
         meta: { title: "排行榜" },
       },
+      {
+        path: "report",
+        name: "Report",
+        component: () => import("@/views/Report.vue"),
+        meta: { title: "学习报告" },
+      },
+      {
+        path: "chat",
+        name: "Chat",
+        component: () => import("@/views/Chat.vue"),
+        meta: { title: "对话采集" },
+      },
     ],
   },
   {

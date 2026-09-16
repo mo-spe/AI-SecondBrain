@@ -8,7 +8,7 @@ import com.secondbrain.dto.ChatCollectMessage;
 import com.secondbrain.dto.ChatRecordDTO;
 import com.secondbrain.dto.KnowledgeDTO;
 import com.secondbrain.entity.RawChatRecord;
-import com.secondbrain.kafka.KafkaProducerService;
+import com.secondbrain.kafka.KafkaMessageProducer;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.RawChatRecordMapper;
 import com.secondbrain.service.AiService;
@@ -33,16 +33,16 @@ public class ChatServiceImpl implements ChatService {
     private final RawChatRecordMapper rawChatRecordMapper;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final AiService aiService;
-    private final KafkaProducerService kafkaProducerService;
+    private final KafkaMessageProducer kafkaMessageProducer;
 
     public ChatServiceImpl(RawChatRecordMapper rawChatRecordMapper,
                            KnowledgeNodeMapper knowledgeNodeMapper,
                            AiService aiService,
-                           KafkaProducerService kafkaProducerService) {
+                           KafkaMessageProducer kafkaMessageProducer) {
         this.rawChatRecordMapper = rawChatRecordMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.aiService = aiService;
-        this.kafkaProducerService = kafkaProducerService;
+        this.kafkaMessageProducer = kafkaMessageProducer;
     }
 
     /**
@@ -79,7 +79,7 @@ public class ChatServiceImpl implements ChatService {
             message.setWorkspaceId(targetWorkspaceId);
             message.setExtractKnowledge(true);
             message.setGenerateCards(generateCards);
-            kafkaProducerService.sendChatCollect(message);
+            kafkaMessageProducer.sendChatCollect(message);
             log.info("对话采集成功(含知识提取) recordId={}", record.getId());
         } else {
             log.info("对话采集成功(仅存档) recordId={}", record.getId());

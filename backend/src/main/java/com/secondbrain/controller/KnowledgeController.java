@@ -128,6 +128,22 @@ public class KnowledgeController {
     }
 
     /**
+     * 批量删除知识.
+     *
+     * @param ids 知识ID列表
+     * @param httpRequest HTTP请求对象
+     * @return 实际删除的知识数量
+     */
+    @DeleteMapping("/batch")
+    @Operation(summary = "批量删除知识", description = "根据ID列表批量删除知识")
+    public Result<Integer> deleteBatch(@RequestBody List<Long> ids, HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        int count = knowledgeService.deleteBatchByIds(ids, userId, workspaceId);
+        return Result.success("删除成功", count);
+    }
+
+    /**
      * 更新重要程度.
      *
      * @param id 知识ID

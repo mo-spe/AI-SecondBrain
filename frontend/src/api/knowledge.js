@@ -47,6 +47,14 @@ export const knowledgeAPI = {
     });
   },
 
+  batchDelete(ids) {
+    return request({
+      url: "/knowledge/batch",
+      method: "delete",
+      data: ids,
+    });
+  },
+
   updateImportance(id, importance) {
     return request({
       url: `/knowledge/${id}/importance`,

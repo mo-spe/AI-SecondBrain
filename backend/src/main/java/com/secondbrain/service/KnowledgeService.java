@@ -61,6 +61,16 @@ public interface KnowledgeService {
     void deleteById(Long id, Long userId, Long workspaceId);
 
     /**
+     * 批量删除知识.
+     *
+     * @param ids 知识点ID列表
+     * @param userId 用户ID
+     * @param workspaceId 工作区ID
+     * @return 实际删除的知识点数量
+     */
+    int deleteBatchByIds(List<Long> ids, Long userId, Long workspaceId);
+
+    /**
      * 更新重要程度.
      *
      * @param id 知识点ID

@@ -110,6 +110,7 @@ import {
   Platform,
   Trophy,
   Medal,
+  Document,
 } from "@element-plus/icons-vue";
 
 const route = useRoute();
@@ -130,6 +131,7 @@ const navItems = [
   { path: "/search", label: "知识搜索", icon: Search },
   { path: "/knowledge-system", label: "知识体系", icon: Share },
   { path: "/review", label: "复习中心", icon: Bell },
+  { path: "/report", label: "学习报告", icon: Document },
   { path: "/achievements", label: "成就殿堂", icon: Trophy },
   { path: "/leaderboard", label: "排行榜", icon: Medal },
   { path: "/research", label: "AI研究", icon: TrendCharts },
