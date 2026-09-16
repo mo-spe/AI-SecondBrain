@@ -1,0 +1,11 @@
+{
+  "name": "费曼学习平台",
+  "short_name": "Feynman",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f4ef",
+  "theme_color": "#14211f",
+  "description": "用复述确认理解，用知识库留下学习痕迹。",
+  "icons": []
+}
+

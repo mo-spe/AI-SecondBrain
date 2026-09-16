@@ -1,0 +1,17 @@
+services:
+  server:
+    build: ./server
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    environment:
+      PORT: 4000
+      CLIENT_ORIGIN: http://localhost
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
