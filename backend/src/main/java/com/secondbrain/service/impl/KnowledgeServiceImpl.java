@@ -5,14 +5,18 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.dto.KnowledgeReference;
 import com.secondbrain.elasticsearch.KnowledgeDocument;
 import com.secondbrain.entity.KnowledgeNode;
+import com.secondbrain.entity.KnowledgeNodeTagRelation;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
+import com.secondbrain.mapper.KnowledgeNodeTagRelationMapper;
 import com.secondbrain.service.CacheService;
 import com.secondbrain.service.EbbinghausService;
 import com.secondbrain.service.ElasticsearchService;
 import com.secondbrain.service.KnowledgeService;
 import com.secondbrain.service.GamificationService;
 import com.secondbrain.service.KnowledgeVectorService;
+import com.secondbrain.service.KnowledgeTagService;
 import com.secondbrain.service.RelationRecommendationService;
+import com.secondbrain.service.ReviewCardService;
 import com.secondbrain.service.VectorSearchService;
 import com.secondbrain.vo.KnowledgeNodeVO;
 import org.slf4j.Logger;
@@ -21,11 +25,13 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -48,6 +54,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final RelationRecommendationService relationRecommendationService;
     private final KnowledgeVectorService knowledgeVectorService;
     private final GamificationService gamificationService;
+    private final KnowledgeTagService knowledgeTagService;
+    private final KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper;
+    private final ReviewCardService reviewCardService;
 
     @Autowired
     public KnowledgeServiceImpl(KnowledgeNodeMapper knowledgeNodeMapper,
@@ -57,7 +66,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                                 @Autowired(required = false) ElasticsearchService elasticsearchService,
                                 @Autowired(required = false) RelationRecommendationService relationRecommendationService,
                                 @Autowired(required = false) KnowledgeVectorService knowledgeVectorService,
-                                GamificationService gamificationService) {
+                                GamificationService gamificationService,
+                                KnowledgeTagService knowledgeTagService,
+                                KnowledgeNodeTagRelationMapper knowledgeNodeTagRelationMapper,
+                                ReviewCardService reviewCardService) {
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.cacheService = cacheService;
         this.ebbinghausService = ebbinghausService;
@@ -66,6 +78,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         this.relationRecommendationService = relationRecommendationService;
         this.knowledgeVectorService = knowledgeVectorService;
         this.gamificationService = gamificationService;
+        this.knowledgeTagService = knowledgeTagService;
+        this.knowledgeNodeTagRelationMapper = knowledgeNodeTagRelationMapper;
+        this.reviewCardService = reviewCardService;
     }
 
     /**
@@ -81,7 +96,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      * @return 知识节点分页结果
      */
     @Override
-    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId) {
+    public Page<KnowledgeNodeVO> list(Integer current, Integer size, String keyword, Long userId, Integer importance, Integer masteryLevel, Long workspaceId, Long tagId, Integer needReview) {
         Page<KnowledgeNode> page = new Page<>(current, size);
 
         LambdaQueryWrapper<KnowledgeNode> wrapper = buildBaseWrapper(userId, workspaceId);
@@ -95,6 +110,28 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         if (masteryLevel != null) {
             wrapper.eq(KnowledgeNode::getMasteryLevel, masteryLevel);
+        }
+        if (needReview != null) {
+            wrapper.eq(KnowledgeNode::getNeedReview, needReview);
+        }
+        if (tagId != null) {
+            List<Long> nodeIds = knowledgeNodeTagRelationMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeNodeTagRelation>()
+                    .eq(KnowledgeNodeTagRelation::getTagId, tagId)
+            ).stream()
+                .map(KnowledgeNodeTagRelation::getNodeId)
+                .distinct()
+                .collect(Collectors.toList());
+
+            if (nodeIds.isEmpty()) {
+                Page<KnowledgeNodeVO> emptyPage = new Page<>();
+                emptyPage.setCurrent(current);
+                emptyPage.setSize(size);
+                emptyPage.setTotal(0);
+                emptyPage.setRecords(Collections.emptyList());
+                return emptyPage;
+            }
+            wrapper.in(KnowledgeNode::getId, nodeIds);
         }
         wrapper.orderByDesc(KnowledgeNode::getCreateTime);
 
@@ -158,45 +195,6 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     /**
-     * 批量删除知识节点.
-     *
-     * @param ids          知识点ID列表
-     * @param userId       用户ID
-     * @param workspaceId  工作区ID
-     * @return 实际删除的知识点数量
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int deleteBatchByIds(List<Long> ids, Long userId, Long workspaceId) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalStateException("请选择要删除的知识点");
-        }
-
-        // 先逐个校验存在性与权限，全部通过后才执行删除，避免删了一半才报错
-        List<KnowledgeNode> nodes = new ArrayList<>(ids.size());
-        for (Long id : ids) {
-            KnowledgeNode node = knowledgeNodeMapper.selectById(id);
-            if (node == null) {
-                throw new IllegalStateException("知识点不存在，id：" + id);
-            }
-            if (!hasAccess(node, userId, workspaceId)) {
-                throw new IllegalStateException("无权删除此知识点，id：" + id);
-            }
-            nodes.add(node);
-        }
-
-        for (KnowledgeNode node : nodes) {
-            knowledgeNodeMapper.deleteById(node.getId());
-            if (elasticsearchService != null) {
-                elasticsearchService.deleteKnowledgeNode(node.getId());
-            }
-        }
-
-        log.info("批量删除知识点，userId：{}，数量：{}", userId, nodes.size());
-        return nodes.size();
-    }
-
-    /**
      * 更新知识节点重要性.
      *
      * @param id          知识节点ID
@@ -221,6 +219,57 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         knowledgeNodeMapper.updateById(updateNode);
 
         log.info("更新知识点重要性，id：{}", id);
+    }
+
+    @Override
+    public void toggleNeedReview(Long id, Integer needReview, Long userId, Long workspaceId) {
+        KnowledgeNode node = knowledgeNodeMapper.selectById(id);
+        if (node == null) {
+            throw new IllegalStateException("知识点不存在");
+        }
+        if (!hasAccess(node, userId, workspaceId)) {
+            throw new IllegalStateException("无权操作此知识点");
+        }
+
+        KnowledgeNode updateNode = new KnowledgeNode();
+        updateNode.setId(id);
+        updateNode.setNeedReview(needReview);
+
+        if (needReview != null && needReview == 1) {
+            // 纳入复习时重置掌握程度和复习计数
+            updateNode.setMasteryLevel(0);
+            updateNode.setReviewCount(0);
+            updateNode.setNextReviewTime(ebbinghausService.calculateNextReviewTime(LocalDateTime.now(), 0, true));
+            knowledgeNodeMapper.updateById(updateNode);
+
+            // 为该知识点生成初始复习卡片
+            try {
+                List<com.secondbrain.entity.ReviewCard> existingCards = reviewCardService.getReviewCardsByNodeId(id, userId, workspaceId);
+                if (existingCards == null || existingCards.isEmpty()) {
+                    reviewCardService.generateReviewCard(id, "choice", "auto", userId);
+                    reviewCardService.generateReviewCard(id, "choice", "auto", userId);
+                    log.info("纳入复习目标并生成复习卡片，nodeId={}", id);
+                }
+            } catch (Exception e) {
+                log.error("纳入复习目标时生成卡片失败，nodeId={}", id, e);
+            }
+        } else {
+            // 取消复习时清理该知识点的复习卡片
+            knowledgeNodeMapper.updateById(updateNode);
+            try {
+                List<com.secondbrain.entity.ReviewCard> cards = reviewCardService.getReviewCardsByNodeId(id, userId, workspaceId);
+                if (cards != null) {
+                    for (com.secondbrain.entity.ReviewCard card : cards) {
+                        reviewCardService.deleteReviewCard(card.getId(), userId);
+                    }
+                    log.info("取消复习目标并删除{}张复习卡片，nodeId={}", cards.size(), id);
+                }
+            } catch (Exception e) {
+                log.error("取消复习目标时清理卡片失败，nodeId={}", id, e);
+            }
+        }
+
+        log.info("切换知识点复习目标状态，id={}，needReview={}", id, needReview);
     }
 
     /**
@@ -517,6 +566,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         KnowledgeNodeVO vo = new KnowledgeNodeVO();
         BeanUtils.copyProperties(node, vo);
+        vo.setTags(knowledgeTagService.listByNode(node.getId()));
         return vo;
     }
 

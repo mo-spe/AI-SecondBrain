@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:8080/api/research/projects -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')",
+      "Bash(curl -s -X POST http://localhost:8080/api/research/projects/1/execute -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')",
+      "Bash(curl -s http://localhost:8080/api/research/projects/1 -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s 'http://localhost:8080/api/research/plans?projectId=1' -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')",
+      "Bash(curl -s 'http://localhost:8080/api/research/tasks?projectId=1' -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')",
+      "Bash(curl -s 'http://localhost:8080/api/research/steps?projectId=1' -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')",
+      "Bash(curl -s 'http://localhost:8080/api/research/memories?projectId=1' -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJ1c2VySWQiOjUsInVzZXJuYW1lIjoibmV3dXNlciIsInN1YiI6Im5ld3VzZXIiLCJpYXQiOjE3ODUyMjgzMDAsImV4cCI6MTc4NTMxNDcwMH0.t1SkzpkULnxmXDjSXyuRVC_M-Z7jRwqUiMfb0x2lTNRM_i7wkXg8ZhZbsdba-DyqEHK4G2qTrxPGQzNfe56r6Q')"
+    ]
+  }
+}

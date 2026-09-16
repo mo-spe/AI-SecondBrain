@@ -72,10 +72,12 @@ public class KnowledgeController {
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
             @Parameter(description = "重要程度") @RequestParam(required = false) Integer importance,
             @Parameter(description = "掌握程度") @RequestParam(required = false) Integer masteryLevel,
+            @Parameter(description = "标签ID") @RequestParam(required = false) Long tagId,
+            @Parameter(description = "是否纳入复习目标") @RequestParam(required = false) Integer needReview,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         Long workspaceId = getWorkspaceId(httpRequest);
-        Page<KnowledgeNodeVO> page = knowledgeService.list(current, size, keyword, userId, importance, masteryLevel, workspaceId);
+        Page<KnowledgeNodeVO> page = knowledgeService.list(current, size, keyword, userId, importance, masteryLevel, workspaceId, tagId, needReview);
         return Result.success(page);
     }
 
@@ -161,6 +163,26 @@ public class KnowledgeController {
         Long workspaceId = getWorkspaceId(httpRequest);
         knowledgeService.updateImportance(id, importance, userId, workspaceId);
         return Result.success("更新成功", null);
+    }
+
+    /**
+     * 切换知识点复习目标状态.
+     *
+     * @param id          知识点ID
+     * @param needReview  是否纳入复习目标（1=纳入，0=取消）
+     * @param httpRequest HTTP请求对象
+     * @return void
+     */
+    @PutMapping("/{id}/review-target")
+    @Operation(summary = "切换复习目标", description = "切换知识点的复习目标状态（纳入或取消复习）")
+    public Result<Void> toggleNeedReview(
+            @PathVariable Long id,
+            @RequestParam Integer needReview,
+            HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(httpRequest);
+        knowledgeService.toggleNeedReview(id, needReview, userId, workspaceId);
+        return Result.success("操作成功", null);
     }
 
     /**

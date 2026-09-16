@@ -4,7 +4,7 @@
       <aside class="sidebar-panel">
         <div class="user-profile-card">
           <div class="profile-header">
-            <el-icon size="20" color="#f59e0b"><Trophy /></el-icon>
+            <el-icon size="20" color="var(--color-accent)"><Trophy /></el-icon>
             <span class="welcome-text">こんにちは, {{ userStore.userInfo.username }}</span>
             <p class="welcome-subtitle">欢迎回到 AI-SecondBrain</p>
           </div>
@@ -15,27 +15,27 @@
           </div>
           <div class="user-info-list">
             <div class="info-item">
-              <el-icon size="14" color="#7c3aed"><Key /></el-icon>
+              <el-icon size="14" color="var(--color-primary)"><Key /></el-icon>
               <span class="info-label">用户ID</span>
               <span class="info-value">{{ userStore.userInfo.id }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#3b82f6"><Message /></el-icon>
+              <el-icon size="14" color="var(--color-info)"><Message /></el-icon>
               <span class="info-label">邮箱</span>
               <span class="info-value">{{ userStore.userInfo.email }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#10b981"><Phone /></el-icon>
+              <el-icon size="14" color="var(--color-success)"><Phone /></el-icon>
               <span class="info-label">手机号</span>
               <span class="info-value">{{ userStore.userInfo.phone }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#8b5cf6"><Calendar /></el-icon>
+              <el-icon size="14" color="var(--color-primary-light)"><Calendar /></el-icon>
               <span class="info-label">注册时间</span>
               <span class="info-value">{{ formatDate(userStore.userInfo.registerTime) }}</span>
             </div>
             <div class="info-item">
-              <el-icon size="14" color="#06b6d4"><Clock /></el-icon>
+              <el-icon size="14" color="var(--color-accent-light)"><Clock /></el-icon>
               <span class="info-label">最后登录</span>
               <span class="info-value">{{ formatDate(userStore.userInfo.lastLoginTime) }}</span>
             </div>
@@ -53,7 +53,7 @@
       <main class="main-panel">
         <div class="learning-overview-section">
           <div class="section-header">
-            <el-icon size="20" color="#7c3aed"><Document /></el-icon>
+            <el-icon size="20" color="var(--color-primary)"><Document /></el-icon>
             <span class="section-title">学习概览</span>
             <el-select v-model="timeRange" class="time-select" size="small">
               <el-option label="本周" value="week" />
@@ -64,7 +64,7 @@
           <div class="overview-grid">
             <div class="overview-card review">
               <div class="card-icon">
-                <el-icon size="24" color="#7c3aed"><DocumentCopy /></el-icon>
+                <el-icon size="24" color="var(--color-primary)"><DocumentCopy /></el-icon>
               </div>
               <div class="card-value">{{ statistics.pendingReviewCount }}</div>
               <div class="card-label">待复习</div>
@@ -72,7 +72,7 @@
             </div>
             <div class="overview-card completed">
               <div class="card-icon">
-                <el-icon size="24" color="#22c55e"><CircleCheck /></el-icon>
+                <el-icon size="24" color="var(--color-success)"><CircleCheck /></el-icon>
               </div>
               <div class="card-value">{{ statistics.completedReviewCount }}</div>
               <div class="card-label">已完成</div>
@@ -80,14 +80,14 @@
             </div>
             <div class="overview-card accuracy">
               <div class="card-icon">
-                <el-icon size="24" color="#f97316"><Aim /></el-icon>
+                <el-icon size="24" color="var(--color-accent)"><Aim /></el-icon>
               </div>
               <div class="card-value">{{ accuracy }}%</div>
               <div class="card-label">正确率</div>
             </div>
             <div class="overview-card streak">
               <div class="card-icon">
-                <el-icon size="24" color="#3b82f6"><Medal /></el-icon>
+                <el-icon size="24" color="var(--color-info)"><Medal /></el-icon>
               </div>
               <div class="card-value">{{ streakDays }}</div>
               <div class="card-label">连续天数</div>
@@ -98,37 +98,37 @@
 
         <div class="quick-actions-section">
           <div class="section-header">
-            <el-icon size="20" color="#7c3aed"><Lightning /></el-icon>
+            <el-icon size="20" color="var(--color-primary)"><Lightning /></el-icon>
             <span class="section-title">快捷操作</span>
           </div>
           <div class="actions-grid">
             <div class="action-card purple" @click="router.push('/review')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><Document /></el-icon>
+                <el-icon size="28" color="var(--color-primary)"><Document /></el-icon>
               </div>
               <div class="action-title">开始复习</div>
               <div class="action-desc">智能安排复习计划</div>
             </div>
             <div class="action-card blue" @click="router.push('/chat')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><Plus /></el-icon>
+                <el-icon size="28" color="var(--color-info)"><Plus /></el-icon>
               </div>
               <div class="action-title">生成复习卡片</div>
               <div class="action-desc">AI 智能生成卡片</div>
             </div>
             <div class="action-card green" @click="router.push('/knowledge')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><Grid /></el-icon>
+                <el-icon size="28" color="var(--color-success)"><Grid /></el-icon>
               </div>
               <div class="action-title">知识点管理</div>
               <div class="action-desc">构建知识体系</div>
             </div>
-            <div class="action-card orange" @click="router.push('/report')">
+            <div class="action-card brass" @click="router.push('/square')">
               <div class="action-icon">
-                <el-icon size="32" color="white"><TrendCharts /></el-icon>
+                <el-icon size="28" color="#B8723A"><Platform /></el-icon>
               </div>
-              <div class="action-title">学习统计</div>
-              <div class="action-desc">查看学习数据</div>
+              <div class="action-title">知识广场</div>
+              <div class="action-desc">发现优质知识</div>
             </div>
           </div>
         </div>
@@ -136,9 +136,9 @@
         <div class="bottom-section">
           <div class="review-center-card">
             <div class="card-header">
-              <el-icon size="18" color="#7c3aed"><Clock /></el-icon>
+              <el-icon size="18" color="var(--color-primary)"><Clock /></el-icon>
               <span class="card-title">复习中心</span>
-              <button class="view-all-btn">查看全部</button>
+              <button class="view-all-btn" @click="router.push('/review')">查看全部</button>
             </div>
             <div class="review-progress">
               <div class="progress-info">
@@ -157,7 +157,7 @@
                     cy="50"
                     r="42"
                     fill="none"
-                    stroke="#e2e8f0"
+                    stroke="var(--border-lighter)"
                     stroke-width="8"
                   />
                   <circle
@@ -165,9 +165,9 @@
                     cy="50"
                     r="42"
                     fill="none"
-                    stroke="#7c3aed"
+                    stroke="var(--color-primary)"
                     stroke-width="8"
-                    stroke-linecap="round"
+                    :stroke-linecap="reviewProgressPercent >= 99.9 || reviewProgressPercent <= 0.1 ? 'butt' : 'round'"
                     :stroke-dasharray="264"
                     :stroke-dashoffset="264 * (1 - reviewProgressPercent / 100)"
                     transform="rotate(-90 50 50)"
@@ -178,12 +178,27 @@
             </div>
             <div class="review-stats">
               <div class="review-stat-item">
-                <el-icon size="14" color="#7c3aed"><DocumentCopy /></el-icon>
+                <el-icon size="14" color="var(--color-primary)"><DocumentCopy /></el-icon>
                 <span class="stat-label">待复习卡片</span>
-                <span class="stat-value">{{ statistics.pendingReviewCount }} 个</span>
+                <span class="stat-value">{{ reviewOverview.pendingCount }} 个</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="var(--color-success)"><CircleCheck /></el-icon>
+                <span class="stat-label">已复习</span>
+                <span class="stat-value">{{ reviewOverview.completedCount }} 个</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="var(--color-accent)"><TrendCharts /></el-icon>
+                <span class="stat-label">正确率</span>
+                <span class="stat-value">{{ reviewOverview.accuracy }}%</span>
+              </div>
+              <div class="review-stat-item">
+                <el-icon size="14" color="var(--color-warning)"><Medal /></el-icon>
+                <span class="stat-label">连续天数</span>
+                <span class="stat-value">{{ reviewOverview.streakDays }} 天</span>
               </div>
             </div>
-            <button class="start-review-btn">
+            <button class="start-review-btn" @click="router.push('/review')">
               <el-icon size="16"><VideoPlay /></el-icon>
               <span>开始复习</span>
             </button>
@@ -191,7 +206,7 @@
 
           <div class="knowledge-management-card">
             <div class="card-header">
-              <el-icon size="18" color="#7c3aed"><Trophy /></el-icon>
+              <el-icon size="18" color="var(--color-primary)"><Trophy /></el-icon>
               <span class="card-title">知识管理</span>
               <button class="view-all-btn" @click="router.push('/knowledge')">查看全部</button>
             </div>
@@ -266,6 +281,14 @@ const userAvatar = computed(() => {
   return userStore.userInfo.avatar || "";
 });
 
+// 复习概览数据（从 /review/overview 接口获取）
+const reviewOverview = ref({
+  pendingCount: 0,
+  completedCount: 0,
+  accuracy: 0,
+  streakDays: 0,
+});
+
 const reviewProgressPercent = computed(() => {
   if (todayTotal.value === 0) return 0;
   return Math.round((todayCompleted.value / todayTotal.value) * 100);
@@ -307,10 +330,27 @@ const loadTodayCards = async () => {
   }
 };
 
+const loadReviewOverview = async () => {
+  try {
+    const data = await reviewAPI.getOverview();
+    if (data) {
+      reviewOverview.value = {
+        pendingCount: data.todayPending ?? 0,
+        completedCount: data.todayCompleted ?? 0,
+        accuracy: data.totalAccuracy ?? 0,
+        streakDays: data.streakDays ?? 0,
+      };
+    }
+  } catch (error) {
+    console.error("加载复习概览失败:", error);
+  }
+};
+
 onMounted(() => {
   loadStatistics();
   loadAccuracyAndStreak();
   loadTodayCards();
+  loadReviewOverview();
 });
 </script>
 
@@ -432,7 +472,8 @@ onMounted(() => {
 }
 
 .section-title {
-  font-size: var(--font-size-lg);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
@@ -444,48 +485,66 @@ onMounted(() => {
 
 .learning-overview-section {
   background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
 }
 
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
 }
 
 .overview-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
   padding: var(--spacing-lg);
   background: var(--bg-page);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
 }
 
+.overview-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.overview-card.review::before  { background: var(--color-primary); }
+.overview-card.completed::before { background: var(--color-success); }
+.overview-card.accuracy::before  { background: var(--color-accent); }
+.overview-card.streak::before    { background: var(--color-info); }
+
 .card-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  opacity: 0.7;
 }
 
 .card-value {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
-  margin-bottom: 2px;
+  line-height: 1.1;
 }
 
 .card-label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--text-regular);
+  margin-top: 2px;
 }
 
 .card-sub {
@@ -495,15 +554,15 @@ onMounted(() => {
 
 .quick-actions-section {
   background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
 }
 
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
 }
 
 .action-card {
@@ -511,53 +570,44 @@ onMounted(() => {
   flex-direction: column;
   align-items: flex-start;
   padding: var(--spacing-lg);
-  border-radius: var(--radius-lg);
+  background: var(--bg-page);
+  border: 1px solid var(--border-lighter);
+  border-left: 3px solid;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   cursor: pointer;
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  transition: transform var(--transition-fast), border-color var(--transition-base), background var(--transition-base);
 }
 
 .action-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--border-base);
+  background: var(--bg-hover);
 }
 
-.action-card.purple {
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-}
-
-.action-card.blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-}
-
-.action-card.green {
-  background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);
-}
-
-.action-card.orange {
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-}
+.action-card.purple { border-left-color: var(--color-primary); }
+.action-card.blue   { border-left-color: var(--color-info); }
+.action-card.green  { border-left-color: var(--color-success); }
+.action-card.brass  { border-left-color: var(--color-accent); }
 
 .action-icon {
-  width: 56px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .action-title {
-  font-size: var(--font-size-base);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
-  color: white;
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .action-desc {
   font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
 }
 
 .bottom-section {
@@ -569,9 +619,9 @@ onMounted(() => {
 .review-center-card,
 .knowledge-management-card {
   background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
 }
@@ -580,11 +630,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-lighter);
 }
 
 .card-title {
-  font-size: var(--font-size-base);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }

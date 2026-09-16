@@ -71,6 +71,14 @@ export const knowledgeAPI = {
     });
   },
 
+  toggleNeedReview(id, needReview) {
+    return request({
+      url: `/knowledge/${id}/review-target`,
+      method: "put",
+      params: { needReview },
+    });
+  },
+
   createKnowledge(data) {
     return request({
       url: "/knowledge",

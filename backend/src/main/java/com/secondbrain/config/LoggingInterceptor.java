@@ -3,6 +3,7 @@ package com.secondbrain.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
@@ -11,6 +12,7 @@ import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /** HTTP请求日志拦截器. <p>拦截RestTemplate发出的HTTP请求并记录日志</p> */
 @Component
@@ -29,6 +31,16 @@ public class LoggingInterceptor implements ClientHttpRequestInterceptor {
      */
     @Override
     public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
+        // SSE 流式请求直接透传，不能缓冲响应体
+        List<MediaType> acceptHeaders = request.getHeaders().getAccept();
+        boolean isSseRequest = acceptHeaders != null && acceptHeaders.stream()
+                .anyMatch(mt -> mt.toString().contains("text/event-stream"));
+
+        if (isSseRequest) {
+            log.info("SSE请求：{} {}，跳过响应体缓冲", request.getMethod(), request.getURI());
+            return execution.execute(request, body);
+        }
+
         log.info("========== HTTP请求拦截开始 ==========");
         log.info("发送HTTP请求：{} {}", request.getMethod(), request.getURI());
         log.info("请求头：{}", request.getHeaders());

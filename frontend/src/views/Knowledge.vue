@@ -78,15 +78,27 @@
         >
           <div class="pending-card-header">
             <span class="pending-card-index">知识点 {{ index + 1 }}</span>
-            <el-button
-              type="danger"
-              link
-              size="small"
-              @click="removePendingItem(index)"
-            >
-              <el-icon size="14"><Delete /></el-icon>
-              <span>删除</span>
-            </el-button>
+            <div class="pending-card-actions">
+              <el-button
+                type="success"
+                link
+                size="small"
+                :disabled="!item.title || !item.title.trim()"
+                @click="confirmSinglePending(index)"
+              >
+                <el-icon size="14"><Check /></el-icon>
+                <span>入库</span>
+              </el-button>
+              <el-button
+                type="danger"
+                link
+                size="small"
+                @click="removePendingItem(index)"
+              >
+                <el-icon size="14"><Delete /></el-icon>
+                <span>删除</span>
+              </el-button>
+            </div>
           </div>
           <div class="pending-card-body">
             <div class="pending-field">
@@ -120,6 +132,10 @@
                 show-word-limit
               />
             </div>
+            <TagSuggest
+              :title="item.title"
+              :summary="item.summary"
+            />
           </div>
         </div>
 
@@ -164,14 +180,14 @@
         </button>
       </div>
       <el-select
-        v-model="filterSystem"
-        placeholder="全部体系"
+        v-model="selectedTagId"
+        placeholder="全部标签"
         size="default"
         clearable
         @change="handleSearch"
       >
-        <el-option label="全部体系" value="" />
-        <el-option v-for="system in knowledgeSystems" :key="system.id" :label="system.name" :value="system.id" />
+        <el-option label="全部标签" value="" />
+        <el-option v-for="tag in tagTree" :key="tag.id" :label="tag.tagName" :value="tag.id" />
       </el-select>
       <el-select
         v-model="filterImportance"
@@ -203,15 +219,15 @@
         <el-option label="未掌握" :value="0" />
       </el-select>
       <el-select
-        v-model="filterTag"
-        placeholder="全部标签"
+        v-model="filterReviewTarget"
+        placeholder="复习目标"
         size="default"
         clearable
         @change="handleSearch"
       >
-        <el-option label="全部标签" value="" />
-        <el-option label="待复习" value="review" />
-        <el-option label="已掌握" value="mastered" />
+        <el-option label="全部" value="" />
+        <el-option label="复习目标" :value="1" />
+        <el-option label="非复习目标" :value="0" />
       </el-select>
       <el-button type="default" size="default" @click="handleAdvancedFilter">
         <el-icon><Filter /></el-icon>
@@ -240,12 +256,22 @@
           <div class="stat-change">占比 {{ statistics.highImportanceRatio || 0 }}%</div>
         </div>
       </div>
+      <div class="stat-card cyan">
+        <div class="stat-icon">
+          <el-icon size="24"><MagicStick /></el-icon>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">纳入复习</div>
+          <div class="stat-value">{{ statistics.inReview || 0 }}</div>
+          <div class="stat-change">占比 {{ statistics.inReviewRatio || 0 }}%</div>
+        </div>
+      </div>
       <div class="stat-card green">
         <div class="stat-icon">
           <el-icon size="24"><CircleCheck /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-label">已掌握知识点</div>
+          <div class="stat-label">已掌握</div>
           <div class="stat-value">{{ statistics.mastered || 0 }}</div>
           <div class="stat-change">占比 {{ statistics.masteredRatio || 0 }}%</div>
         </div>
@@ -255,19 +281,9 @@
           <el-icon size="24"><Cherry /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-label">待复习知识点</div>
+          <div class="stat-label">待复习</div>
           <div class="stat-value">{{ statistics.toReview || 0 }}</div>
-          <div class="stat-change">较昨日 <span class="increase">↑{{ statistics.toReviewIncrease || 0 }}</span></div>
-        </div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-icon">
-          <el-icon size="24"><Frown /></el-icon>
-        </div>
-        <div class="stat-info">
-          <div class="stat-label">未掌握知识点</div>
-          <div class="stat-value">{{ statistics.notMastered || 0 }}</div>
-          <div class="stat-change">占比 {{ statistics.notMasteredRatio || 0 }}%</div>
+          <div class="stat-change">复习目标中 {{ statistics.reviewPending || 0 }}</div>
         </div>
       </div>
     </div>
@@ -275,27 +291,74 @@
     <div class="main-content">
       <aside class="system-sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">知识体系</span>
-          <button class="sidebar-add" @click="handleAddSystem">
+          <span class="sidebar-title">知识标签</span>
+          <button class="sidebar-add" @click="handleCreateTag">
             <el-icon size="14"><Plus /></el-icon>
           </button>
         </div>
         <div class="system-list">
           <div
-            v-for="system in knowledgeSystems"
-            :key="system.id"
             class="system-item"
-            :class="{ active: selectedSystem === system.id }"
-            @click="selectSystem(system.id)"
+            :class="{ active: selectedTagId === '' }"
+            @click="selectTag('')"
           >
-            <el-icon :size="14" :color="system.color">{{ system.icon }}</el-icon>
-            <span class="system-name">{{ getSystemDisplayName(system) }}</span>
-            <span class="system-count">{{ system.count || 0 }}</span>
+            <span class="system-name">全部知识</span>
+            <span class="system-count">{{ pagination.total || 0 }}</span>
+          </div>
+          <div
+            v-for="tag in flatTagList"
+            :key="tag.id"
+            class="system-item"
+            :class="{ active: selectedTagId === tag.id }"
+            :style="{ paddingLeft: (12 + tag._depth * 16) + 'px' }"
+            @click="selectTag(tag.id)"
+            @contextmenu.prevent="handleTagContextMenu($event, tag)"
+          >
+            <span
+              v-if="tag._hasChildren"
+              class="tag-expand-btn"
+              @click.stop="toggleTagExpand(tag.id)"
+            >
+              <el-icon size="10"><component :is="tag._isExpanded ? ArrowDown : ArrowRight" /></el-icon>
+            </span>
+            <span v-else class="tag-expand-spacer"></span>
+            <span
+              class="tag-color-dot"
+              :style="{ background: tag.tagColor || '#6366f1' }"
+            ></span>
+            <span class="system-name">{{ tag.tagName }}</span>
+            <span class="system-count">{{ tag.nodeCount || 0 }}</span>
+          </div>
+          <div v-if="tagTree.length === 0" class="tag-empty">
+            <p class="tag-empty-text">暂无标签</p>
+            <p class="tag-empty-hint">点击下方按钮创建标签来分类你的知识</p>
           </div>
         </div>
-        <button class="add-system-btn" @click="handleAddSystem">
+
+        <!-- 右键菜单 -->
+        <div
+          v-if="editingTag"
+          class="tag-context-menu"
+          :style="{ position: 'fixed', left: contextMenuPosition.x, top: contextMenuPosition.y }"
+          @click.stop
+        >
+          <div class="context-menu-item" @click="handleEditTag(editingTag)">
+            <el-icon size="13"><Edit /></el-icon>
+            编辑标签
+          </div>
+          <div class="context-menu-item danger" @click="handleDeleteTag(editingTag)">
+            <el-icon size="13"><Delete /></el-icon>
+            删除标签
+          </div>
+          <div class="context-menu-item" @click="editingTag = null">
+            <el-icon size="13"><Close /></el-icon>
+            取消
+          </div>
+        </div>
+
+        <button class="add-system-btn" @click="handleCreateTag">
           <el-icon size="14"><Plus /></el-icon>
-          <span>新建体系</span>
+          <span>新建标签</span>
         </button>
       </aside>
 
@@ -303,10 +366,10 @@
         <div class="content-header">
           <span class="content-title">知识点列表</span>
           <div class="content-actions">
-            <el-button type="text" size="small" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+            <el-button link size="small" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
               <el-icon size="16"><Grid /></el-icon>
             </el-button>
-            <el-button type="text" size="small" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
+            <el-button link size="small" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
               <el-icon size="16"><List /></el-icon>
             </el-button>
             <el-select
@@ -328,7 +391,7 @@
             v-for="knowledge in knowledgeList"
             :key="knowledge.id"
             class="knowledge-card"
-            @click="viewDetail(knowledge)"
+            @click="$router.push('/knowledge/' + knowledge.id)"
           >
             <div class="card-checkbox">
               <el-checkbox
@@ -338,9 +401,6 @@
               />
             </div>
             <div class="card-header">
-              <el-tag :type="getSystemTagType(knowledge.systemId)" size="small" effect="light">
-                {{ getSystemName(knowledge.systemId) }}
-              </el-tag>
               <span @click.stop>
                 <el-dropdown trigger="click" @command="(cmd) => handleCardCommand(cmd, knowledge)">
                   <button class="card-menu">
@@ -348,9 +408,21 @@
                   </button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item command="generate">
+                      <el-dropdown-item
+                        v-if="knowledge.needReview !== 1"
+                        command="toggleOn"
+                        style="color: var(--el-color-primary); font-weight: var(--font-weight-semibold)"
+                      >
                         <el-icon><MagicStick /></el-icon>
-                        生成复习卡片
+                        纳入复习计划
+                      </el-dropdown-item>
+                      <el-dropdown-item
+                        v-else
+                        command="toggleOff"
+                        style="color: var(--el-color-danger); font-weight: var(--font-weight-semibold)"
+                      >
+                        <el-icon><CircleClose /></el-icon>
+                        取消复习目标
                       </el-dropdown-item>
                       <el-dropdown-item command="delete" divided>
                         <el-icon><Delete /></el-icon>
@@ -380,16 +452,30 @@
                 <el-icon size="12"><Timer /></el-icon>
                 <span :class="['difficulty', knowledge.difficulty]">{{ knowledge.difficulty === 'difficult' ? '困难' : '中等' }}</span>
               </div>
-              <div class="meta-item" v-if="knowledge.status === 'review'">
-                <el-icon size="12"><Clock /></el-icon>
-                <span class="status review">待复习</span>
+              <div class="meta-item" v-if="knowledge.needReview === 0 || knowledge.needReview === undefined">
+                <el-icon size="12"><Finished /></el-icon>
+                <span class="status neutral">非复习目标</span>
               </div>
-              <div class="meta-item" v-else>
+              <div class="meta-item" v-else-if="knowledge.masteryLevel >= 4">
                 <el-icon size="12"><CircleCheck /></el-icon>
                 <span class="status mastered">已掌握</span>
               </div>
+              <div class="meta-item" v-else>
+                <el-icon size="12"><Clock /></el-icon>
+                <span class="status review">待复习</span>
+              </div>
             </div>
-            <div class="card-progress">
+            <div class="card-tags">
+              <TagChips
+                :tags="knowledge.tags || []"
+                :editable="true"
+                :node-id="knowledge.id"
+                :available-tags="allFlatTags"
+                @add="loadKnowledgeList"
+                @remove="loadKnowledgeList"
+              />
+            </div>
+            <div class="card-progress" v-if="knowledge.needReview === 1">
               <div class="progress-info">
                 <span class="progress-label">掌握进度</span>
                 <span class="progress-value">{{ getMasteryPercentage(knowledge.masteryLevel) }}%</span>
@@ -401,10 +487,34 @@
                 :text-inside="false"
               />
             </div>
+            <div class="card-no-review" v-else>
+              <el-divider content-position="center">未纳入复习计划</el-divider>
+            </div>
             <div class="card-footer">
               <span class="creator">newuser 创建于 {{ formatDate(knowledge.createTime) }}</span>
-              <el-button type="primary" size="small" text @click.stop="handleGenerateCard(knowledge)">
+              <el-button
+                v-if="knowledge.needReview !== 1"
+                class="review-btn review-btn--add"
+                type="primary"
+                size="small"
+                round
+                :loading="knowledge._toggleLoading"
+                @click.stop="handleToggleReviewTarget(knowledge, 1)"
+              >
+                <el-icon style="margin-right: 4px"><Clock /></el-icon>
                 纳入复习
+              </el-button>
+              <el-button
+                v-else
+                class="review-btn review-btn--remove"
+                type="danger"
+                size="small"
+                round
+                :loading="knowledge._toggleLoading"
+                @click.stop="handleToggleReviewTarget(knowledge, 0)"
+              >
+                <el-icon style="margin-right: 4px"><CircleClose /></el-icon>
+                取消复习
               </el-button>
             </div>
           </div>
@@ -431,215 +541,11 @@
       </main>
     </div>
 
-    <el-dialog
-      v-model="showDetailDialog"
-      title="知识点详情"
-      width="900px"
-      class="detail-dialog"
-    >
-      <div v-if="currentKnowledge" class="detail-content">
-        <div class="detail-header">
-          <div class="detail-title">{{ currentKnowledge.title }}</div>
-          <div class="detail-time">
-            <el-icon><Clock /></el-icon>
-            <span>{{ formatDate(currentKnowledge.createTime) }}</span>
-          </div>
-        </div>
-        <div class="detail-body">
-          <div class="detail-section">
-            <h4><el-icon><Star /></el-icon>重要程度</h4>
-            <el-rate
-              v-model="currentKnowledge.importance"
-              disabled
-              show-score
-              text-color="#ff9900"
-              :max="5"
-              size="large"
-            />
-          </div>
-          <div class="detail-section">
-            <h4><el-icon><Medal /></el-icon>掌握程度</h4>
-            <el-progress
-              :percentage="getMasteryPercentage(currentKnowledge.masteryLevel)"
-              :color="getMasteryColor(currentKnowledge.masteryLevel)"
-              :stroke-width="20"
-            />
-          </div>
-          <div class="detail-section">
-            <h4><el-icon><Document /></el-icon>复习信息</h4>
-            <div class="review-info">
-              <div class="info-item">
-                <span class="info-label">复习次数：</span>
-                <span class="info-value">{{ currentKnowledge.reviewCount }}次</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">下次复习：</span>
-                <span class="info-value">{{ formatDate(currentKnowledge.nextReviewTime) }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="detail-section">
-            <h4><el-icon><ChatDotRound /></el-icon>摘要</h4>
-            <div class="detail-text">{{ currentKnowledge.summary }}</div>
-          </div>
-          <div class="detail-section" v-if="currentKnowledge.contentMd">
-            <h4><el-icon><Document /></el-icon>内容</h4>
-            <div class="detail-text">{{ currentKnowledge.contentMd }}</div>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showDetailDialog = false" size="large">
-            <el-icon><Close /></el-icon>关闭
-          </el-button>
-          <el-button @click="showVersionHistory = true" size="large">
-            <el-icon><Clock /></el-icon>版本历史
-          </el-button>
-          <el-button @click="openShareDialog" size="large">
-            <el-icon><Share /></el-icon>分享
-          </el-button>
-          <el-button type="primary" @click="editKnowledge(currentKnowledge)" size="large">
-            <el-icon><Edit /></el-icon>编辑
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showEditDialog"
-      :title="editForm.id ? '编辑知识点' : '添加知识点'"
-      width="900px"
-      class="edit-dialog"
-      @closed="onEditDialogClosed"
-    >
-      <el-form
-        :model="editForm"
-        :rules="editRules"
-        ref="editFormRef"
-        label-width="100px"
-      >
-        <el-form-item label="标题" prop="title">
-          <el-input
-            v-model="editForm.title"
-            placeholder="请输入标题"
-            maxlength="200"
-            show-word-limit
-            size="large"
-          />
-        </el-form-item>
-        <el-form-item label="知识体系" prop="systemId">
-          <el-select v-model="editForm.systemId" placeholder="请选择知识体系" size="large">
-            <el-option v-for="system in knowledgeSystems" :key="system.id" :label="system.name" :value="system.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="摘要" prop="summary">
-          <el-input
-            v-model="editForm.summary"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入摘要"
-            maxlength="500"
-            show-word-limit
-            size="large"
-          />
-        </el-form-item>
-        <el-form-item label="内容" prop="contentMd">
-          <el-input
-            v-model="editForm.contentMd"
-            type="textarea"
-            :rows="10"
-            placeholder="请输入内容，支持Markdown格式..."
-            maxlength="10000"
-            show-word-limit
-            size="large"
-          />
-        </el-form-item>
-        <el-form-item label="重要程度" prop="importance">
-          <el-rate
-            v-model="editForm.importance"
-            show-score
-            text-color="#ff9900"
-            :max="5"
-            size="large"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showEditDialog = false" size="large">
-            <el-icon><Close /></el-icon>取消
-          </el-button>
-          <el-button type="primary" @click="handleSave" :loading="saveLoading" size="large">
-            <el-icon><Check /></el-icon>保存
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showShareDialog"
-      title="分享知识节点"
-      width="500px"
-      :close-on-click-modal="false"
-      @opened="onShareDialogOpened"
-    >
-      <div v-if="!shareLink" class="share-create">
-        <el-form label-width="100px">
-          <el-form-item label="有效期">
-            <el-radio-group v-model="shareForm.expireType">
-              <el-radio value="permanent">永久有效</el-radio>
-              <el-radio value="7d">7天</el-radio>
-              <el-radio value="24h">24小时</el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-        <div class="share-actions">
-          <el-button type="primary" @click="handleCreateShare" :loading="shareLoading">
-            生成分享链接
-          </el-button>
-        </div>
-      </div>
-      <div v-else class="share-result">
-        <p class="share-result-label">分享链接已生成：</p>
-        <div class="share-url-box">
-          <input
-            class="share-url-input"
-            :value="shareLink"
-            readonly
-            ref="shareUrlInput"
-            @focus="$event.target.select()"
-          />
-          <el-button type="primary" size="small" @click="copyShareLink">
-            复制
-          </el-button>
-        </div>
-        <el-button @click="shareLink = ''" style="margin-top: 12px">重新生成</el-button>
-      </div>
-
-      <div v-if="myShares.length > 0" class="share-history">
-        <p class="share-history-title">历史分享记录</p>
-        <div v-for="s in myShares" :key="s.id" class="share-record">
-          <div class="share-record-info">
-            <span class="share-record-type">{{ expireLabel(s.expireType) }}</span>
-            <span class="share-record-count">{{ s.accessCount }} 次访问</span>
-            <span class="share-record-time">{{ formatDate(s.createdAt) }}</span>
-          </div>
-          <el-button size="small" type="danger" @click="handleRevokeShare(s.id)">
-            撤销
-          </el-button>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="showShareDialog = false">关闭</el-button>
-      </template>
-    </el-dialog>
-
-    <VersionHistory
-      v-model="showVersionHistory"
-      :node-id="currentKnowledge?.id"
-      :can-rollback="true"
-      @rollback-success="onRollbackSuccess"
+    <TagCreateDialog
+      v-model="showTagDialog"
+      :tag="editingTag"
+      :available-tags="tagTree"
+      @saved="handleTagSaved"
     />
 
     </template>
@@ -647,13 +553,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { knowledgeAPI } from "@/api/knowledge";
 import { reviewAPI } from "@/api/review";
-import { collaborationAPI } from "@/api/collaboration";
-import VersionHistory from "@/components/VersionHistory.vue";
+import { tagsAPI } from "@/api/tags";
+import TagCreateDialog from "@/components/TagCreateDialog.vue";
+import TagChips from "@/components/TagChips.vue";
+import TagSuggest from "@/components/TagSuggest.vue";
 import {
   Plus,
   Search,
@@ -671,115 +579,53 @@ import {
   Close,
   Check,
   Edit,
-  Medal,
-  ChatDotRound,
-  Document,
-  DocumentCopy,
-  MapLocation,
-  Monitor,
-  DataBoard,
-  Brush,
-  Notebook,
-  Folder,
-  Share,
+  WarningFilled,
   EditPen,
   Delete,
   MagicStick,
+  ArrowRight,
+  Finished,
+  CircleClose,
 } from "@element-plus/icons-vue";
 
 const router = useRouter();
 
 const loading = ref(false);
-const saveLoading = ref(false);
 const selectedKnowledgeIds = ref([]);
 const searchKeyword = ref("");
-const filterSystem = ref("");
 const filterImportance = ref("");
 const filterMastery = ref("");
-const filterTag = ref("");
-const selectedSystem = ref("");
+const filterReviewTarget = ref("");
+const selectedTagId = ref("");
 const viewMode = ref("grid");
 const sortBy = ref("newest");
-const activeTab = ref("all"); // 'all' | 'pending'
-const showDetailDialog = ref(false);
-const showEditDialog = ref(false);
-const showVersionHistory = ref(false);
+const activeTab = ref("all");
 
 const knowledgeList = ref([]);
-const currentKnowledge = ref(null);
-const editFormRef = ref(null);
 
-// 编辑锁相关
-const editingNodeId = ref(null);
-const lockRenewTimer = ref(null);
-const lockStatusMap = ref({});
-
-// 分享相关
-const showShareDialog = ref(false);
+const tagTree = ref([]);
+const expandedTags = ref(new Set());
+const showTagDialog = ref(false);
+const editingTag = ref(null);
 
 // 待确认知识点
 const pendingItems = ref([]);
 const pendingCount = ref(0);
 const pendingGenerateCards = ref(false);
-const shareForm = ref({ expireType: "permanent" });
-const shareLink = ref("");
-const shareLoading = ref(false);
-const myShares = ref([]);
 
-const knowledgeSystems = ref([]);
-
-const systemIcons = {
-  "全部知识": Grid,
-  "Java 核心技术": Notebook,
-  "Spring Boot": Document,
-  "数据结构与算法": Folder,
-  "计算机网络": MapLocation,
-  "操作系统": Monitor,
-  "数据库系统": DataBoard,
-  "前端开发": Brush,
+const selectTag = (tagId) => {
+  selectedTagId.value = tagId;
+  pagination.value.current = 1;
+  loadKnowledgeList();
 };
 
-const systemColors = {
-  "全部知识": "#7c3aed",
-  "Java 核心技术": "#7c3aed",
-  "Spring Boot": "#22c55e",
-  "数据结构与算法": "#f97316",
-  "计算机网络": "#3b82f6",
-  "操作系统": "#2563eb",
-  "数据库系统": "#ef4444",
-  "前端开发": "#ec4899",
-};
-
-const loadKnowledgeSystems = async () => {
+const loadTagTree = async () => {
   try {
-    const data = await knowledgeAPI.getList({ size: 1000 });
-    const systems = new Map();
-    (data.records || []).forEach((item) => {
-      const systemName = item.systemName || item._name || "未知";
-      const systemId = item.systemId || item._id || "";
-      systems.set(systemId, {
-        id: systemId,
-        name: systemName,
-        count: (systems.get(systemId)?.count || 0) + 1,
-        color: systemColors[systemName] || "#7c3aed",
-        icon: systemIcons[systemName] || Grid,
-      });
-    });
-    knowledgeSystems.value = [
-      { id: "", name: "全部知识", count: data.total || 0, color: "#7c3aed", icon: Grid },
-      ...Array.from(systems.values()),
-    ];
+    const data = await tagsAPI.getTree();
+    tagTree.value = Array.isArray(data) ? data : [];
   } catch (error) {
-    knowledgeSystems.value = [
-      { id: "", name: "全部知识", count: 253, color: "#7c3aed", icon: Grid },
-      { id: "java", name: "Java 核心技术", count: 85, color: "#7c3aed", icon: Notebook },
-      { id: "spring", name: "Spring Boot", count: 67, color: "#22c55e", icon: Document },
-      { id: "algorithm", name: "数据结构与算法", count: 48, color: "#f97316", icon: Folder },
-      { id: "network", name: "计算机网络", count: 32, color: "#3b82f6", icon: MapLocation },
-      { id: "os", name: "操作系统", count: 28, color: "#2563eb", icon: Monitor },
-      { id: "database", name: "数据库系统", count: 39, color: "#ef4444", icon: DataBoard },
-      { id: "frontend", name: "前端开发", count: 21, color: "#ec4899", icon: Brush },
-    ];
+    console.warn("加载标签树失败", error);
+    tagTree.value = [];
   }
 };
 
@@ -787,28 +633,14 @@ const statistics = ref({
   total: 253,
   highImportance: 68,
   highImportanceRatio: 26.9,
-  mastered: 102,
-  masteredRatio: 40.3,
-  toReview: 36,
-  toReviewIncrease: 8,
-  notMastered: 115,
-  notMasteredRatio: 45.5,
+  inReview: 42,
+  inReviewRatio: 16.6,
+  mastered: 28,
+  masteredRatio: 11.1,
+  toReview: 14,
+  reviewPending: 28,
   increase: 12,
 });
-
-const editForm = ref({
-  id: null,
-  title: "",
-  systemId: "",
-  summary: "",
-  contentMd: "",
-  importance: 3,
-});
-
-const editRules = {
-  title: [{ required: true, message: "请输入标题", trigger: "blur" }],
-  summary: [{ required: true, message: "请输入摘要", trigger: "blur" }],
-};
 
 const pagination = ref({
   current: 1,
@@ -832,15 +664,17 @@ const loadKnowledgeList = async () => {
     if (filterMastery.value !== "") {
       params.masteryLevel = filterMastery.value;
     }
-    if (selectedSystem.value) {
-      params.systemId = selectedSystem.value;
+    if (selectedTagId.value) {
+      params.tagId = selectedTagId.value;
+    }
+    if (filterReviewTarget.value !== "") {
+      params.needReview = filterReviewTarget.value;
     }
 
     const data = await knowledgeAPI.getList(params);
     knowledgeList.value = (data.records || []).map((knowledge) => ({
       ...knowledge,
       difficulty: knowledge.difficulty || "medium",
-      status: knowledge.masteryLevel >= 4 ? "mastered" : "review",
     }));
     pagination.value.total = data.total || 0;
   } catch (error) {
@@ -866,34 +700,118 @@ const handleCurrentChange = (current) => {
   loadKnowledgeList();
 };
 
-const selectSystem = (systemId) => {
-  selectedSystem.value = systemId;
-  pagination.value.current = 1;
-  loadKnowledgeList();
+const toggleTagExpand = (tagId) => {
+  if (expandedTags.value.has(tagId)) {
+    expandedTags.value.delete(tagId);
+  } else {
+    expandedTags.value.add(tagId);
+  }
+  expandedTags.value = new Set(expandedTags.value);
 };
 
-const getSystemName = (systemId) => {
-  const system = knowledgeSystems.value.find((s) => s.id === systemId);
-  return system ? getSystemDisplayName(system) : "未知";
+const handleTagContextMenu = (event, tag) => {
+  event.preventDefault();
+  editingTag.value = tag;
+  contextMenuPosition.value = { x: event.clientX + 'px', y: event.clientY + 'px' };
 };
 
-const getSystemDisplayName = (system) => {
-  if (!system) return "未知";
-  if (typeof system === "string") return system;
-  return system.name || system._name || system.title || "未知";
+const contextMenuPosition = ref({ x: '0px', y: '0px' });
+
+const handleCreateTag = () => {
+  editingTag.value = null;
+  showTagDialog.value = true;
 };
 
-const getSystemTagType = (systemId) => {
-  const system = knowledgeSystems.value.find((s) => s.id === systemId);
-  if (!system) return "info";
-  const color = system.color.toLowerCase();
-  if (color.includes("purple") || color.includes("7c3aed")) return "primary";
-  if (color.includes("green") || color.includes("22c55e")) return "success";
-  if (color.includes("orange") || color.includes("f97316")) return "warning";
-  if (color.includes("blue") || color.includes("3b82f6")) return "info";
-  if (color.includes("red") || color.includes("ef4444")) return "danger";
-  return "info";
+const handleEditTag = (tag) => {
+  editingTag.value = tag;
+  showTagDialog.value = true;
 };
+
+const handleTagSaved = async (formData) => {
+  try {
+    if (editingTag.value) {
+      await tagsAPI.update(editingTag.value.id, formData);
+      ElMessage.success("标签已更新");
+    } else {
+      await tagsAPI.create(formData);
+      ElMessage.success("标签已创建");
+    }
+    showTagDialog.value = false;
+    editingTag.value = null;
+    await loadTagTree();
+  } catch (e) {
+    ElMessage.error((editingTag.value ? "更新" : "创建") + "失败：" + (e.message || "未知错误"));
+  }
+};
+
+const handleDeleteTag = async (tag) => {
+  const childCount = tag.children?.length || 0;
+  const nodeCount = tag.nodeCount || 0;
+  let message = `确定要删除标签"${tag.tagName}"吗？`;
+  if (childCount > 0) {
+    message += `\n该标签下有 ${childCount} 个子标签，删除后子标签将变为顶级标签。`;
+  }
+  if (nodeCount > 0) {
+    message += `\n该标签已被 ${nodeCount} 个知识点使用，删除后这些知识点将失去此标签。`;
+  }
+  try {
+    await ElMessageBox.confirm(message, "确认删除", {
+      confirmButtonText: "确定删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    await tagsAPI.delete(tag.id);
+    ElMessage.success("标签已删除");
+    if (selectedTagId.value === tag.id) {
+      selectedTagId.value = "";
+      loadKnowledgeList();
+    }
+    await loadTagTree();
+  } catch (e) {
+    if (e !== "cancel") {
+      ElMessage.error("删除失败：" + (e.message || "未知错误"));
+    }
+  }
+};
+
+const renderTagNode = (tag, depth) => {
+  const hasChildren = tag.children && tag.children.length > 0;
+  const isExpanded = expandedTags.value.has(tag.id);
+  return {
+    ...tag,
+    _depth: depth,
+    _hasChildren: hasChildren,
+    _isExpanded: isExpanded,
+  };
+};
+
+const flatTagList = computed(() => {
+  const result = [];
+  const walk = (tags, depth) => {
+    for (const tag of tags) {
+      result.push(renderTagNode(tag, depth));
+      if (tag.children && tag.children.length > 0 && expandedTags.value.has(tag.id)) {
+        walk(tag.children, depth + 1);
+      }
+    }
+  };
+  walk(tagTree.value, 0);
+  return result;
+});
+
+const allFlatTags = computed(() => {
+  const result = [];
+  const walk = (tags) => {
+    for (const tag of tags) {
+      result.push(tag);
+      if (tag.children && tag.children.length > 0) {
+        walk(tag.children);
+      }
+    }
+  };
+  walk(tagTree.value);
+  return result;
+});
 
 const getMasteryPercentage = (level) => {
   return (level / 5) * 100;
@@ -920,99 +838,12 @@ const formatDate = (dateStr) => {
   return `${year}-${month}-${day}`;
 };
 
-const viewDetail = (knowledge) => {
-  currentKnowledge.value = knowledge;
-  showDetailDialog.value = true;
-};
-
-const editKnowledge = async (knowledge) => {
-  try {
-    const res = await collaborationAPI.acquireLock(knowledge.id);
-    if (res.code === 409) {
-      ElMessage.warning(res.message || "其他用户正在编辑此知识点");
-      return;
-    }
-  } catch (error) {
-    ElMessage.warning("获取编辑锁失败：" + (error.message || "未知错误"));
-    return;
-  }
-
-  editingNodeId.value = knowledge.id;
-  // 每5分钟自动续期
-  lockRenewTimer.value = setInterval(() => {
-    collaborationAPI.acquireLock(knowledge.id).catch(() => {});
-  }, 5 * 60 * 1000);
-
-  editForm.value = {
-    id: knowledge.id,
-    title: knowledge.title,
-    systemId: knowledge.systemId || "",
-    summary: knowledge.summary,
-    contentMd: knowledge.contentMd || "",
-    importance: knowledge.importance,
-  };
-  showEditDialog.value = true;
-};
-
 const handleAddKnowledge = () => {
-  editForm.value = {
-    id: null,
-    title: "",
-    systemId: "",
-    summary: "",
-    contentMd: "",
-    importance: 3,
-  };
-  showEditDialog.value = true;
-};
-
-const handleSave = async () => {
-  if (!editFormRef.value) return;
-  try {
-    await editFormRef.value.validate();
-    saveLoading.value = true;
-    if (editForm.value.id) {
-      await knowledgeAPI.updateKnowledge(editForm.value.id, editForm.value);
-      ElMessage.success("更新成功");
-    } else {
-      await knowledgeAPI.createKnowledge(editForm.value);
-      ElMessage.success("创建成功");
-    }
-    releaseCurrentLock();
-    showEditDialog.value = false;
-    loadKnowledgeList();
-  } catch (error) {
-    if (error !== false) {
-      ElMessage.error("保存失败：" + error.message);
-    }
-  } finally {
-    saveLoading.value = false;
-  }
-};
-
-/** 释放当前持有的编辑锁 */
-const releaseCurrentLock = () => {
-  if (editingNodeId.value) {
-    collaborationAPI.releaseLock(editingNodeId.value).catch(() => {});
-    editingNodeId.value = null;
-  }
-  if (lockRenewTimer.value) {
-    clearInterval(lockRenewTimer.value);
-    lockRenewTimer.value = null;
-  }
-};
-
-/** 编辑对话框关闭时释放锁 */
-const onEditDialogClosed = () => {
-  releaseCurrentLock();
+  router.push("/knowledge/new");
 };
 
 const handleImport = () => {
   ElMessage.info("导入功能开发中");
-};
-
-const handleAddSystem = () => {
-  ElMessage.info("新建体系功能开发中");
 };
 
 const handleAdvancedFilter = () => {
@@ -1020,22 +851,49 @@ const handleAdvancedFilter = () => {
 };
 
 const handleGenerateCard = async (knowledge) => {
+  if (knowledge._toggleLoading) return;
+  knowledge._toggleLoading = true;
   try {
-    await reviewAPI.generateReviewCard({ nodeId: knowledge.id, cardType: "choice" });
-    ElMessage.success(`已为"${knowledge.title}"生成复习卡片`);
+    await knowledgeAPI.toggleNeedReview(knowledge.id, 1);
+    ElMessage.success(`已将"${knowledge.title}"纳入复习计划，将开始生成复习卡片`);
+    knowledge.needReview = 1;
+    knowledge.masteryLevel = 0;
+    knowledge.reviewCount = 0;
   } catch (e) {
-    ElMessage.error("生成失败：" + (e.message || "未知错误"));
+    ElMessage.error("操作失败：" + (e.message || "未知错误"));
+  } finally {
+    knowledge._toggleLoading = false;
+  }
+};
+
+const handleToggleReviewTarget = async (knowledge, needReview) => {
+  if (knowledge._toggleLoading) return;
+  knowledge._toggleLoading = true;
+  const action = needReview === 1 ? "纳入复习" : "取消复习";
+  try {
+    await knowledgeAPI.toggleNeedReview(knowledge.id, needReview);
+    const extraInfo = needReview === 1 ? "，将开始生成复习卡片" : "，已清理该知识点的复习卡片";
+    ElMessage.success(`已${action}"${knowledge.title}"${extraInfo}`);
+    knowledge.needReview = needReview;
+    if (needReview === 0) {
+      knowledge.masteryLevel = 0;
+      knowledge.reviewCount = 0;
+    } else {
+      knowledge.masteryLevel = 0;
+      knowledge.reviewCount = 0;
+    }
+  } catch (e) {
+    ElMessage.error("操作失败：" + (e.message || "未知错误"));
+  } finally {
+    knowledge._toggleLoading = false;
   }
 };
 
 const handleCardCommand = async (command, knowledge) => {
-  if (command === "generate") {
-    try {
-      await reviewAPI.generateReviewCard({ nodeId: knowledge.id, cardType: "choice" });
-      ElMessage.success("复习卡片生成成功");
-    } catch (e) {
-      ElMessage.error("生成失败：" + (e.message || "未知错误"));
-    }
+  if (command === "toggleOn") {
+    await handleToggleReviewTarget(knowledge, 1);
+  } else if (command === "toggleOff") {
+    await handleToggleReviewTarget(knowledge, 0);
   } else if (command === "delete") {
     try {
       await ElMessageBox.confirm(
@@ -1083,86 +941,6 @@ const handleBatchExport = () => {
   }
   ElMessage.info("批量导出功能开发中");
 };
-
-/** 版本回滚成功后的回调 */
-const onRollbackSuccess = () => {
-  showDetailDialog.value = false;
-  loadKnowledgeList();
-};
-
-// ========== 分享功能 ==========
-
-const shareUrlInput = ref(null);
-
-const openShareDialog = () => {
-  shareForm.value = { expireType: "permanent" };
-  shareLink.value = "";
-  showShareDialog.value = true;
-};
-
-const onShareDialogOpened = () => {
-  loadMyShares();
-};
-
-const handleCreateShare = async () => {
-  if (!currentKnowledge.value) return;
-  shareLoading.value = true;
-  try {
-    const data = await collaborationAPI.createShare({
-      nodeId: currentKnowledge.value.id,
-      expireType: shareForm.value.expireType,
-    });
-    shareLink.value = `${window.location.origin}/share/${data.token}`;
-    ElMessage.success("分享链接已生成");
-    loadMyShares();
-  } catch (error) {
-    ElMessage.error("创建分享失败：" + (error.message || "未知错误"));
-  } finally {
-    shareLoading.value = false;
-  }
-};
-
-const copyShareLink = async () => {
-  try {
-    await navigator.clipboard.writeText(shareLink.value);
-    ElMessage.success("链接已复制到剪贴板");
-  } catch {
-    ElMessage.info("请手动复制链接");
-  }
-};
-
-const loadMyShares = async () => {
-  try {
-    const data = await collaborationAPI.getShareList();
-    myShares.value = Array.isArray(data) ? data : [];
-  } catch {
-    myShares.value = [];
-  }
-};
-
-const handleRevokeShare = async (shareId) => {
-  try {
-    await ElMessageBox.confirm("确定要撤销此分享链接吗？", "确认撤销", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    });
-    await collaborationAPI.revokeShare(shareId);
-    ElMessage.success("分享已撤销");
-    loadMyShares();
-  } catch (error) {
-    if (error !== "cancel") {
-      ElMessage.error("撤销失败：" + (error.message || "未知错误"));
-    }
-  }
-};
-
-const expireLabel = (type) => {
-  const map = { permanent: "永久", "7d": "7天", "24h": "24小时" };
-  return map[type] || type;
-};
-
-// ========== 待确认知识点 ==========
 
 const loadPendingItems = async () => {
   try {
@@ -1249,6 +1027,32 @@ const confirmPending = async () => {
   }
 };
 
+const confirmSinglePending = async (index) => {
+  const item = pendingItems.value[index];
+  if (!item.title || !item.title.trim()) {
+    ElMessage.warning("请先填写知识点标题");
+    return;
+  }
+
+  try {
+    await knowledgeAPI.confirmPendingKnowledge({
+      items: [{
+        pendingId: item.id,
+        title: item.title,
+        summary: item.summary,
+        content: item.content,
+      }],
+      generateCards: pendingGenerateCards.value,
+    });
+    ElMessage.success(`"${item.title}" 已入库`);
+    pendingItems.value.splice(index, 1);
+    pendingCount.value = pendingItems.value.length;
+    loadKnowledgeList();
+  } catch (error) {
+    ElMessage.error("入库失败: " + (error.message || "未知错误"));
+  }
+};
+
 const handleTabChange = (tab) => {
   activeTab.value = tab;
   if (tab === "pending") {
@@ -1259,13 +1063,9 @@ const handleTabChange = (tab) => {
 };
 
 onMounted(() => {
-  loadKnowledgeSystems();
+  loadTagTree();
   loadKnowledgeList();
   loadPendingItems();
-});
-
-onBeforeUnmount(() => {
-  releaseCurrentLock();
 });
 </script>
 
@@ -1383,38 +1183,54 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  border: 1px solid var(--border-lighter);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-light);
 }
 
 .stat-card.purple .stat-icon {
   background: rgba(124, 58, 237, 0.1);
   color: #7c3aed;
 }
+.stat-card.purple:hover { box-shadow: 0 4px 8px rgba(124, 58, 237, 0.08), 0 8px 24px rgba(124, 58, 237, 0.10); }
 
 .stat-card.orange .stat-icon {
   background: rgba(249, 115, 22, 0.1);
   color: #f97316;
 }
+.stat-card.orange:hover { box-shadow: 0 4px 8px rgba(249, 115, 22, 0.08), 0 8px 24px rgba(249, 115, 22, 0.10); }
 
 .stat-card.green .stat-icon {
   background: rgba(34, 197, 94, 0.1);
   color: #22c55e;
 }
+.stat-card.green:hover { box-shadow: 0 4px 8px rgba(34, 197, 94, 0.08), 0 8px 24px rgba(34, 197, 94, 0.10); }
 
 .stat-card.blue .stat-icon {
   background: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
 }
+.stat-card.blue:hover { box-shadow: 0 4px 8px rgba(59, 130, 246, 0.08), 0 8px 24px rgba(59, 130, 246, 0.10); }
+
+.stat-card.cyan .stat-icon {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+}
+.stat-card.cyan:hover { box-shadow: 0 4px 8px rgba(6, 182, 212, 0.08), 0 8px 24px rgba(6, 182, 212, 0.10); }
 
 .stat-card.red .stat-icon {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
+.stat-card.red:hover { box-shadow: 0 4px 8px rgba(239, 68, 68, 0.08), 0 8px 24px rgba(239, 68, 68, 0.10); }
 
 .stat-icon {
   width: 48px;
@@ -1565,6 +1381,87 @@ onBeforeUnmount(() => {
   color: var(--color-primary);
 }
 
+/* ---- Tag Tree ---- */
+.tag-expand-btn {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.tag-expand-btn:hover {
+  color: var(--color-primary);
+}
+
+.tag-expand-spacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.tag-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-empty {
+  padding: 24px 12px;
+  text-align: center;
+}
+
+.tag-empty-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.tag-empty-hint {
+  font-size: 12px;
+  color: var(--text-placeholder);
+  margin: 0;
+}
+
+/* ---- Tag Context Menu ---- */
+.tag-context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px 0;
+  z-index: 2000;
+  min-width: 140px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-regular);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu-item.danger {
+  color: #ef4444;
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
 .knowledge-content {
   flex: 1;
   display: flex;
@@ -1620,14 +1517,19 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-lighter);
   cursor: pointer;
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
   position: relative;
 }
 
 .knowledge-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-light);
 }
 
 .card-checkbox {
@@ -1638,7 +1540,7 @@ onBeforeUnmount(() => {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: var(--spacing-md);
 }
@@ -1681,7 +1583,12 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-tags {
   margin-bottom: var(--spacing-md);
+  min-height: 26px;
 }
 
 .meta-item {
@@ -1727,6 +1634,21 @@ onBeforeUnmount(() => {
   color: #22c55e;
 }
 
+.status.neutral {
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+}
+
+.card-no-review {
+  margin-bottom: var(--spacing-md);
+}
+
+.card-no-review :deep(.el-divider__text) {
+  background: var(--bg-card);
+  color: var(--text-placeholder);
+  font-size: var(--font-size-xs);
+}
+
 .card-progress {
   margin-bottom: var(--spacing-md);
 }
@@ -1761,6 +1683,35 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
 }
 
+.review-btn {
+  min-width: 96px;
+  height: 30px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  transition:
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.review-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.review-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.review-btn--add {
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.28);
+}
+
+.review-btn--remove {
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
 .pagination-wrapper {
   display: flex;
   justify-content: space-between;
@@ -1773,98 +1724,6 @@ onBeforeUnmount(() => {
 .total-count {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
-}
-
-.detail-content {
-  color: var(--text-primary);
-}
-
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid var(--border-lighter);
-}
-
-.detail-title {
-  flex: 1;
-  font-size: var(--font-size-2xl);
-  font-weight: bold;
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
-.detail-time {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.detail-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.detail-section {
-  background: var(--bg-list-item);
-  border-radius: var(--radius-md);
-  padding: 16px;
-}
-
-.detail-section h4 {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.detail-section h4 .el-icon {
-  color: var(--color-primary);
-}
-
-.review-info {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.info-label {
-  color: var(--text-muted);
-  font-size: var(--font-size-base);
-}
-
-.info-value {
-  color: var(--text-primary);
-  font-size: var(--font-size-md);
-  font-weight: bold;
-}
-
-.detail-text {
-  color: var(--text-regular);
-  font-size: var(--font-size-base);
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-lighter);
 }
 
 :deep(.el-empty) {
@@ -1887,87 +1746,6 @@ onBeforeUnmount(() => {
 
 :deep(.el-rate__text) {
   font-size: var(--font-size-xs);
-}
-
-/* ===== 分享对话框 ===== */
-.share-create {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.share-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.share-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.share-result-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--spacing-md);
-}
-
-.share-url-box {
-  display: flex;
-  gap: var(--spacing-sm);
-  width: 100%;
-}
-
-.share-url-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  background: var(--bg-input);
-  outline: none;
-}
-
-.share-url-input:focus {
-  border-color: var(--color-primary);
-}
-
-.share-history {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-lighter);
-}
-
-.share-history-title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  margin: 0 0 var(--spacing-md);
-}
-
-.share-record {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm) 0;
-}
-
-.share-record + .share-record {
-  border-top: 1px solid var(--border-lighter);
-}
-
-.share-record-info {
-  display: flex;
-  gap: var(--spacing-md);
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-}
-
-.share-record-type {
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
 }
 
 /* ===== Tab 导航 ===== */
@@ -2105,6 +1883,11 @@ onBeforeUnmount(() => {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
+}
+
+.pending-card-actions {
+  display: flex;
+  gap: var(--spacing-xs);
 }
 
 .pending-card-body {

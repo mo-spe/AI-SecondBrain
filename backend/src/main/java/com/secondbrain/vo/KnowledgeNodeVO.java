@@ -1,9 +1,11 @@
 package com.secondbrain.vo;
 
+import com.secondbrain.entity.KnowledgeTag;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** 知识节点视图对象. <p>用于向前端返回知识节点详情数据</p> */
 @Getter
@@ -41,6 +43,11 @@ public class KnowledgeNodeVO {
     private Integer masteryLevel;
 
     /**
+     * 是否纳入复习目标（0=未纳入，1=已纳入）
+     */
+    private Integer needReview;
+
+    /**
      * 复习次数
      */
     private Integer reviewCount;
@@ -59,4 +66,9 @@ public class KnowledgeNodeVO {
      * 搜索分数（语义搜索相关度）
      */
     private Double score;
+
+    /**
+     * 关联标签列表
+     */
+    private List<KnowledgeTag> tags;
 }

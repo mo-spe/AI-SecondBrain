@@ -3,11 +3,13 @@ package com.secondbrain.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.secondbrain.dto.MemberResponse;
 import com.secondbrain.dto.WorkspaceResponse;
+import com.secondbrain.entity.Notification;
 import com.secondbrain.entity.User;
 import com.secondbrain.entity.Workspace;
 import com.secondbrain.entity.WorkspaceMember;
 import com.secondbrain.exception.WorkspaceAccessDeniedException;
 import com.secondbrain.exception.WorkspaceNotFoundException;
+import com.secondbrain.mapper.NotificationMapper;
 import com.secondbrain.mapper.UserMapper;
 import com.secondbrain.mapper.WorkspaceMapper;
 import com.secondbrain.mapper.WorkspaceMemberMapper;
@@ -33,13 +35,16 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final WorkspaceMapper workspaceMapper;
     private final WorkspaceMemberMapper memberMapper;
     private final UserMapper userMapper;
+    private final NotificationMapper notificationMapper;
 
     public WorkspaceServiceImpl(WorkspaceMapper workspaceMapper,
                                 WorkspaceMemberMapper memberMapper,
-                                UserMapper userMapper) {
+                                UserMapper userMapper,
+                                NotificationMapper notificationMapper) {
         this.workspaceMapper = workspaceMapper;
         this.memberMapper = memberMapper;
         this.userMapper = userMapper;
+        this.notificationMapper = notificationMapper;
     }
 
     /**
@@ -251,6 +256,19 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         member.setStatus("pending");
         memberMapper.insert(member);
 
+        // 向被邀请人发送通知，通知类型为 workspace_invitation
+        Workspace workspace = workspaceMapper.selectById(workspaceId);
+        Notification notification = new Notification();
+        notification.setUserId(targetUserId);
+        notification.setType("workspace_invitation");
+        notification.setTitle("工作区邀请");
+        notification.setContent("您被邀请加入工作区「" + (workspace != null ? workspace.getName() : workspaceId) + "」，请前往确认");
+        notification.setTargetType("workspace");
+        notification.setTargetId(workspaceId);
+        notification.setIsRead(0);
+        notification.setCreatedAt(LocalDateTime.now());
+        notificationMapper.insert(notification);
+
         log.info("workspace_member_invited workspaceId={} targetUserId={} role={} operatorUserId={}",
                 workspaceId, targetUserId, role, operatorUserId);
     }
@@ -404,6 +422,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         return workspace;
     }
 
+    /**
+     *
+     * @param workspaceId
+     * @param userId
+     * @return
+     */
     private WorkspaceMember findMemberOrThrow(Long workspaceId, Long userId) {
         WorkspaceMember member = memberMapper.selectOne(
                 new LambdaQueryWrapper<WorkspaceMember>()

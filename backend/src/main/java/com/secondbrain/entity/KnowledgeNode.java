@@ -62,6 +62,11 @@ public class KnowledgeNode {
     private Integer masteryLevel;
 
     /**
+     * 是否纳入复习目标（0=未纳入，1=已纳入）
+     */
+    private Integer needReview;
+
+    /**
      * 复习次数
      */
     private Integer reviewCount;

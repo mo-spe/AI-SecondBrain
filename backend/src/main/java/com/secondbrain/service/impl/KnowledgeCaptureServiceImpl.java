@@ -39,7 +39,19 @@ public class KnowledgeCaptureServiceImpl implements KnowledgeCaptureService {
      */
     @Override
     public int extractKnowledge(RawChatRecord record) {
-        log.info("开始从对话记录中提取知识 recordId={}", record.getId());
+        return extractKnowledge(record, null);
+    }
+
+    /**
+     * 从对话记录中提取知识（含 needReview 标志）.
+     *
+     * @param record     对话记录
+     * @param needReview 是否需要生成复习卡片
+     * @return 提取的待确认知识点数量
+     */
+    @Override
+    public int extractKnowledge(RawChatRecord record, Boolean needReview) {
+        log.info("开始从对话记录中提取知识 recordId={} needReview={}", record.getId(), needReview);
         try {
             List<KnowledgeDTO> knowledgeList = aiService.extractKnowledge(
                     record.getUserId(), "extraction", record.getContent());
@@ -50,6 +62,7 @@ public class KnowledgeCaptureServiceImpl implements KnowledgeCaptureService {
             }
 
             int count = 0;
+            int needReviewInt = Boolean.TRUE.equals(needReview) ? 1 : 0;
             for (KnowledgeDTO dto : knowledgeList) {
                 PendingKnowledge pending = new PendingKnowledge();
                 pending.setUserId(record.getUserId());
@@ -58,6 +71,7 @@ public class KnowledgeCaptureServiceImpl implements KnowledgeCaptureService {
                 pending.setTitle(dto.getTitle());
                 pending.setSummary(dto.getSummary());
                 pending.setContent(dto.getContent());
+                pending.setNeedReview(needReviewInt);
                 pending.setStatus(0);
                 pending.setCreateTime(LocalDateTime.now());
                 pending.setUpdateTime(LocalDateTime.now());
@@ -65,7 +79,7 @@ public class KnowledgeCaptureServiceImpl implements KnowledgeCaptureService {
                 count++;
             }
 
-            log.info("知识提取完成 recordId={} count={}", record.getId(), count);
+            log.info("知识提取完成 recordId={} count={} needReview={}", record.getId(), count, needReviewInt);
             return count;
         } catch (Exception e) {
             log.error("知识提取失败 recordId={}", record.getId(), e);

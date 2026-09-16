@@ -560,7 +560,7 @@ watch([() => registerForm.value.password, showPassword, isPurplePeeking], ([pass
 }
 
 .register-left {
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #7c3aed 100%);
+  background: var(--gradient-primary);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -898,15 +898,15 @@ watch([() => registerForm.value.password, showPassword, isPurplePeeking], ([pass
   height: 48px;
   font-size: 16px;
   font-weight: 500;
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  background: var(--color-primary);
   border: none;
-  border-radius: 8px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: var(--radius-md);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
 .register-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+  box-shadow: var(--shadow-primary-hover);
 }
 
 .register-button:active:not(:disabled) {

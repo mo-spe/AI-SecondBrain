@@ -89,6 +89,13 @@ export const reviewAPI = {
     });
   },
 
+  getOverview() {
+    return request({
+      url: "/review/overview",
+      method: "get",
+    });
+  },
+
   // ========== 题目池接口 ==========
 
   getPoolList(workspaceId) {

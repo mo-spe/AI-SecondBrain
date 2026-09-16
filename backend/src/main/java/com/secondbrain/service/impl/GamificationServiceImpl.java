@@ -8,6 +8,7 @@ import com.secondbrain.entity.DailyCheckIn;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.LeaderboardSnapshot;
 import com.secondbrain.entity.PointsLog;
+import com.secondbrain.entity.ReviewLog;
 import com.secondbrain.entity.User;
 import com.secondbrain.entity.UserAchievement;
 import com.secondbrain.entity.UserGamification;
@@ -17,6 +18,7 @@ import com.secondbrain.mapper.DailyCheckInMapper;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.LeaderboardSnapshotMapper;
 import com.secondbrain.mapper.PointsLogMapper;
+import com.secondbrain.mapper.ReviewLogMapper;
 import com.secondbrain.mapper.UserAchievementMapper;
 import com.secondbrain.mapper.UserGamificationMapper;
 import com.secondbrain.mapper.UserMapper;
@@ -64,6 +66,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final AchievementMapper achievementMapper;
     private final UserAchievementMapper userAchievementMapper;
     private final PointsLogMapper pointsLogMapper;
+    private final ReviewLogMapper reviewLogMapper;
     private final LeaderboardSnapshotMapper snapshotMapper;
     private final UserMapper userMapper;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
@@ -73,6 +76,7 @@ public class GamificationServiceImpl implements GamificationService {
                                    AchievementMapper achievementMapper,
                                    UserAchievementMapper userAchievementMapper,
                                    PointsLogMapper pointsLogMapper,
+                                   ReviewLogMapper reviewLogMapper,
                                    LeaderboardSnapshotMapper snapshotMapper,
                                    UserMapper userMapper,
                                    KnowledgeNodeMapper knowledgeNodeMapper) {
@@ -81,6 +85,7 @@ public class GamificationServiceImpl implements GamificationService {
         this.achievementMapper = achievementMapper;
         this.userAchievementMapper = userAchievementMapper;
         this.pointsLogMapper = pointsLogMapper;
+        this.reviewLogMapper = reviewLogMapper;
         this.snapshotMapper = snapshotMapper;
         this.userMapper = userMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
@@ -467,31 +472,65 @@ public class GamificationServiceImpl implements GamificationService {
         int resolvedMonths = (months == null || months <= 0) ? 3 : Math.min(months, 12);
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusMonths(resolvedMonths);
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        // 查询期间内的签到记录
+        // 1. 查询期间内的签到记录（按日期聚合 pointsEarned）
         List<DailyCheckIn> checkIns = checkInMapper.selectList(
                 new LambdaQueryWrapper<DailyCheckIn>()
                         .eq(DailyCheckIn::getUserId, userId)
                         .ge(DailyCheckIn::getCheckInDate, startDate)
                         .le(DailyCheckIn::getCheckInDate, endDate));
+        Map<LocalDate, Integer> checkInPointsMap = checkIns.stream()
+                .collect(Collectors.toMap(
+                        DailyCheckIn::getCheckInDate,
+                        c -> c.getPointsEarned() != null ? c.getPointsEarned() : 0,
+                        Integer::sum));
 
-        Map<LocalDate, DailyCheckIn> checkInMap = checkIns.stream()
-                .collect(Collectors.toMap(DailyCheckIn::getCheckInDate, c -> c, (a, b) -> a));
+        // 2. 查询期间内的积分流水（review/create/achievement 等所有产生积分的行为），按日期聚合
+        List<PointsLog> pointsLogs = pointsLogMapper.selectList(
+                new LambdaQueryWrapper<PointsLog>()
+                        .eq(PointsLog::getUserId, userId)
+                        .ge(PointsLog::getCreateTime, startDateTime)
+                        .le(PointsLog::getCreateTime, endDateTime));
+        Map<LocalDate, Integer> dailyPointsMap = new java.util.HashMap<>();
+        for (PointsLog pl : pointsLogs) {
+            if (pl.getCreateTime() == null || pl.getPoints() == null) continue;
+            LocalDate d = pl.getCreateTime().toLocalDate();
+            // 签到积分只统计一次到 checkInPointsMap，不再计入流水聚合
+            if ("checkin".equals(pl.getType()) || "streak_bonus".equals(pl.getType())) continue;
+            if (pl.getPoints() <= 0) continue; // 只计正向得分，不要扣分/消耗
+            dailyPointsMap.merge(d, pl.getPoints(), Integer::sum);
+        }
 
-        // 查询期间内有复习活动的日期
-        List<java.time.LocalDateTime> reviewDates = new ArrayList<>();
-        UserGamification g = gamificationMapper.selectOne(
-                new LambdaQueryWrapper<UserGamification>().eq(UserGamification::getUserId, userId));
+        // 3. 查询期间内的复习记录（按日期 distinct），用于 hasReview 标记
+        List<ReviewLog> reviewLogs = reviewLogMapper.selectList(
+                new LambdaQueryWrapper<ReviewLog>()
+                        .eq(ReviewLog::getUserId, userId)
+                        .ge(ReviewLog::getCreateTime, startDateTime)
+                        .le(ReviewLog::getCreateTime, endDateTime)
+                        .select(ReviewLog::getCreateTime));
+        java.util.Set<LocalDate> reviewDates = reviewLogs.stream()
+                .filter(r -> r.getCreateTime() != null)
+                .map(r -> r.getCreateTime().toLocalDate())
+                .collect(Collectors.toSet());
 
+        // 4. 逐天构造结果：签到积分 + 其它行为积分合并
         List<StreakDayVO> result = new ArrayList<>();
         for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
             StreakDayVO day = new StreakDayVO();
             day.setDate(d);
-            DailyCheckIn ci = checkInMap.get(d);
-            day.setHasCheckIn(ci != null);
-            day.setPointsEarned(ci != null ? ci.getPointsEarned() : 0);
-            day.setHasReview(g != null && g.getLastReviewDate() != null
-                    && !d.isAfter(g.getLastReviewDate()) && !d.isBefore(startDate));
+
+            Integer checkInPoints = checkInPointsMap.get(d);
+            Integer behaviorPoints = dailyPointsMap.get(d);
+
+            boolean hasCheckIn = checkInPoints != null && checkInPoints > 0;
+            int totalPoints = (checkInPoints == null ? 0 : checkInPoints)
+                    + (behaviorPoints == null ? 0 : behaviorPoints);
+
+            day.setHasCheckIn(hasCheckIn);
+            day.setHasReview(reviewDates.contains(d));
+            day.setPointsEarned(totalPoints);
             result.add(day);
         }
         return result;

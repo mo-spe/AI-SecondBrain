@@ -52,6 +52,11 @@ public class PendingKnowledge {
     private String content;
 
     /**
+     * 是否需要复习（0=不需要，1=需要）
+     */
+    private Integer needReview;
+
+    /**
      * 状态：0=待确认，1=已确认入库，2=已丢弃
      */
     private Integer status;

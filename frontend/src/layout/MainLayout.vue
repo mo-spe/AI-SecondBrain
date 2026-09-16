@@ -134,7 +134,7 @@ const navItems = [
   { path: "/report", label: "学习报告", icon: Document },
   { path: "/achievements", label: "成就殿堂", icon: Trophy },
   { path: "/leaderboard", label: "排行榜", icon: Medal },
-  { path: "/research", label: "AI研究", icon: TrendCharts },
+  { path: "/ai-research", label: "AI研究", icon: TrendCharts },
   { path: "/settings", label: "个人设置", icon: Setting },
 ];
 

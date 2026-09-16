@@ -25,6 +25,29 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+/* ============ Toast 通知系统 ============ */
+function showToast(message, type = "info", duration = 3500) {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+
+  const icons = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  };
+
+  toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("fade-out");
+    setTimeout(() => toast.remove(), 250);
+  }, duration);
+}
+
 async function apiRequest(path, method = "GET", body = null, headers = {}) {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(
@@ -72,7 +95,12 @@ async function showLoggedInSection(token) {
 
     if (response.success && response.data.code === 200) {
       const user = response.data.data;
-      document.getElementById("currentUser").textContent = user.username || user.nickname || "已登录用户";
+      const displayName = user.username || user.nickname || "已登录用户";
+      document.getElementById("currentUser").textContent = displayName;
+      const avatar = document.getElementById("userAvatar");
+      if (avatar) {
+        avatar.textContent = displayName.charAt(0).toUpperCase();
+      }
     } else {
       document.getElementById("currentUser").textContent = "已登录用户";
     }
@@ -152,14 +180,7 @@ async function handleSaveSettings() {
     chrome.storage.local.set({ collectSettings: settings }, resolve);
   });
 
-  const btn = document.getElementById("saveSettingsBtn");
-  const originalText = btn.textContent;
-  btn.textContent = "已保存";
-  btn.style.background = "#059669";
-  setTimeout(() => {
-    btn.textContent = originalText;
-    btn.style.background = "";
-  }, 1200);
+  showToast("设置已保存", "success", 2000);
 }
 
 async function handleLogin() {
@@ -168,7 +189,7 @@ async function handleLogin() {
   const loginBtn = document.getElementById("loginBtn");
 
   if (!username || !password) {
-    alert("请输入用户名和密码");
+    showToast("请输入用户名和密码", "error");
     return;
   }
 
@@ -177,20 +198,19 @@ async function handleLogin() {
 
   try {
     const response = await apiRequest("/auth/login", "POST", { username, password });
-    console.log("Login response:", JSON.stringify(response, null, 2));
 
     if (response.success && response.data.code === 200) {
       const result = response.data;
 
       if (!result.data) {
-        alert("登录成功但未获取到 Token，请检查后端响应");
+        showToast("登录成功但未获取到 Token，请检查后端响应", "error");
         return;
       }
 
       const token = result.data.token;
 
       if (!token) {
-        alert("登录成功但未获取到 Token 字段，请检查后端响应");
+        showToast("登录成功但未获取到 Token 字段", "error");
         return;
       }
 
@@ -199,25 +219,23 @@ async function handleLogin() {
       await loadWorkspaces(token);
       showSettingsSection();
       await loadCollectSettings();
-      alert("登录成功！");
+      showToast("登录成功", "success");
     } else {
       const errorMsg = response.data?.message || response.error || "用户名或密码错误";
-      alert("登录失败：" + errorMsg);
+      showToast("登录失败：" + errorMsg, "error");
     }
   } catch (error) {
-    alert("登录失败：" + (error.message || "网络请求失败"));
+    showToast("登录失败：" + (error.message || "网络请求失败"), "error");
   } finally {
-    loginBtn.innerHTML = "登录";
+    loginBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> 登录';
     loginBtn.disabled = false;
   }
 }
 
 async function handleLogout() {
-  if (confirm("确定要退出登录吗？")) {
-    await removeToken();
-    showLoginSection();
-    alert("已退出登录");
-  }
+  await removeToken();
+  showLoginSection();
+  showToast("已退出登录", "info", 2000);
 }
 
 async function getStoredToken() {

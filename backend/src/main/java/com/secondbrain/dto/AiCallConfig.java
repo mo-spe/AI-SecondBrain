@@ -1,9 +1,14 @@
 package com.secondbrain.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * AI调用配置DTO.
  * <p>封装一次AI调用所需的全部配置信息，由 resolveConfig 方法构建</p>
  */
+@Getter
+@Setter
 public class AiCallConfig {
 
     /**
@@ -41,24 +46,4 @@ public class AiCallConfig {
      */
     private String modelName;
 
-    public Long getProviderId() { return providerId; }
-    public void setProviderId(Long providerId) { this.providerId = providerId; }
-
-    public String getProviderCode() { return providerCode; }
-    public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
-
-    public String getProviderName() { return providerName; }
-    public void setProviderName(String providerName) { this.providerName = providerName; }
-
-    public String getBaseUrl() { return baseUrl; }
-    public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-
-    public String getApiType() { return apiType; }
-    public void setApiType(String apiType) { this.apiType = apiType; }
-
-    public String getApiKey() { return apiKey; }
-    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-
-    public String getModelName() { return modelName; }
-    public void setModelName(String modelName) { this.modelName = modelName; }
 }

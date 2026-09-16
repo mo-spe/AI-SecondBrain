@@ -736,7 +736,7 @@ watch([() => loginForm.value.password, showPassword, isPurplePeeking], ([passwor
   align-items: center;
   justify-content: center;
   padding: 32px;
-  background: #f8fafc;
+  background: var(--bg-page);
 }
 
 .right-content {
@@ -760,16 +760,18 @@ watch([() => loginForm.value.password, showPassword, isPurplePeeking], ([passwor
 }
 
 .form-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1e293b;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
   margin: 0 0 8px 0;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
 }
 
 .form-subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -781,23 +783,23 @@ watch([() => loginForm.value.password, showPassword, isPurplePeeking], ([passwor
 
 .form-label {
   display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: #334155;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-regular);
   margin-bottom: 8px;
 }
 
 .input-wrapper {
   position: relative;
-  background: white;
-  border: 1px solid rgba(226, 232, 240, 0.6);
-  border-radius: 8px;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .input-wrapper:focus-within {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .custom-input :deep(.el-input__wrapper) {
@@ -879,15 +881,15 @@ watch([() => loginForm.value.password, showPassword, isPurplePeeking], ([passwor
   height: 48px;
   font-size: 16px;
   font-weight: 500;
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  background: var(--color-primary);
   border: none;
-  border-radius: 8px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: var(--radius-md);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
 .login-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+  box-shadow: var(--shadow-primary-hover);
 }
 
 .login-button:active {

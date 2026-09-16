@@ -39,6 +39,24 @@ const routes = [
         meta: { title: "知识管理" },
       },
       {
+        path: "knowledge/new",
+        name: "KnowledgeCreate",
+        component: () => import("@/views/KnowledgeEdit.vue"),
+        meta: { title: "创建知识" },
+      },
+      {
+        path: "knowledge/:id",
+        name: "KnowledgeDetail",
+        component: () => import("@/views/KnowledgeDetail.vue"),
+        meta: { title: "知识详情" },
+      },
+      {
+        path: "knowledge/:id/edit",
+        name: "KnowledgeEdit",
+        component: () => import("@/views/KnowledgeEdit.vue"),
+        meta: { title: "编辑知识" },
+      },
+      {
         path: "review",
         name: "Review",
         component: () => import("@/views/Review.vue"),
@@ -59,8 +77,14 @@ const routes = [
       {
         path: "research",
         name: "Research",
-        component: () => import("@/views/Research.vue"),
+        redirect: "/ai-research",
         meta: { title: "AI学习研究" },
+      },
+      {
+        path: "ai-research",
+        name: "AIResearch",
+        component: () => import("@/views/ResearchWorkspace.vue"),
+        meta: { title: "AI Research Workspace" },
       },
       {
         path: "settings",

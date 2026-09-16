@@ -74,6 +74,9 @@ public class PendingKnowledgeServiceImpl implements PendingKnowledgeService {
             String summary = item.getSummary() != null ? item.getSummary() : pending.getSummary();
             String content = item.getContent() != null ? item.getContent() : pending.getContent();
 
+            // 判断是否需要复习：请求参数 > pending 原始标记 > 默认 false
+            boolean needReview = generateCards || Boolean.TRUE.equals(pending.getNeedReview());
+
             KnowledgeNode node = new KnowledgeNode();
             node.setUserId(userId);
             node.setWorkspaceId(pending.getWorkspaceId());
@@ -82,14 +85,14 @@ public class PendingKnowledgeServiceImpl implements PendingKnowledgeService {
             node.setContentMd(content);
             node.setImportance(3);
             node.setMasteryLevel(0);
+            node.setNeedReview(needReview ? 1 : 0);
             node.setReviewCount(0);
             knowledgeNodeMapper.insert(node);
-            log.info("知识点入库 nodeId={} title={}", node.getId(), node.getTitle());
+            log.info("知识点入库 nodeId={} title={} needReview={}", node.getId(), node.getTitle(), needReview);
 
-            // 勾选生成复习卡片时，为每个入库的知识点生成2张选择题卡片
-            if (generateCards) {
+            // 需要复习时为知识点生成复习卡片
+            if (needReview) {
                 try {
-                    reviewCardService.generateReviewCard(node.getId(), "choice", "auto", userId);
                     reviewCardService.generateReviewCard(node.getId(), "choice", "auto", userId);
                     log.info("生成复习卡片 nodeId={}", node.getId());
                 } catch (Exception e) {
