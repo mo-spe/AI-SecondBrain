@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from "vue";
+import { ref, computed, nextTick, onBeforeUnmount } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   ChatDotRound,
@@ -147,6 +147,8 @@ import {
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import request from "@/utils/request";
+import { streamRagAnswer } from "@/utils/ragStream";
+import { renderMarkdown } from "@/utils/markdown";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -162,7 +164,7 @@ const generationTime = ref(0);
 const abortController = ref(null);
 
 const formattedAnswer = computed(() => {
-  return answer.value.replace(/\n/g, "<br>");
+  return renderMarkdown(answer.value);
 });
 
 /**
@@ -172,7 +174,7 @@ const formattedAnswer = computed(() => {
  * 直接用 fetch API 获取 ReadableStream 更可靠。
  */
 const handleAsk = async () => {
-  console.log("[RAG STREAM v2] 流式handleAsk被调用, 目标: /api/rag/answer/stream");
+  if (loading.value || isStreaming.value) return;
   if (!question.value.trim()) {
     ElMessage.warning("请输入问题");
     return;
@@ -189,68 +191,11 @@ const handleAsk = async () => {
   abortController.value = controller;
 
   try {
-    const token = userStore.token;
-    const response = await fetch("/api/rag/answer/stream", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        question: question.value,
-        topK: 3,
-        includeReferences: true,
-      }),
-      signal: controller.signal,
+    const startTime = Date.now();
+    await streamRagAnswer({ question: question.value, topK: 3, includeReferences: true }, {
+      token: userStore.token, signal: controller.signal,
+      onEvent: (name, data) => dispatchEvent(name, data, startTime),
     });
-
-    if (!response.ok) {
-      const text = await response.text();
-      if (text.includes("请先在设置页配置")) {
-        ElMessageBox.alert(
-          "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
-          "需要配置API Key",
-          { confirmButtonText: "前往设置", type: "warning" },
-        ).then(() => router.push("/settings"));
-        return;
-      }
-      throw new Error(text || `HTTP ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let currentEvent = "message";
-    let startTime = Date.now();
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (value) {
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            currentEvent = line.substring(6).trim();
-          } else if (line.startsWith("data:")) {
-            const data = line.substring(5).trim();
-            dispatchEvent(currentEvent, data, startTime);
-            currentEvent = "message";
-          }
-        }
-      }
-
-      if (done) break;
-    }
-
-    if (buffer.trim()) {
-      const line = buffer.trim();
-      if (line.startsWith("data:")) {
-        dispatchEvent(currentEvent, line.substring(5).trim(), startTime);
-      }
-    }
   } catch (error) {
     if (error.name === "AbortError") {
       ElMessage.info("已停止生成");
@@ -318,7 +263,10 @@ const handleStop = () => {
   }
 };
 
+onBeforeUnmount(handleStop);
+
 const handleClear = () => {
+  if (isStreaming.value) return;
   question.value = "";
   answer.value = "";
   references.value = [];

@@ -254,7 +254,8 @@
                 </div>
               </div>
               <div class="chat-content">
-                <div class="chat-text">{{ streamingContent }}<span class="streaming-cursor">|</span></div>
+                <div v-if="!streamingContent" role="status" class="chat-text">{{ streamStatus }}</div>
+                <div v-else class="chat-text">{{ streamingContent }}<span class="streaming-cursor">|</span></div>
                 <div v-if="streamingReferences.length > 0" class="chat-references">
                   <div class="ref-label">参考来源</div>
                   <div class="ref-list">
@@ -269,10 +270,12 @@
           </div>
 
           <div class="rag-input-area">
+            <el-alert v-if="streamError" :title="streamError" type="error" show-icon :closable="false" role="alert" />
             <div class="input-box">
               <textarea
                 v-model="question"
                 placeholder="输入知识问题..."
+                :disabled="loading"
                 rows="3"
                 @keyup.ctrl.enter="handleAsk"
                 class="question-input"
@@ -287,7 +290,7 @@
                   type="primary"
                   @click="handleAsk"
                   :loading="loading && !isStreaming"
-                  :disabled="isStreaming"
+                  :disabled="loading"
                   class="send-btn"
                 >
                   <el-icon><Promotion /></el-icon>
@@ -312,7 +315,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Document,
@@ -330,6 +333,7 @@ import {
   EditPen,
 } from "@element-plus/icons-vue";
 import request from "@/utils/request";
+import { streamRagAnswer } from "@/utils/ragStream";
 import { tagsAPI } from "@/api/tags";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
@@ -357,6 +361,8 @@ const question = ref("");
 const messages = ref([]);
 const streamingContent = ref(null);
 const streamingReferences = ref([]);
+const streamStatus = ref("");
+const streamError = ref("");
 const currentSessionId = ref(null);
 const sessions = ref([]);
 const ragBodyRef = ref(null);
@@ -512,6 +518,7 @@ const switchSession = async (sessionId) => {
 };
 
 const handleNewSession = async () => {
+  if (loading.value || isStreaming.value) return;
   await createNewSession();
   showSessionList.value = false;
 };
@@ -542,6 +549,7 @@ const handleRenameSession = async (session) => {
 };
 
 const handleDeleteSession = async (sessionId) => {
+  if (loading.value || isStreaming.value) return;
   try {
     await request.delete(`/sessions/${sessionId}`);
     sessions.value = sessions.value.filter((s) => s.id !== sessionId);
@@ -612,180 +620,60 @@ const askQuestion = (text) => {
 };
 
 const handleAsk = async () => {
-  if (!question.value.trim()) {
-    ElMessage.warning("请输入问题");
-    return;
-  }
-  if (!currentSessionId.value) {
-    await createNewSession();
-  }
-
+  if (loading.value || isStreaming.value) return;
+  const userQuestion = question.value.trim();
+  if (!userQuestion) { ElMessage.warning("请输入问题"); return; }
   loading.value = true;
-  isStreaming.value = true;
-  streamingContent.value = "";
-  streamingReferences.value = [];
-
-  const userQuestion = question.value;
-  messages.value.push({ role: "user", content: userQuestion });
-  question.value = "";
-  showSessionList.value = false;
-  scrollToBottom();
-
+  streamError.value = "";
   const controller = new AbortController();
   abortController.value = controller;
-
+  let started = false;
   try {
-    const token = userStore.token;
-    const response = await fetch("/api/rag/answer/stream", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        question: userQuestion,
-        topK: 3,
-        includeReferences: true,
-        sessionId: currentSessionId.value,
-      }),
+    if (!currentSessionId.value) await createNewSession();
+    if (controller.signal.aborted) return;
+    if (!currentSessionId.value) throw new Error("无法创建会话，请重试");
+    isStreaming.value = true;
+    streamingContent.value = "";
+    streamingReferences.value = [];
+    streamStatus.value = "正在检索相关知识…";
+    messages.value.push({ role: "user", content: userQuestion });
+    started = true;
+    question.value = "";
+    showSessionList.value = false;
+    scrollToBottom();
+    await streamRagAnswer({ question: userQuestion, topK: 3, includeReferences: true, sessionId: currentSessionId.value }, {
+      token: userStore.token,
       signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      if (text.includes("请先在设置页配置")) {
-        ElMessageBox.alert(
-          "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
-          "需要配置API Key",
-          { confirmButtonText: "前往设置", type: "warning" },
-        ).then(() => router.push("/settings"));
-        messages.value.pop();
-        return;
-      }
-      throw new Error(text || `HTTP ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let currentEvent = "message";
-    let startTime = Date.now();
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (value) {
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            currentEvent = line.substring(6).trim();
-          } else if (line.startsWith("data:")) {
-            const data = line.substring(5).trim();
-            dispatchEvent(currentEvent, data, startTime);
-            currentEvent = "message";
-          }
+      onEvent: (name, data) => {
+        if (name === "token") streamingContent.value += data;
+        if (name === "references") {
+          streamingReferences.value = JSON.parse(data);
+          streamStatus.value = streamingReferences.value.length ? "已找到相关知识，正在组织回答…" : "正在检查知识是否足够回答…";
         }
-      }
-
-      if (done) break;
-    }
-
-    if (buffer.trim()) {
-      const line = buffer.trim();
-      if (line.startsWith("data:")) {
-        dispatchEvent(currentEvent, line.substring(5).trim(), startTime);
-      }
-    }
+        if (name === "done" && !streamingContent.value) throw new Error("模型未返回回答，请检查模型设置后重试");
+        scrollToBottom();
+      },
+    });
   } catch (error) {
-    if (error.name === "AbortError") {
-      ElMessage.info("已停止生成");
-      return;
-    }
-    console.error("流式问答失败:", error);
-    if (error.message && error.message.includes("API Key")) {
-      ElMessageBox.alert(
-        "AI服务不可用，请配置有效的API Key。\n\n请前往【个人设置】添加您的API Key，或联系管理员配置平台API Key。",
-        "需要配置API Key",
-        { confirmButtonText: "前往设置", type: "warning" },
-      ).then(() => router.push("/settings"));
+    if (controller.signal.aborted) {
+      streamError.value = "已停止生成，收到的内容已保留。";
     } else {
-      ElMessage.error("回答失败：" + (error.message || "网络错误"));
+      streamError.value = error.message || "回答失败，请稍后重试";
     }
+    if (!streamingContent.value) question.value = userQuestion;
   } finally {
-    if (streamingContent.value) {
-      messages.value.push({
-        role: "assistant",
-        content: streamingContent.value,
-        references: streamingReferences.value,
-      });
-      streamingContent.value = null;
-      streamingReferences.value = [];
-    }
+    if (streamingContent.value) messages.value.push({ role: "assistant", content: streamingContent.value, references: streamingReferences.value });
+    streamingContent.value = null;
+    streamingReferences.value = [];
     loading.value = false;
     isStreaming.value = false;
     abortController.value = null;
-    loadSessions();
+    if (started) loadSessions();
   }
 };
 
-function dispatchEvent(eventType, data, startTime) {
-  switch (eventType) {
-    case "token":
-      streamingContent.value += data;
-      break;
-    case "references":
-      try {
-        streamingReferences.value = JSON.parse(data);
-      } catch (e) {
-        console.warn("解析引用失败:", e);
-      }
-      break;
-    case "metrics":
-      // metrics are optional, silently ignore
-      break;
-    case "done":
-      if (!streamingContent.value) {
-        streamingContent.value = "（未生成回答）";
-      }
-      messages.value.push({
-        role: "assistant",
-        content: streamingContent.value,
-        references: streamingReferences.value,
-      });
-      streamingContent.value = null;
-      streamingReferences.value = [];
-      scrollToBottom();
-      break;
-    case "error":
-      if (data && data.includes("请先在设置页配置")) {
-        ElMessageBox.alert(data, "需要配置API Key", {
-          confirmButtonText: "前往设置",
-          type: "warning",
-        }).then(() => router.push("/settings"));
-      } else {
-        ElMessage.error(data || "生成失败");
-      }
-      break;
-  }
-}
-
-const handleStop = () => {
-  if (abortController.value) {
-    abortController.value.abort();
-    if (streamingContent.value) {
-      messages.value.push({
-        role: "assistant",
-        content: streamingContent.value + "（已停止）",
-        references: streamingReferences.value,
-      });
-      streamingContent.value = null;
-      streamingReferences.value = [];
-    }
-  }
-};
+const handleStop = () => abortController.value?.abort();
+onBeforeUnmount(handleStop);
 
 onMounted(async () => {
   await nextTick();
