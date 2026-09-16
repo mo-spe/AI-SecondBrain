@@ -7,7 +7,9 @@
 
 **智能第二大脑系统** - 基于 AI 大模型的知识管理平台，帮助您高效采集、整理、复习 AI 对话中的宝贵知识，通过科学记忆法将短期记忆转化为长期记忆。
 
----
+## **需求管理** - 项目需求管理文档链接
+
+(https://mcndr2y6zasu.feishu.cn/wiki/BcFcwuFIFi35ZxkAsmUcLukvnXe?table=tblsuZt7f1YqkV9w&view=vewLgt4u2h)
 
 ## 📋 目录
 
@@ -26,26 +28,31 @@
 ## ✨ 核心特性
 
 ### 🎯 智能采集
+
 - **多平台支持**：一键采集 ChatGPT、DeepSeek、Kimi、通义千问等主流 AI 平台对话
 - **浏览器插件**：Chrome/Edge 插件，无需切换窗口即可保存对话
 - **自动分类**：AI 智能识别对话主题，自动添加标签
 
 ### 🧠 知识管理
+
 - **结构化存储**：将散乱的对话转换为结构化知识点
 - **知识图谱**：可视化展示知识点之间的关联关系
 - **语义搜索**：基于 Elasticsearch 的智能搜索，支持关键词高亮
 
 ### 📚 科学复习
+
 - **艾宾浩斯记忆曲线**：智能规划复习时间，对抗遗忘
 - **自动出题**：AI 根据知识点自动生成复习题目
 - **进度追踪**：实时统计学习进度和掌握程度
 
 ### 🤖 AI 增强
+
 - **RAG 知识问答**：基于检索增强生成的智能问答系统
 - **学习报告**：AI 深度分析学习数据，生成个性化报告
 - **智能推荐**：根据学习历史推荐相关知识
 
 ### 👥 协作与分享
+
 - **工作区管理**：支持多工作区、多角色权限控制（RBAC）
 - **知识广场**：分享、点赞、评论知识点
 - **游戏化激励**：积分、成就、排行榜系统
@@ -56,13 +63,13 @@
 
 ### 环境要求
 
-| 依赖 | 版本 | 说明 |
-|------|------|------|
-| JDK | 17 | 后端运行环境 |
-| Maven | 3.8+ | 后端构建工具 |
-| Node.js | 18+ | 前端运行环境 |
-| MySQL | 8.0+ | 关系数据库 |
-| Redis | 7+ | 缓存数据库 |
+| 依赖    | 版本 | 说明         |
+| ------- | ---- | ------------ |
+| JDK     | 17   | 后端运行环境 |
+| Maven   | 3.8+ | 后端构建工具 |
+| Node.js | 18+  | 前端运行环境 |
+| MySQL   | 8.0+ | 关系数据库   |
+| Redis   | 7+   | 缓存数据库   |
 
 ### 步骤 1：克隆项目
 
@@ -187,40 +194,40 @@ npm run dev
 
 #### 后端技术
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Java | 17 | 开发语言 |
-| Spring Boot | 3.1.5 | 应用框架 |
-| MyBatis-Plus | 3.5.3 | ORM 框架 |
-| Spring Security | 3.1 | 安全框架 |
-| Spring Kafka | 3.1 | 消息队列 |
-| Spring Data Elasticsearch | 5.1 | 搜索引擎 |
-| Spring Data Redis | 3.1 | 缓存 |
-| Quartz | 2.3 | 定时任务 |
-| JWT (jjwt) | 0.11.5 | 认证令牌 |
-| Knife4j | 4.4.0 | API 文档 |
-| Hutool | 5.8.24 | 工具库 |
+| 技术                      | 版本   | 用途     |
+| ------------------------- | ------ | -------- |
+| Java                      | 17     | 开发语言 |
+| Spring Boot               | 3.1.5  | 应用框架 |
+| MyBatis-Plus              | 3.5.3  | ORM 框架 |
+| Spring Security           | 3.1    | 安全框架 |
+| Spring Kafka              | 3.1    | 消息队列 |
+| Spring Data Elasticsearch | 5.1    | 搜索引擎 |
+| Spring Data Redis         | 3.1    | 缓存     |
+| Quartz                    | 2.3    | 定时任务 |
+| JWT (jjwt)                | 0.11.5 | 认证令牌 |
+| Knife4j                   | 4.4.0  | API 文档 |
+| Hutool                    | 5.8.24 | 工具库   |
 
 #### 前端技术
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Vue.js | 3.4 | 前端框架 |
-| Vite | 5.0 | 构建工具 |
-| Element Plus | 2.5 | UI 组件库 |
-| Pinia | 2.1 | 状态管理 |
-| Vue Router | 4.2 | 路由管理 |
-| Axios | 1.6 | HTTP 客户端 |
-| ECharts | 5.6 | 图表库 |
-| Marked | 17 | Markdown 渲染 |
+| 技术         | 版本 | 用途          |
+| ------------ | ---- | ------------- |
+| Vue.js       | 3.4  | 前端框架      |
+| Vite         | 5.0  | 构建工具      |
+| Element Plus | 2.5  | UI 组件库     |
+| Pinia        | 2.1  | 状态管理      |
+| Vue Router   | 4.2  | 路由管理      |
+| Axios        | 1.6  | HTTP 客户端   |
+| ECharts      | 5.6  | 图表库        |
+| Marked       | 17   | Markdown 渲染 |
 
 #### AI 服务
 
-| 服务 | 提供商 | 用途 |
-|------|--------|------|
-| Qwen (目前阶段) | 阿里云 | 知识提取、报告生成 |
-| Qwen（目前阶段） | 阿里云 | 题目生成、RAG 问答 |
-| text-embedding-v2 | 阿里云 | 向量嵌入生成 |
+| 服务              | 提供商 | 用途               |
+| ----------------- | ------ | ------------------ |
+| Qwen (目前阶段)   | 阿里云 | 知识提取、报告生成 |
+| Qwen（目前阶段）  | 阿里云 | 题目生成、RAG 问答 |
+| text-embedding-v2 | 阿里云 | 向量嵌入生成       |
 
 ---
 
@@ -290,17 +297,17 @@ AI-SecondBrain/
 
 项目提供了完整的新人文档体系，建议按以下顺序阅读：
 
-| 顺序 | 文档 | 内容概要 |
-|------|------|---------|
-| 1 | [01_framework_architecture.md](docs/01_framework_architecture.md) | 整体架构 + 目录结构 + 核心模块 |
-| 2 | [02_framework_philosophy.md](docs/02_framework_philosophy.md) | 8 大设计思想（分层、JWT、工作区隔离等） |
-| 3 | [03_lang_concepts.md](docs/03_lang_concepts.md) | Java/Vue 语言特性 + 命名规范 |
-| 4 | [04_code_walkthrough.md](docs/04_code_walkthrough.md) | 登录→获取知识点列表完整代码走读 |
-| 5 | [05_runtime_model.md](docs/05_runtime_model.md) | 线程全景图 + 启动顺序 + 线程安全 |
-| 6 | [06_build_guide.md](docs/06_build_guide.md) | Maven + Vite 构建指南 + 常见错误 |
-| 7 | [07_integration_guide.md](docs/07_integration_guide.md) | 新模块接入十步法（完整示例） |
-| 8 | [08_debug_guide.md](docs/08_debug_guide.md) | 日志系统 + 调试技巧速查 |
-| 9 | [09_design_conventions.md](docs/09_design_conventions.md) | 命名规范 + 拆分原则 + 反模式 |
+| 顺序 | 文档                                                              | 内容概要                                |
+| ---- | ----------------------------------------------------------------- | --------------------------------------- |
+| 1    | [01_framework_architecture.md](docs/01_framework_architecture.md) | 整体架构 + 目录结构 + 核心模块          |
+| 2    | [02_framework_philosophy.md](docs/02_framework_philosophy.md)     | 8 大设计思想（分层、JWT、工作区隔离等） |
+| 3    | [03_lang_concepts.md](docs/03_lang_concepts.md)                   | Java/Vue 语言特性 + 命名规范            |
+| 4    | [04_code_walkthrough.md](docs/04_code_walkthrough.md)             | 登录→获取知识点列表完整代码走读         |
+| 5    | [05_runtime_model.md](docs/05_runtime_model.md)                   | 线程全景图 + 启动顺序 + 线程安全        |
+| 6    | [06_build_guide.md](docs/06_build_guide.md)                       | Maven + Vite 构建指南 + 常见错误        |
+| 7    | [07_integration_guide.md](docs/07_integration_guide.md)           | 新模块接入十步法（完整示例）            |
+| 8    | [08_debug_guide.md](docs/08_debug_guide.md)                       | 日志系统 + 调试技巧速查                 |
+| 9    | [09_design_conventions.md](docs/09_design_conventions.md)         | 命名规范 + 拆分原则 + 反模式            |
 
 ---
 
@@ -312,7 +319,7 @@ AI-SecondBrain/
 
 ```yaml
 ai:
-  provider: qwen  # 默认 AI 提供商
+  provider: qwen # 默认 AI 提供商
   qwen:
     api-key: ${QWEN_API_KEY:}
     base-url: https://dashscope.aliyuncs.com/compatible-mode
@@ -386,6 +393,7 @@ curl http://localhost:8080/api/health
 ### 新功能开发
 
 参考 [07_integration_guide.md](docs/07_integration_guide.md) 中的十步法：
+
 1. 理解三层架构
 2. 数据库表设计
 3. 创建 Entity
@@ -405,15 +413,15 @@ curl http://localhost:8080/api/health
 
 ### 使用的开源框架许可
 
-| 框架 | 协议 |
-|------|------|
-| Spring Boot | Apache 2.0 |
-| Vue.js | MIT |
-| Element Plus | MIT |
-| MyBatis-Plus | Apache 2.0 |
+| 框架          | 协议       |
+| ------------- | ---------- |
+| Spring Boot   | Apache 2.0 |
+| Vue.js        | MIT        |
+| Element Plus  | MIT        |
+| MyBatis-Plus  | Apache 2.0 |
 | Elasticsearch | Apache 2.0 |
-| Redis | BSD |
-| Kafka | Apache 2.0 |
+| Redis         | BSD        |
+| Kafka         | Apache 2.0 |
 
 ---
 
