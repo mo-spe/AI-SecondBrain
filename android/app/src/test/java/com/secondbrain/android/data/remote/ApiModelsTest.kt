@@ -28,7 +28,7 @@ class ApiModelsTest {
     }
 
     @Test
-    fun squareListAcceptsNullCommentsFromServer() {
+    fun squareListAcceptsNullableServerFieldsWithoutDiscardingPosts() {
         val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
         val pageType = Types.newParameterizedType(
             PageResult::class.java,
@@ -38,10 +38,12 @@ class ApiModelsTest {
         val adapter = moshi.adapter<ApiResult<PageResult<SquarePost>>>(resultType)
 
         val result = adapter.fromJson(
-            """{"code":200,"message":"ok","data":{"records":[{"postId":1,"comments":null}],"total":1}}"""
+            """{"code":200,"message":"ok","data":{"records":[{"postId":1,"comments":null,"isLiked":null,"isBookmarked":null}],"total":1}}"""
         )
 
         assertNull(result?.data?.records?.single()?.comments)
+        assertNull(result?.data?.records?.single()?.isLiked)
+        assertNull(result?.data?.records?.single()?.isBookmarked)
     }
     @Test fun rejectsErrorEnvelopeEvenWhenPayloadExists() {
         assertThrows(IllegalStateException::class.java) { ApiResult(403, "无权访问", "stale").requireData() }

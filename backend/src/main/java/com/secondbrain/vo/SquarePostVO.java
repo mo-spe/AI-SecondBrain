@@ -80,12 +80,12 @@ public class SquarePostVO {
     /**
      * 当前用户是否已点赞
      */
-    private Boolean isLiked;
+    private Boolean isLiked = Boolean.FALSE;
 
     /**
      * 当前用户是否已收藏
      */
-    private Boolean isBookmarked;
+    private Boolean isBookmarked = Boolean.FALSE;
 
     /**
      * 帖子状态：published / removed

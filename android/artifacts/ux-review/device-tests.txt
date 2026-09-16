@@ -1,7 +1,7 @@
 
 com.secondbrain.android.ui.MobileFlowsTest:........
 
-Time: 25.953
+Time: 24.942
 
 OK (8 tests)
 

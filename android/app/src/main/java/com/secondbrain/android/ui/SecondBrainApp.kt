@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.IconButton
@@ -25,18 +26,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,18 +52,22 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -65,6 +77,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -104,8 +119,8 @@ private fun AppShell() {
     val screenStates = rememberSaveableStateHolder()
     val reviewViewModel: com.secondbrain.android.review.ReviewViewModel = hiltViewModel()
     val destinations = listOf(
-        Destination("今日", Icons.Outlined.AutoAwesome),
-        Destination("知识", Icons.Outlined.Lightbulb),
+        Destination("今日", Icons.Outlined.Home),
+        Destination("知识", Icons.Outlined.MenuBook),
         Destination("社区", Icons.Outlined.Groups),
         Destination("我的", Icons.Outlined.Person)
     )
@@ -142,7 +157,10 @@ private fun AppShell() {
             return
         }
         FullScreenDestination.Review -> {
-            ReviewSessionScreen(onBack = { fullScreen = null })
+            ReviewSessionScreen(
+                onBack = { fullScreen = null },
+                onOpenKnowledge = { id -> fullScreen = FullScreenDestination.Knowledge(id) }
+            )
             return
         }
         is FullScreenDestination.Knowledge -> {
@@ -174,14 +192,19 @@ private fun AppShell() {
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp
+                tonalElevation = 2.dp
             ) {
                 destinations.forEachIndexed { index, item ->
                     NavigationBarItem(
                         selected = selected == index,
                         onClick = { selected = index },
                         icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) }
+                        label = { Text(item.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = Color.Transparent
+                        )
                     )
                 }
             }
@@ -192,6 +215,7 @@ private fun AppShell() {
             0 -> TodayScreen(
                 padding = padding,
                 onOpenRag = { fullScreen = FullScreenDestination.Rag },
+                onOpenCapture = { fullScreen = FullScreenDestination.Capture },
                 onOpenReview = { cardId -> reviewViewModel.loadFrom(cardId); fullScreen = FullScreenDestination.Review }
             )
             1 -> KnowledgeScreen(padding, onOpen = { fullScreen = FullScreenDestination.Knowledge(it) })
@@ -377,6 +401,7 @@ private fun FeaturePlaceholder(title: String, padding: PaddingValues) {
 private fun TodayScreen(
     padding: PaddingValues,
     onOpenRag: () -> Unit,
+    onOpenCapture: () -> Unit,
     onOpenReview: (Long?) -> Unit,
     viewModel: TodayViewModel = hiltViewModel()
 ) {
@@ -384,71 +409,131 @@ private fun TodayScreen(
     androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.load() }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(start = 20.dp, top = 28.dp, end = 20.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Text("今日", style = MaterialTheme.typography.headlineMedium)
-            Text("从一次回顾开始", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                Column(Modifier.weight(1f)) {
+                    Text("今日", style = MaterialTheme.typography.displaySmall)
+                    Text("从一次回顾开始", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                    Text("积累，", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("让选择更从容。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("—", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.outline)
+                }
+            }
         }
         when (val viewState = state) {
-            LoadState.Loading -> item { LearningHero(0, onReview = {}, reviewEnabled = false, onAsk = onOpenRag) }
-            is LoadState.Empty -> item {
-                LearningHero(0, onReview = {}, reviewEnabled = false, onAsk = onOpenRag)
-                EmptyState(viewState.message, viewModel::load)
+            LoadState.Loading -> {
+                item { LearningHero(0, null, onReview = {}, reviewEnabled = false) }
+                item { LoadingContent("正在更新今日学习计划…") }
+            }
+            is LoadState.Empty -> {
+                item { LearningHero(0, null, onReview = {}, reviewEnabled = false) }
+                item { EmptyState(viewState.message, viewModel::load) }
+                item { TodayExploreHeader() }
+                item { TodayExploreRow("问问知识库", "基于已有资料获得回答", Icons.Outlined.ChatBubbleOutline, onOpenRag) }
+                item { TodayExploreRow("采集新知识", "图片、链接或手动记录", Icons.Outlined.Add, onOpenCapture, MaterialTheme.colorScheme.tertiaryContainer) }
             }
             is LoadState.Failure -> item { EmptyState(viewState.message, viewModel::load) }
             is LoadState.Content -> {
-                item { LearningHero(viewState.value.size, onReview = { onOpenReview(null) }, reviewEnabled = true, onAsk = onOpenRag) }
-                item { SectionLabel("等待回顾") }
-                items(viewState.value, key = { it.id }) { card ->
-                    KnowledgeRow(
-                        title = card.nodeTitle ?: "未命名知识点",
-                        body = com.secondbrain.android.review.parseReviewPrompt(card.question).question.ifBlank { "进入复习，回顾这个知识点" },
-                        marker = "复",
-                        onClick = { onOpenReview(card.id) }
-                    )
-                }
+                item { LearningHero(viewState.value.size, viewState.value.firstOrNull(), onReview = { onOpenReview(null) }, reviewEnabled = true) }
+                item { TodayExploreHeader() }
+                item { TodayExploreRow("问问知识库", "基于已有资料获得回答", Icons.Outlined.ChatBubbleOutline, onOpenRag) }
+                item { TodayExploreRow("采集新知识", "图片、链接或手动记录", Icons.Outlined.Add, onOpenCapture, MaterialTheme.colorScheme.tertiaryContainer) }
             }
         }
     }
 }
 
 @Composable
-private fun LearningHero(count: Int, onReview: () -> Unit, reviewEnabled: Boolean, onAsk: () -> Unit) {
+private fun LearningHero(
+    count: Int,
+    nextCard: com.secondbrain.android.data.remote.ReviewCard?,
+    onReview: () -> Unit,
+    reviewEnabled: Boolean
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        )
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(Modifier.padding(24.dp)) {
-            Text("今日待复习", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primaryContainer)
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                Text(count.toString(), style = MaterialTheme.typography.displaySmall)
-                Text(" 张待复习", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 8.dp, bottom = 7.dp))
-            }
-            Text(
-                if (reviewEnabled) "从一张卡片开始，把记忆重新接上。" else "暂时没有到期内容，去问问你的知识库。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.padding(top = 14.dp)
+        Box {
+            Image(
+                painter = painterResource(com.secondbrain.android.R.drawable.today_review_scene),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
             )
+            Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.58f), modifier = Modifier.matchParentSize()) {}
+        Column(Modifier.padding(24.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("今日待复习", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (reviewEnabled) "准备开始" else "暂无到期", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
+                Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onSurface)
+                Text(" 张待复习", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
+            }
+            LinearProgressIndicator(
+                progress = { if (reviewEnabled) 0.6f else 0f },
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(6.dp),
+                color = MaterialTheme.colorScheme.tertiary,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+            )
+            Text(if (reviewEnabled) "本周学习节奏正在累积" else "去问问你的知识库，继续探索。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+            HorizontalDivider(Modifier.padding(top = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text(if (nextCard != null) "下一张 · 1 / $count" else "暂时没有到期内容", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 18.dp))
+            Text(nextCard?.nodeTitle ?: "从一次回顾开始", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 6.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(nextCard?.let { com.secondbrain.android.review.parseReviewPrompt(it.question).question }?.ifBlank { "进入复习，回顾这个知识点" } ?: "去整理新的知识，下一次复习会在这里出现。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
             Button(
                 onClick = onReview,
                 enabled = reviewEnabled,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth().padding(top = 20.dp).height(52.dp)
             ) { Text("开始复习") }
-            TextButton(onClick = onAsk, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)) {
-                Text("向知识库提问", color = MaterialTheme.colorScheme.primaryContainer)
+        }
+        }
+    }
+}
+
+@Composable
+private fun TodayExploreHeader() {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text("继续探索", style = MaterialTheme.typography.titleLarge)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("让好奇心带来更多可能", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun TodayExploreRow(title: String, body: String, icon: ImageVector, onClick: () -> Unit, accent: Color = Color.Unspecified) {
+    val tileColor = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primaryContainer else accent
+    val iconColor = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 84.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(color = tileColor, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(52.dp)) {
+                Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = iconColor) }
             }
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp))
+            }
+            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
         }
     }
 }
@@ -457,55 +542,88 @@ private fun LearningHero(count: Int, onReview: () -> Unit, reviewEnabled: Boolea
 @Composable
 internal fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag.RagViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item { TopAppBar(title = { Text("知识问答") }, navigationIcon = { BackNavigation(onBack) }) }
-        item {
-            Text(
-                "基于当前工作区的知识内容回答；回答会附带可追溯的引用。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("问问知识库", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = { BackNavigation(onBack) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
-        }
-        item {
-            OutlinedTextField(
-                value = state.question,
-                enabled = !state.asking,
-                onValueChange = viewModel::updateQuestion,
-                label = { Text("你想了解什么？") },
-                placeholder = { Text("例如：Redis 的持久化机制有什么差别？") },
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        item {
-            Button(
-                onClick = viewModel::ask,
-                enabled = state.ready && !state.asking && state.question.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) { Text(if (state.asking) "正在检索知识…" else "开始问答") }
-            if (state.asking) TextButton(onClick = viewModel::stop, modifier = Modifier.fillMaxWidth()) { Text("停止生成") }
-        }
-        state.error?.let { error ->
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("这次问答没有完成", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onErrorContainer)
-                        Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 4.dp))
-                        Text("稍后重试，已收到的内容会保留。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 10.dp))
+        },
+        bottomBar = {
+            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
+                Column(Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                    Text("回答基于你的知识库", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = state.question,
+                            enabled = !state.asking,
+                            onValueChange = viewModel::updateQuestion,
+                            placeholder = { Text("继续追问，或输入新的问题") },
+                            singleLine = false,
+                            maxLines = 3,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        Button(
+                            onClick = if (state.asking) viewModel::stop else viewModel::ask,
+                            enabled = state.asking || (state.ready && state.question.isNotBlank()),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            if (state.asking) Text("×", style = MaterialTheme.typography.titleLarge)
+                            else Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "发送")
+                        }
                     }
                 }
             }
         }
-        state.answer.takeIf { it.isNotBlank() }?.let { answer -> item { ReadingBody(answer) } }
-        state.references?.let { references -> item { RagReferences(references) } }
+    ) { scaffoldPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(scaffoldPadding),
+            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            item {
+                Text("基于个人空间 · 从已有资料中得到可追溯的回答", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            state.question.takeIf { it.isNotBlank() && (state.asking || state.answer.isNotBlank()) }?.let { question ->
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(0.88f),
+                            shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(question, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+            }
+            if (state.asking && state.answer.isBlank()) item { LoadingContent("正在检索相关知识…") }
+            state.error?.let { error ->
+                item {
+                    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("这次问答没有完成", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 4.dp))
+                            Text("已收到的内容会保留，可继续提问。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(top = 10.dp))
+                        }
+                    }
+                }
+            }
+            state.answer.takeIf { it.isNotBlank() }?.let { answer ->
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("回答", style = MaterialTheme.typography.titleLarge)
+                        ReadingBody(answer)
+                    }
+                }
+            }
+            state.references?.let { references -> item { RagReferences(references) } }
+        }
     }
 }
 
@@ -535,7 +653,7 @@ internal fun CommunityContent(
     var questionMode by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val showingQuestions = questionMode
     val tabs: @Composable () -> Unit = {
-        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
             Row(Modifier.padding(4.dp)) {
                 CommunityTab("知识广场", !showingQuestions, Modifier.weight(1f)) { questionMode = false }
                 CommunityTab("问答社区", showingQuestions, Modifier.weight(1f)) { questionMode = true }
@@ -544,31 +662,142 @@ internal fun CommunityContent(
     }
     androidx.compose.runtime.key(showingQuestions) {
         if (showingQuestions) {
-            ContentScreen("社区", "发现值得保存的知识与观点", padding, questions, onRetryQuestions, header = tabs) { content ->
-                item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { SectionLabel("正在讨论"); TextButton(onClick = onRetryQuestions) { Text("刷新") } } }
+            ContentScreen("社区", "把问题说清楚，和懂的人一起解开", padding, questions, onRetryQuestions, header = tabs) { content ->
+                item { CommunitySectionHeader("正在讨论", onRetryQuestions) }
                 items(content, key = { "question-${it.id}" }) { question ->
-                    KnowledgeRow(
-                        title = question.title,
-                        body = question.content ?: "提问者暂未补充描述",
-                        marker = "问",
-                        suffix = "${question.authorName ?: "社区成员"} · ${question.answerCount} 个回答",
-                        onClick = { onOpenQuestion(question) }
-                    )
+                    CommunityQuestionRow(question, onClick = { onOpenQuestion(question) })
                 }
             }
         } else {
-            ContentScreen("社区", "发现值得保存的知识与观点", padding, square, onRetrySquare, header = tabs) { content ->
-                item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { SectionLabel("最新分享"); TextButton(onClick = onRetrySquare) { Text("刷新") } } }
+            ContentScreen("社区", "分享能被保存的理解", padding, square, onRetrySquare, header = tabs) { content ->
+                item { CommunitySectionHeader("最新分享", onRetrySquare) }
                 items(content, key = { "post-${it.postId}" }) { post ->
-                    KnowledgeRow(
-                        title = post.nodeTitle ?: "知识分享",
-                        body = post.recommendText ?: post.nodeSummary ?: "阅读分享内容",
-                        marker = (post.authorName ?: "知").take(1),
-                        suffix = "${post.authorName ?: "知识贡献者"} · ${post.likeCount} 赞 · ${post.commentCount} 条讨论",
-                        onClick = { onOpenPost(post) }
-                    )
+                    CommunityPostRow(post, onClick = { onOpenPost(post) })
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CommunitySectionHeader(title: String, onRefresh: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        TextButton(onClick = onRefresh, modifier = Modifier.heightIn(min = 44.dp)) { Text("刷新") }
+    }
+}
+
+@Composable
+private fun CommunityQuestionRow(
+    question: com.secondbrain.android.data.remote.CommunityQuestion,
+    onClick: () -> Unit
+) {
+    val author = question.authorName?.takeIf { it.isNotBlank() } ?: "社区成员"
+    val answered = question.answerCount > 0
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = if (answered) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        if (answered) "${question.answerCount} 个回答" else "待回答",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (answered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                Icon(Icons.Outlined.ChevronRight, contentDescription = "查看问题", tint = MaterialTheme.colorScheme.outline)
+            }
+            Text(question.title, style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            question.content?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("$author · ${if (answered) "已有回答" else "等待理解"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = onClick, modifier = Modifier.heightIn(min = 40.dp), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)) {
+                    Text("查看问题")
+                }
+            }
+            question.tags?.takeIf { it.isNotEmpty() }?.let { tags ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    tags.take(3).forEach { tag ->
+                        Text("# $tag", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+@Composable
+private fun CommunityPostRow(
+    post: com.secondbrain.android.data.remote.SquarePost,
+    onClick: () -> Unit
+) {
+    val author = post.authorName?.takeIf { it.isNotBlank() } ?: "知识贡献者"
+    val summary = post.recommendText?.takeIf { it.isNotBlank() }
+        ?: post.nodeSummary?.takeIf { it.isNotBlank() }
+        ?: "打开分享，查看完整知识内容。"
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(author.take(1), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(author, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        post.createdAt?.take(10) ?: "知识分享",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Text("分享", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Text(post.nodeTitle ?: "知识分享", style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(summary, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            post.knowledgeNodes?.firstOrNull()?.let { node ->
+                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.size(36.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(node.title ?: "关联知识", style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("打开查看原知识", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+                        }
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${post.commentCount} 条讨论 · ${post.likeCount} 人赞同", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(
+                    onClick = onClick,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier.heightIn(min = 40.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("查看讨论") }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -579,8 +808,9 @@ private fun CommunityTab(label: String, selected: Boolean, modifier: Modifier, o
         Button(
             onClick = onClick,
             modifier = modifier.height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            contentPadding = PaddingValues(0.dp)
+            shape = RoundedCornerShape(14.dp),
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
         ) { Text(label) }
     } else {
         TextButton(
@@ -691,16 +921,16 @@ internal fun <T> ContentScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = 20.dp, top = 28.dp, end = 20.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
             Text(title, style = MaterialTheme.typography.headlineMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
+            Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
         }
         item { header() }
         when (state) {
-            LoadState.Loading -> item { Text("正在读取你的数据…") }
+            LoadState.Loading -> item { LoadingContent("正在读取你的数据…") }
             is LoadState.Empty -> item { EmptyState(state.message, onRetry) }
             is LoadState.Failure -> item { EmptyState(state.message, onRetry) }
             is LoadState.Content -> rows(state.value)
@@ -712,13 +942,15 @@ internal fun <T> ContentScreen(
 private fun EmptyState(message: String, retry: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(22.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(Modifier.padding(20.dp)) {
-            Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-            Text(message, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp))
-            OutlinedButton(onClick = retry, modifier = Modifier.padding(top = 16.dp)) { Text("重新读取") }
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.size(40.dp)) {
+                Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            }
+            Text(message, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 16.dp))
+            OutlinedButton(onClick = retry, modifier = Modifier.padding(top = 16.dp).heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) { Text("重新读取") }
         }
     }
 }
@@ -750,31 +982,33 @@ private fun SectionLabel(label: String) {
 @Composable
 internal fun KnowledgeRow(title: String, body: String, marker: String, suffix: String = "", onClick: (() -> Unit)? = null) {
     val content: @Composable () -> Unit = {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(10.dp), modifier = Modifier.size(36.dp)) {
-                Box(contentAlignment = Alignment.Center) { Text(marker, style = MaterialTheme.typography.labelLarge) }
+        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(44.dp)) {
+                Box(contentAlignment = Alignment.Center) { Text(marker, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
             }
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                if (suffix.isNotBlank()) Text(suffix, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 10.dp))
+                if (suffix.isNotBlank()) Text(suffix, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp))
             }
             if (onClick != null) Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
         }
     }
     if (onClick == null) {
-        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface, content = content)
+        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), content = content)
     } else {
-        Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface, content = content)
+        Surface(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), content = content)
     }
 }
 
 @Composable
 internal fun SettingsRow(title: String, body: String, icon: ImageVector, selected: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    Surface(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface,
-        border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null) {
+    Surface(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(18.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
+            Surface(color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.size(40.dp)) {
+                Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp)) }
+            }
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(if (selected) "当前使用" else body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))

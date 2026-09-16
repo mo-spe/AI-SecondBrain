@@ -54,7 +54,7 @@ data class ReviewReminder(val nodeId: Long, val scheduledAt: String, val status:
 data class ReminderRequest(val scheduledAt: String)
 
 @JsonClass(generateAdapter = true)
-data class SquarePost(val postId: Long, val nodeTitle: String? = null, val nodeSummary: String? = null, val recommendText: String? = null, val authorId: Long? = null, val authorName: String? = null, val likeCount: Int = 0, val commentCount: Int = 0, val bookmarkCount: Int = 0, val isLiked: Boolean = false, val isBookmarked: Boolean = false, val comments: List<SquareComment>? = null, val knowledgeNodes: List<SharedKnowledgeNode>? = null, val createdAt: String? = null)
+data class SquarePost(val postId: Long, val nodeTitle: String? = null, val nodeSummary: String? = null, val recommendText: String? = null, val authorId: Long? = null, val authorName: String? = null, val likeCount: Int = 0, val commentCount: Int = 0, val bookmarkCount: Int = 0, val isLiked: Boolean? = false, val isBookmarked: Boolean? = false, val comments: List<SquareComment>? = null, val knowledgeNodes: List<SharedKnowledgeNode>? = null, val createdAt: String? = null)
 
 @JsonClass(generateAdapter = true)
 data class SharedKnowledgeNode(val nodeId: Long, val title: String? = null, val summary: String? = null, val contentMd: String? = null)

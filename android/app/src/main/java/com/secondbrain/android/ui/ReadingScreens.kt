@@ -1,6 +1,7 @@
 package com.secondbrain.android.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -95,10 +96,10 @@ internal fun SquarePostScreen(post: SquarePost, onBack: () -> Unit, onLike: susp
             try {
                 if (like) {
                     val liked = onLike(detail.postId)
-                    detail = detail.copy(isLiked = liked, likeCount = (detail.likeCount + (if (liked) 1 else 0) - (if (detail.isLiked) 1 else 0)).coerceAtLeast(0))
+                    detail = detail.copy(isLiked = liked, likeCount = (detail.likeCount + (if (liked) 1 else 0) - (if (detail.isLiked == true) 1 else 0)).coerceAtLeast(0))
                 } else {
                     val saved = onBookmark(detail.postId)
-                    detail = detail.copy(isBookmarked = saved, bookmarkCount = (detail.bookmarkCount + (if (saved) 1 else 0) - (if (detail.isBookmarked) 1 else 0)).coerceAtLeast(0))
+                    detail = detail.copy(isBookmarked = saved, bookmarkCount = (detail.bookmarkCount + (if (saved) 1 else 0) - (if (detail.isBookmarked == true) 1 else 0)).coerceAtLeast(0))
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { error = failure.message ?: "操作失败，请重试" }
@@ -139,8 +140,8 @@ internal fun SquarePostScreen(post: SquarePost, onBack: () -> Unit, onLike: susp
             item {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilterChip(selected = detail.isLiked, enabled = !busy && !loading, onClick = { react(true) }, label = { Text("${if (detail.isLiked) "已赞" else "点赞"} ${detail.likeCount}") }, leadingIcon = { Icon(Icons.Outlined.ThumbUp, null, Modifier.size(18.dp)) }, modifier = Modifier.heightIn(min = 48.dp))
-                    FilterChip(selected = detail.isBookmarked, enabled = !busy && !loading, onClick = { react(false) }, label = { Text("${if (detail.isBookmarked) "已收藏" else "收藏"} ${detail.bookmarkCount}") }, leadingIcon = { Icon(Icons.Outlined.BookmarkBorder, null, Modifier.size(18.dp)) }, modifier = Modifier.heightIn(min = 48.dp))
+                    FilterChip(selected = detail.isLiked == true, enabled = !busy && !loading, onClick = { react(true) }, label = { Text("${if (detail.isLiked == true) "已赞" else "点赞"} ${detail.likeCount}") }, leadingIcon = { Icon(Icons.Outlined.ThumbUp, null, Modifier.size(18.dp)) }, modifier = Modifier.heightIn(min = 48.dp))
+                    FilterChip(selected = detail.isBookmarked == true, enabled = !busy && !loading, onClick = { react(false) }, label = { Text("${if (detail.isBookmarked == true) "已收藏" else "收藏"} ${detail.bookmarkCount}") }, leadingIcon = { Icon(Icons.Outlined.BookmarkBorder, null, Modifier.size(18.dp)) }, modifier = Modifier.heightIn(min = 48.dp))
                 }
                 if (busy) Text("正在更新…", style = MaterialTheme.typography.labelSmall)
             }
@@ -159,32 +160,41 @@ internal fun SquarePostScreen(post: SquarePost, onBack: () -> Unit, onLike: susp
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewModel, onReminders: () -> Unit, onDrafts: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val selection by viewModel.selection.collectAsState()
+    var switcherOpen by remember { mutableStateOf(false) }
     val workspaces = (state as? LoadState.Content)?.value.orEmpty()
     val spaceName = if (selection.activeId == null) "个人空间" else workspaces.find { it.id == selection.activeId }?.name ?: "协作工作区"
-    LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp, 24.dp, 20.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp, 28.dp, 20.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text("我的", style = MaterialTheme.typography.headlineMedium)
-            Text("学习有自己的节奏", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+            Text("学习节奏和空间都在这里", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
         }
         item {
-            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(24.dp), border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)) {
                 Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Icon(if (selection.activeId == null) Icons.Outlined.Person else Icons.Outlined.Groups, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                    Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp), modifier = Modifier.size(56.dp)) {
+                        Box(contentAlignment = Alignment.Center) { Text(if (selection.activeId == null) "SB" else "协", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary) }
+                    }
                     Column(Modifier.weight(1f)) {
-                        Text("当前空间", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(if (selection.ready) spaceName else "正在读取…", style = MaterialTheme.typography.titleLarge)
+                        Text(if (selection.activeId == null) "只显示属于自己的知识与复习" else "正在查看协作知识与复习", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f), shape = RoundedCornerShape(20.dp)) {
+                        Text("当前使用", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
                     }
                 }
             }
         }
-        item { SectionHeading("学习管理") }
-        item { SettingsRow("复习提醒", "管理知识回顾的时间", Icons.Outlined.AutoAwesome, onClick = onReminders) }
-        item { SettingsRow("采集草稿", "继续整理尚未保存的内容", Icons.Outlined.Collections, onClick = onDrafts) }
-        item { SectionHeading("切换空间") }
-        item { SettingsRow("个人空间", "只属于自己的知识库", Icons.Outlined.Person, selected = selection.ready && selection.activeId == null, enabled = selection.ready && !selection.switching, onClick = viewModel::selectPersonal) }
+        item {
+            OutlinedButton(onClick = { switcherOpen = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(16.dp)) {
+                Icon(Icons.Outlined.SwapHoriz, contentDescription = null)
+                Text("切换工作区", modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        item { SectionHeading("协作工作区") }
         if (selection.switching) item { LoadingContent("正在切换空间…") }
         selection.message?.let { message -> item { Text(message, style = MaterialTheme.typography.bodyMedium) } }
         when (val value = state) {
@@ -192,10 +202,70 @@ internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewMo
             is LoadState.Failure -> item { RetryContent(value.message, viewModel::load) }
             else -> if (workspaces.isEmpty()) item { Text("尚未加入协作工作区，仍可使用个人空间。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        items(workspaces, key = { it.id }) { workspace ->
-            SettingsRow(workspace.name, workspace.description?.takeIf { it.isNotBlank() } ?: "协作知识库", Icons.Outlined.Groups,
-                selected = selection.activeId == workspace.id, enabled = selection.ready && !selection.switching,
-                onClick = { viewModel.select(workspace.id) })
+        if (workspaces.isNotEmpty()) item {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Column {
+                    workspaces.forEachIndexed { index, workspace ->
+                        WorkspaceGroupRow(
+                            name = workspace.name,
+                            description = workspace.description?.takeIf { it.isNotBlank() } ?: "协作知识库",
+                            selected = selection.activeId == workspace.id,
+                            enabled = selection.ready && !selection.switching,
+                            onClick = { viewModel.select(workspace.id) }
+                        )
+                        if (index < workspaces.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                Text("切换后，内容和复习计划会同步更新", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item { SectionHeading("学习管理") }
+        item { SettingsRow("复习提醒", "按计划提醒，保持学习节奏", Icons.Outlined.AutoAwesome, onClick = onReminders) }
+        item { SettingsRow("采集草稿", "快速保存灵感，整理到知识库", Icons.Outlined.Collections, onClick = onDrafts) }
+    }
+    if (switcherOpen) {
+        ModalBottomSheet(onDismissRequest = { switcherOpen = false }) {
+            LazyColumn(contentPadding = PaddingValues(20.dp, 4.dp, 20.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    Text("切换工作区", style = MaterialTheme.typography.titleLarge)
+                    Text("知识与复习计划随当前空间更新", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                item {
+                    SettingsRow("个人空间", "只显示属于自己的知识与复习", Icons.Outlined.Person, selected = selection.activeId == null, enabled = selection.ready && !selection.switching) {
+                        viewModel.selectPersonal()
+                        switcherOpen = false
+                    }
+                }
+                items(workspaces, key = { "switch-${it.id}" }) { workspace ->
+                    SettingsRow(workspace.name, workspace.description ?: "协作知识库", Icons.Outlined.Groups, selected = selection.activeId == workspace.id, enabled = selection.ready && !selection.switching) {
+                        viewModel.select(workspace.id)
+                        switcherOpen = false
+                    }
+                }
+                if (state is LoadState.Loading || selection.switching) item { LoadingContent("正在读取空间…") }
+                (state as? LoadState.Failure)?.let { item { RetryContent(it.message, viewModel::load) } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceGroupRow(name: String, description: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, enabled = enabled, color = MaterialTheme.colorScheme.surface) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(color = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(52.dp)) {
+                Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Groups, contentDescription = null, tint = if (selected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary) }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleMedium)
+                Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp), maxLines = 1)
+            }
+            Icon(if (selected) Icons.Outlined.Check else Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -251,13 +321,26 @@ internal fun RagReferences(json: String) {
                 .adapter<List<RagReference>>(type).fromJson(json).orEmpty()
         }.getOrDefault(emptyList())
     }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("参考知识", style = MaterialTheme.typography.titleMedium)
-        if (references.isEmpty()) Text("本次未提供可展示的知识引用", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        references.forEachIndexed { index, reference ->
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("${index + 1}. ${reference.title ?: "知识来源"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                (reference.matchedContent ?: reference.summary)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("引用的知识", style = MaterialTheme.typography.titleMedium)
+                Text("共 ${references.size} 条", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (references.isEmpty()) Text("本次未提供可展示的知识引用", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            references.forEach { reference ->
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.size(36.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(reference.title ?: "知识来源", style = MaterialTheme.typography.labelLarge)
+                            (reference.matchedContent ?: reference.summary)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
+                        }
+                        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
+                    }
+                }
             }
         }
     }

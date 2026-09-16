@@ -21,14 +21,14 @@ internal fun WorkspaceBar(onCapture: () -> Unit, viewModel: WorkspaceViewModel =
     val spaces = (state as? LoadState.Content)?.value.orEmpty()
     var open by remember { mutableStateOf(false) }
     val name = if (selection.activeId == null) "个人空间" else spaces.find { it.id == selection.activeId }?.name ?: "协作工作区"
-    Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = { open = true }, modifier = Modifier.weight(1f)) {
-            Icon(if (selection.activeId == null) Icons.Outlined.Person else Icons.Outlined.Groups, null, Modifier.size(18.dp))
-            Text(if (selection.switching) "正在切换…" else name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 8.dp))
-            Icon(Icons.Outlined.ExpandMore, "切换空间", Modifier.size(18.dp))
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = { open = true }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+            Icon(if (selection.activeId == null) Icons.Outlined.Person else Icons.Outlined.Groups, null, Modifier.size(22.dp))
+            Text(if (selection.switching) "正在切换…" else name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp))
+            Icon(Icons.Outlined.ExpandMore, "切换空间", Modifier.size(20.dp))
             Spacer(Modifier.weight(1f))
         }
-        IconButton(onClick = onCapture) { Icon(Icons.Outlined.Add, "采集知识") }
+        IconButton(onClick = onCapture, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.Add, "采集知识") }
     }
     if (open) ModalBottomSheet(onDismissRequest = { open = false }) {
         LazyColumn(contentPadding = PaddingValues(20.dp, 4.dp, 20.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
