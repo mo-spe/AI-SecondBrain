@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS pending_knowledge (
     summary TEXT COMMENT '摘要',
     content TEXT COMMENT '详细内容',
     status TINYINT DEFAULT 0 COMMENT '状态：0=待确认，1=已确认入库，2=已丢弃',
+    need_review TINYINT NOT NULL DEFAULT 0 COMMENT '是否需要复习（0=不需要，1=需要）',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted TINYINT DEFAULT 0 COMMENT '逻辑删除：0=未删除，1=已删除'

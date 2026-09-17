@@ -279,6 +279,7 @@ CREATE TABLE `knowledge_node`  (
   `workspace_id` bigint NULL DEFAULT NULL COMMENT '工作区ID',
   `source_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '来源类型：research/manual/rag_extraction/document_capture',
   `source_id` bigint NULL DEFAULT NULL COMMENT '来源 ID（关联 research_knowledge_candidate.id 或 research_source.id）',
+  `need_review` tinyint NOT NULL DEFAULT 0 COMMENT '是否纳入复习目标：0=未纳入，1=已纳入',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_chat_record_id`(`chat_record_id` ASC) USING BTREE,
@@ -286,7 +287,8 @@ CREATE TABLE `knowledge_node`  (
   INDEX `idx_importance`(`importance` ASC) USING BTREE,
   INDEX `idx_mastery_level`(`mastery_level` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE,
-  INDEX `idx_kn_ws`(`workspace_id` ASC) USING BTREE
+  INDEX `idx_kn_ws`(`workspace_id` ASC) USING BTREE,
+  INDEX `idx_kn_need_review`(`need_review` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 352 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '知识节点表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -358,12 +360,14 @@ CREATE TABLE `knowledge_tag`  (
   `tag_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '标签名称',
   `tag_color` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '标签颜色',
   `parent_id` bigint NULL DEFAULT NULL COMMENT '父标签ID，NULL表示顶级标签',
+  `workspace_id` bigint NULL DEFAULT NULL COMMENT '工作区ID，NULL表示个人空间标签（工作区标签对所有成员共享）',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除标识',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_tag_name`(`tag_name` ASC) USING BTREE,
-  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE
+  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE,
+  INDEX `idx_tag_ws`(`workspace_id` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '知识标签表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -435,6 +439,7 @@ CREATE TABLE `pending_knowledge`  (
   `summary` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '摘要',
   `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '详细内容',
   `status` tinyint NULL DEFAULT 0 COMMENT '状态：0=待确认，1=已确认入库，2=已丢弃',
+  `need_review` tinyint NOT NULL DEFAULT 0 COMMENT '是否需要复习（0=不需要，1=需要）',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint NULL DEFAULT 0 COMMENT '逻辑删除：0=未删除，1=已删除',
