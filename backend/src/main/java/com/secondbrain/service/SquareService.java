@@ -85,14 +85,25 @@ public interface SquareService {
     boolean toggleLike(Long postId, Long userId);
 
     /**
-     * 发表评论.
+     * 发表评论或楼中楼回复.
      *
-     * @param postId  帖子ID
-     * @param content 评论内容
-     * @param userId  当前用户ID
+     * @param postId        帖子ID
+     * @param content       评论内容
+     * @param parentId      父评论ID（顶层评论为 NULL；回复时统一挂在其所属顶层评论下）
+     * @param replyToUserId 被回复人用户ID（顶层评论为 NULL）
+     * @param userId        当前用户ID
      * @return 评论VO
      */
-    SquareCommentVO addComment(Long postId, String content, Long userId);
+    SquareCommentVO addComment(Long postId, String content, Long parentId, Long replyToUserId, Long userId);
+
+    /**
+     * 点赞/取消点赞某条评论.
+     *
+     * @param commentId 评论ID
+     * @param userId    当前用户ID
+     * @return true=已点赞，false=已取消
+     */
+    boolean toggleCommentLike(Long commentId, Long userId);
 
     /**
      * 删除评论（仅评论者本人可删除）.

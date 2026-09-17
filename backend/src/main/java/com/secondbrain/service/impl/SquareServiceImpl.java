@@ -9,6 +9,7 @@ import com.secondbrain.exception.BusinessException;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.SensitiveWordMapper;
 import com.secondbrain.mapper.SquareBookmarkMapper;
+import com.secondbrain.mapper.SquareCommentLikeMapper;
 import com.secondbrain.mapper.SquareCommentMapper;
 import com.secondbrain.mapper.SquareLikeMapper;
 import com.secondbrain.mapper.SquarePostNodeMapper;
@@ -32,7 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +60,7 @@ public class SquareServiceImpl implements SquareService {
     private final SquarePostNodeMapper squarePostNodeMapper;
     private final SquareLikeMapper squareLikeMapper;
     private final SquareCommentMapper squareCommentMapper;
+    private final SquareCommentLikeMapper squareCommentLikeMapper;
     private final SquareBookmarkMapper squareBookmarkMapper;
     private final SquareReportMapper squareReportMapper;
     private final SensitiveWordMapper sensitiveWordMapper;
@@ -78,6 +82,7 @@ public class SquareServiceImpl implements SquareService {
                               SquarePostNodeMapper squarePostNodeMapper,
                               SquareLikeMapper squareLikeMapper,
                              SquareCommentMapper squareCommentMapper,
+                             SquareCommentLikeMapper squareCommentLikeMapper,
                              SquareBookmarkMapper squareBookmarkMapper,
                              SquareReportMapper squareReportMapper,
                              SensitiveWordMapper sensitiveWordMapper,
@@ -89,6 +94,7 @@ public class SquareServiceImpl implements SquareService {
         this.squarePostNodeMapper = squarePostNodeMapper;
         this.squareLikeMapper = squareLikeMapper;
         this.squareCommentMapper = squareCommentMapper;
+        this.squareCommentLikeMapper = squareCommentLikeMapper;
         this.squareBookmarkMapper = squareBookmarkMapper;
         this.squareReportMapper = squareReportMapper;
         this.sensitiveWordMapper = sensitiveWordMapper;
@@ -244,14 +250,14 @@ public class SquareServiceImpl implements SquareService {
 
         SquarePostVO vo = toPostVO(post, userId);
 
-        // 查询评论列表
+        // 查询评论列表（含楼中楼回复），组装为两级树
         List<SquareComment> comments = squareCommentMapper.selectList(
                 new LambdaQueryWrapper<SquareComment>()
                         .eq(SquareComment::getPostId, postId)
                         .eq(SquareComment::getDeleted, 0)
                         .orderByAsc(SquareComment::getCreatedAt));
 
-        vo.setComments(batchToCommentVO(comments));
+        vo.setComments(buildCommentTree(comments, userId));
 
         return vo;
     }
@@ -298,7 +304,7 @@ public class SquareServiceImpl implements SquareService {
 
     @Override
     @Transactional
-    public SquareCommentVO addComment(Long postId, String content, Long userId) {
+    public SquareCommentVO addComment(Long postId, String content, Long parentId, Long replyToUserId, Long userId) {
         SquarePost post = squarePostMapper.selectById(postId);
         if (post == null || !"published".equals(post.getStatus())) {
             throw new BusinessException(400, "帖子不存在或已下架");
@@ -315,29 +321,97 @@ public class SquareServiceImpl implements SquareService {
 
         checkSensitiveWords(content);
 
+        // 归一层：回复统一挂在其所属顶层评论下
+        Long effectiveParentId = null;
+        Long effectiveReplyTo = null;
+        if (parentId != null) {
+            SquareComment parent = squareCommentMapper.selectById(parentId);
+            if (parent == null || !Objects.equals(parent.getPostId(), postId)) {
+                throw new BusinessException(400, "回复的评论不存在");
+            }
+            effectiveParentId = parent.getParentId() != null ? parent.getParentId() : parent.getId();
+            effectiveReplyTo = parent.getUserId();
+        }
+        if (replyToUserId != null) {
+            effectiveReplyTo = replyToUserId;
+        }
+
         SquareComment comment = new SquareComment();
         comment.setPostId(postId);
         comment.setUserId(userId);
         comment.setContent(content);
+        comment.setParentId(effectiveParentId);
+        comment.setReplyToUserId(effectiveReplyTo);
+        comment.setLikeCount(0);
         comment.setCreatedAt(LocalDateTime.now());
         comment.setDeleted(0);
         squareCommentMapper.insert(comment);
 
         refreshCommentCount(postId);
 
-        // 通知帖子作者
-        if (!post.getAuthorId().equals(userId)) {
-            User commenter = userMapper.selectById(userId);
-            String commenterName = commenter != null ? commenter.getUsername() : "有人";
-            notificationService.create(post.getAuthorId(), "comment",
-                    commenterName + " 评论了你的分享",
+        if (effectiveParentId == null) {
+            // 顶层评论：通知帖子作者
+            if (!post.getAuthorId().equals(userId)) {
+                User commenter = userMapper.selectById(userId);
+                String commenterName = commenter != null ? commenter.getUsername() : "有人";
+                notificationService.create(post.getAuthorId(), "comment",
+                        commenterName + " 评论了你的分享",
+                        content.length() > 50 ? content.substring(0, 50) + "..." : content,
+                        "post", postId);
+            }
+        } else if (effectiveReplyTo != null && !effectiveReplyTo.equals(userId)) {
+            // 楼中楼回复：通知被回复人（不通知自己）
+            User replier = userMapper.selectById(userId);
+            String replierName = replier != null ? replier.getUsername() : "有人";
+            notificationService.create(effectiveReplyTo, "reply",
+                    replierName + " 回复了你",
                     content.length() > 50 ? content.substring(0, 50) + "..." : content,
                     "post", postId);
         }
 
-        log.info("square_comment_added postId={} commentId={} userId={}", postId, comment.getId(), userId);
+        log.info("square_comment_added postId={} commentId={} parentId={} userId={}",
+                postId, comment.getId(), effectiveParentId, userId);
 
         return toCommentVO(comment);
+    }
+
+    @Override
+    @Transactional
+    public boolean toggleCommentLike(Long commentId, Long userId) {
+        SquareComment comment = squareCommentMapper.selectById(commentId);
+        if (comment == null) {
+            throw new BusinessException(400, "评论不存在");
+        }
+
+        SquareCommentLike existing = squareCommentLikeMapper.selectOne(
+                new LambdaQueryWrapper<SquareCommentLike>()
+                        .eq(SquareCommentLike::getCommentId, commentId)
+                        .eq(SquareCommentLike::getUserId, userId));
+
+        if (existing != null) {
+            squareCommentLikeMapper.deleteById(existing.getId());
+            refreshCommentLikeCount(commentId);
+            log.info("square_comment_unliked commentId={} userId={}", commentId, userId);
+            return false;
+        }
+
+        SquareCommentLike like = new SquareCommentLike();
+        like.setCommentId(commentId);
+        like.setUserId(userId);
+        like.setCreatedAt(LocalDateTime.now());
+        squareCommentLikeMapper.insert(like);
+        refreshCommentLikeCount(commentId);
+
+        // 通知评论作者（不通知自己）
+        if (!comment.getUserId().equals(userId)) {
+            User liker = userMapper.selectById(userId);
+            String likerName = liker != null ? liker.getUsername() : "有人";
+            notificationService.create(comment.getUserId(), "comment_like",
+                    likerName + " 赞了你的评论", null, "post", comment.getPostId());
+        }
+
+        log.info("square_comment_liked commentId={} userId={}", commentId, userId);
+        return true;
     }
 
     @Override
@@ -943,11 +1017,16 @@ public class SquareServiceImpl implements SquareService {
      * 单个评论转 VO.
      */
     private SquareCommentVO toCommentVO(SquareComment comment) {
+        // 单条评论（用于发表后即时返回）：实时查作者与被回复人
         SquareCommentVO vo = new SquareCommentVO();
         vo.setId(comment.getId());
         vo.setPostId(comment.getPostId());
         vo.setUserId(comment.getUserId());
         vo.setContent(comment.getContent());
+        vo.setParentId(comment.getParentId());
+        vo.setReplyToUserId(comment.getReplyToUserId());
+        vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
+        vo.setIsLikedByMe(false);
         vo.setCreatedAt(comment.getCreatedAt());
         vo.setDeleted(comment.getDeleted());
 
@@ -956,38 +1035,111 @@ public class SquareServiceImpl implements SquareService {
             vo.setUsername(user.getUsername());
             vo.setAvatar(user.getAvatar());
         }
+        if (comment.getReplyToUserId() != null) {
+            User replyTo = userMapper.selectById(comment.getReplyToUserId());
+            if (replyTo != null) {
+                vo.setReplyToUsername(replyTo.getUsername());
+            }
+        }
         return vo;
     }
 
     /**
-     * 批量评论转 VO.
+     * 组装两级评论树：顶层评论 + 其楼中楼回复。
+     * 使用批量查询作者、被回复人与本人点赞状态，避免 N+1。
      */
-    private List<SquareCommentVO> batchToCommentVO(List<SquareComment> comments) {
-        if (comments.isEmpty()) {
+    private List<SquareCommentVO> buildCommentTree(List<SquareComment> all, Long userId) {
+        if (all == null || all.isEmpty()) {
             return Collections.emptyList();
         }
-        Set<Long> userIds = comments.stream().map(SquareComment::getUserId).collect(Collectors.toSet());
+        List<SquareComment> topLevel = new ArrayList<>();
+        Map<Long, List<SquareComment>> repliesByParent = new HashMap<>();
+        Set<Long> replyToUserIds = new HashSet<>();
+        for (SquareComment c : all) {
+            if (c.getParentId() == null) {
+                topLevel.add(c);
+            } else {
+                repliesByParent.computeIfAbsent(c.getParentId(), k -> new ArrayList<>()).add(c);
+            }
+            if (c.getReplyToUserId() != null) {
+                replyToUserIds.add(c.getReplyToUserId());
+            }
+        }
+        topLevel.sort(Comparator.comparing(SquareComment::getCreatedAt));
+        for (List<SquareComment> replies : repliesByParent.values()) {
+            replies.sort(Comparator.comparing(SquareComment::getCreatedAt));
+        }
+
+        // 批量查用户（作者 + 被回复人）
+        Set<Long> userIds = all.stream().map(SquareComment::getUserId).collect(Collectors.toSet());
+        userIds.addAll(replyToUserIds);
         Map<Long, User> userMap = userMapper.selectBatchIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
 
-        List<SquareCommentVO> result = new ArrayList<>();
-        for (SquareComment comment : comments) {
-            SquareCommentVO vo = new SquareCommentVO();
-            vo.setId(comment.getId());
-            vo.setPostId(comment.getPostId());
-            vo.setUserId(comment.getUserId());
-            vo.setContent(comment.getContent());
-            vo.setCreatedAt(comment.getCreatedAt());
-            vo.setDeleted(comment.getDeleted());
+        // 批量查本人点赞状态
+        Set<Long> likedCommentIds = Collections.emptySet();
+        if (userId != null) {
+            likedCommentIds = squareCommentLikeMapper.selectList(
+                            new LambdaQueryWrapper<SquareCommentLike>()
+                                    .in(SquareCommentLike::getCommentId,
+                                            all.stream().map(SquareComment::getId).collect(Collectors.toList()))
+                                    .eq(SquareCommentLike::getUserId, userId))
+                    .stream()
+                    .map(SquareCommentLike::getCommentId)
+                    .collect(Collectors.toSet());
+        }
 
-            User user = userMap.get(comment.getUserId());
-            if (user != null) {
-                vo.setUsername(user.getUsername());
-                vo.setAvatar(user.getAvatar());
+        List<SquareCommentVO> result = new ArrayList<>();
+        Set<Long> renderedTopIds = new HashSet<>();
+        for (SquareComment top : topLevel) {
+            renderedTopIds.add(top.getId());
+            SquareCommentVO vo = toCommentVO(top, userMap, likedCommentIds);
+            List<SquareComment> replies = repliesByParent.get(top.getId());
+            if (replies != null) {
+                List<SquareCommentVO> replyVos = new ArrayList<>();
+                for (SquareComment r : replies) {
+                    replyVos.add(toCommentVO(r, userMap, likedCommentIds));
+                }
+                vo.setReplies(replyVos);
             }
             result.add(vo);
         }
+        // 父评论已被删除的孤儿回复：作为顶层展示，避免丢失
+        for (Map.Entry<Long, List<SquareComment>> entry : repliesByParent.entrySet()) {
+            if (!renderedTopIds.contains(entry.getKey())) {
+                for (SquareComment r : entry.getValue()) {
+                    result.add(toCommentVO(r, userMap, likedCommentIds));
+                }
+            }
+        }
         return result;
+    }
+
+    private SquareCommentVO toCommentVO(SquareComment comment, Map<Long, User> userMap, Set<Long> likedCommentIds) {
+        SquareCommentVO vo = new SquareCommentVO();
+        vo.setId(comment.getId());
+        vo.setPostId(comment.getPostId());
+        vo.setUserId(comment.getUserId());
+        vo.setContent(comment.getContent());
+        vo.setParentId(comment.getParentId());
+        vo.setReplyToUserId(comment.getReplyToUserId());
+        vo.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
+        vo.setIsLikedByMe(likedCommentIds.contains(comment.getId()));
+        vo.setCreatedAt(comment.getCreatedAt());
+        vo.setDeleted(comment.getDeleted());
+
+        User user = userMap.get(comment.getUserId());
+        if (user != null) {
+            vo.setUsername(user.getUsername());
+            vo.setAvatar(user.getAvatar());
+        }
+        if (comment.getReplyToUserId() != null) {
+            User replyTo = userMap.get(comment.getReplyToUserId());
+            if (replyTo != null) {
+                vo.setReplyToUsername(replyTo.getUsername());
+            }
+        }
+        return vo;
     }
 
     /**
@@ -1001,6 +1153,19 @@ public class SquareServiceImpl implements SquareService {
             post.setLikeCount((int) count);
             post.setUpdatedAt(LocalDateTime.now());
             squarePostMapper.updateById(post);
+        }
+    }
+
+    /**
+     * 从源表刷新评论点赞计数器.
+     */
+    private void refreshCommentLikeCount(Long commentId) {
+        long count = squareCommentLikeMapper.selectCount(
+                new LambdaQueryWrapper<SquareCommentLike>().eq(SquareCommentLike::getCommentId, commentId));
+        SquareComment comment = squareCommentMapper.selectById(commentId);
+        if (comment != null) {
+            comment.setLikeCount((int) count);
+            squareCommentMapper.updateById(comment);
         }
     }
 

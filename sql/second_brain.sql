@@ -928,11 +928,29 @@ CREATE TABLE `square_comment`  (
   `post_id` bigint NOT NULL COMMENT '帖子ID',
   `user_id` bigint NOT NULL COMMENT '评论者用户ID',
   `content` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '评论内容',
+  `parent_id` bigint NULL DEFAULT NULL COMMENT '父评论ID，顶层评论为NULL；楼中楼回复统一挂在其所属顶层评论下',
+  `reply_to_user_id` bigint NULL DEFAULT NULL COMMENT '被回复人用户ID，用于展示“回复 @昵称”，顶层评论为NULL',
+  `like_count` int NOT NULL DEFAULT 0 COMMENT '评论点赞数，从 square_comment_like 重算',
   `created_at` datetime NOT NULL COMMENT '评论时间',
   `deleted` tinyint NULL DEFAULT 0 COMMENT '逻辑删除标记',
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_post_id`(`post_id` ASC) USING BTREE
+  INDEX `idx_post_id`(`post_id` ASC) USING BTREE,
+  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for square_comment_like
+-- ----------------------------
+DROP TABLE IF EXISTS `square_comment_like`;
+CREATE TABLE `square_comment_like`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `comment_id` bigint NOT NULL COMMENT '评论ID',
+  `user_id` bigint NOT NULL COMMENT '点赞用户ID',
+  `created_at` datetime NOT NULL COMMENT '点赞时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_comment_user`(`comment_id` ASC, `user_id` ASC) USING BTREE,
+  INDEX `idx_comment_id`(`comment_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论点赞记录' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for square_like

@@ -22,7 +22,12 @@ export const squareAPI = {
   },
 
   addComment(id, data) {
+    // data: { content, parentId?, replyToUserId? }
     return request({ url: `/square/${id}/comment`, method: "post", data });
+  },
+
+  toggleCommentLike(commentId) {
+    return request({ url: `/square/comment/${commentId}/like`, method: "post" });
   },
 
   deleteComment(postId, commentId) {

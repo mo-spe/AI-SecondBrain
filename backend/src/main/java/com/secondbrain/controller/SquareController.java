@@ -122,7 +122,21 @@ public class SquareController {
                                  @Valid @RequestBody SquareCommentRequest request,
                                  HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        return Result.success("评论成功", squareService.addComment(id, request.getContent(), userId));
+        return Result.success("评论成功",
+                squareService.addComment(id, request.getContent(), request.getParentId(),
+                        request.getReplyToUserId(), userId));
+    }
+
+    /**
+     * 点赞/取消点赞评论.
+     */
+    @PostMapping("/comment/{commentId}/like")
+    @Operation(summary = "点赞/取消点赞评论")
+    public Result<Boolean> toggleCommentLike(@Parameter(description = "评论ID") @PathVariable Long commentId,
+                                             HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        boolean liked = squareService.toggleCommentLike(commentId, userId);
+        return Result.success(liked ? "已点赞" : "已取消点赞", liked);
     }
 
     /**
