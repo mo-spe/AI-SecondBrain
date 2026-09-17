@@ -5,6 +5,7 @@ import com.secondbrain.dto.TagSuggestion;
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.KnowledgeNodeTagRelation;
 import com.secondbrain.entity.KnowledgeTag;
+import com.secondbrain.entity.WorkspaceMember;
 import com.secondbrain.enums.AiScenario;
 import com.secondbrain.exception.BusinessException;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
@@ -12,6 +13,8 @@ import com.secondbrain.mapper.KnowledgeNodeTagRelationMapper;
 import com.secondbrain.mapper.KnowledgeTagMapper;
 import com.secondbrain.service.AiService;
 import com.secondbrain.service.KnowledgeTagService;
+import com.secondbrain.service.WorkspaceService;
+import com.secondbrain.util.WorkspaceRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,65 +32,105 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
     private final KnowledgeNodeTagRelationMapper relationMapper;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final AiService aiService;
+    private final WorkspaceService workspaceService;
 
     public KnowledgeTagServiceImpl(KnowledgeTagMapper knowledgeTagMapper,
                                    KnowledgeNodeTagRelationMapper relationMapper,
                                    KnowledgeNodeMapper knowledgeNodeMapper,
-                                   AiService aiService) {
+                                   AiService aiService,
+                                   WorkspaceService workspaceService) {
         this.knowledgeTagMapper = knowledgeTagMapper;
         this.relationMapper = relationMapper;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.aiService = aiService;
+        this.workspaceService = workspaceService;
+    }
+
+    /**
+     * 构建标签查询条件：工作区内按 workspaceId 共享，个人空间按 userId 隔离.
+     */
+    private LambdaQueryWrapper<KnowledgeTag> scopeWrapper(Long userId, Long workspaceId) {
+        LambdaQueryWrapper<KnowledgeTag> wrapper = new LambdaQueryWrapper<>();
+        if (workspaceId != null) {
+            // 工作区标签对所有成员可见，与创建者无关
+            wrapper.eq(KnowledgeTag::getWorkspaceId, workspaceId);
+        } else {
+            wrapper.eq(KnowledgeTag::getUserId, userId)
+                    .isNull(KnowledgeTag::getWorkspaceId);
+        }
+        return wrapper.eq(KnowledgeTag::getDeleted, 0);
     }
 
     @Override
-    public List<KnowledgeTag> listByUser(Long userId) {
+    public List<KnowledgeTag> listByUser(Long userId, Long workspaceId) {
         return knowledgeTagMapper.selectList(
-                new LambdaQueryWrapper<KnowledgeTag>()
-                        .eq(KnowledgeTag::getUserId, userId)
-                        .eq(KnowledgeTag::getDeleted, 0)
+                scopeWrapper(userId, workspaceId)
                         .orderByAsc(KnowledgeTag::getCreateTime));
     }
 
     @Override
     @Transactional
-    public KnowledgeTag create(String tagName, String tagColor, Long parentId, Long userId) {
+    public KnowledgeTag create(String tagName, String tagColor, Long parentId, Long userId, Long workspaceId) {
         if (tagName == null || tagName.isBlank()) {
             throw new BusinessException(400, "标签名称不能为空");
         }
-        // 校验同级标签不重名
+        // 校验同级标签不重名（重名校验需与可见范围一致）
         Long existing = knowledgeTagMapper.selectCount(
-                new LambdaQueryWrapper<KnowledgeTag>()
-                        .eq(KnowledgeTag::getUserId, userId)
+                scopeWrapper(userId, workspaceId)
                         .eq(KnowledgeTag::getTagName, tagName)
                         .eq(parentId != null, KnowledgeTag::getParentId, parentId)
-                        .isNull(parentId == null, KnowledgeTag::getParentId)
-                        .eq(KnowledgeTag::getDeleted, 0));
+                        .isNull(parentId == null, KnowledgeTag::getParentId));
         if (existing > 0) {
             throw new BusinessException(400, "同级下已存在同名标签");
         }
         KnowledgeTag tag = new KnowledgeTag();
         tag.setUserId(userId);
+        tag.setWorkspaceId(workspaceId);
         tag.setTagName(tagName.trim());
         tag.setTagColor(tagColor != null ? tagColor : "#6366f1");
         tag.setParentId(parentId);
         tag.setCreateTime(LocalDateTime.now());
         tag.setDeleted(0);
         knowledgeTagMapper.insert(tag);
-        log.info("knowledge_tag_created id={} name={} userId={} parentId={}", tag.getId(), tagName, userId, parentId);
+        log.info("knowledge_tag_created id={} name={} userId={} workspaceId={} parentId={}",
+                tag.getId(), tagName, userId, workspaceId, parentId);
         return tag;
+    }
+
+    /**
+     * 校验当前用户对标签的修改/删除权限.
+     * <p>个人空间标签：仅创建者可操作。
+     * 工作区共享标签：当前处于该工作区、且角色具备编辑权限（owner/admin/editor）的成员可操作。</p>
+     */
+    private void checkManageable(KnowledgeTag tag, Long userId, Long workspaceId, String action) {
+        if (tag.getWorkspaceId() != null) {
+            // 工作区标签：必须处于同一工作区，且成员角色可编辑
+            if (!tag.getWorkspaceId().equals(workspaceId)) {
+                throw new BusinessException(403, "只能" + action + "当前工作区的标签");
+            }
+            WorkspaceMember member = workspaceService.getMemberByWorkspaceAndUser(tag.getWorkspaceId(), userId);
+            if (member == null) {
+                throw new BusinessException(403, "您不是该工作区的成员");
+            }
+            if (!WorkspaceRole.canEdit(member.getRole())) {
+                throw new BusinessException(403, "权限不足：当前角色为 " + member.getRole() + "，无法" + action + "工作区标签");
+            }
+            return;
+        }
+        // 个人空间标签：保持原有归属校验
+        if (tag.getUserId() == null || !tag.getUserId().equals(userId)) {
+            throw new BusinessException(403, "只能" + action + "自己的标签");
+        }
     }
 
     @Override
     @Transactional
-    public void delete(Long tagId, Long userId) {
+    public void delete(Long tagId, Long userId, Long workspaceId) {
         KnowledgeTag tag = knowledgeTagMapper.selectById(tagId);
         if (tag == null || tag.getDeleted() == 1) {
             throw new BusinessException(400, "标签不存在");
         }
-        if (!tag.getUserId().equals(userId)) {
-            throw new BusinessException(403, "只能删除自己的标签");
-        }
+        checkManageable(tag, userId, workspaceId, "删除");
         // 将子标签的 parentId 置为 null，避免级联删除
         List<KnowledgeTag> children = knowledgeTagMapper.selectList(
                 new LambdaQueryWrapper<KnowledgeTag>()
@@ -112,14 +155,12 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
 
     @Override
     @Transactional
-    public KnowledgeTag update(Long tagId, String tagName, String tagColor, Long parentId, Long userId) {
+    public KnowledgeTag update(Long tagId, String tagName, String tagColor, Long parentId, Long userId, Long workspaceId) {
         KnowledgeTag tag = knowledgeTagMapper.selectById(tagId);
         if (tag == null || tag.getDeleted() == 1) {
             throw new BusinessException(400, "标签不存在");
         }
-        if (!tag.getUserId().equals(userId)) {
-            throw new BusinessException(403, "只能修改自己的标签");
-        }
+        checkManageable(tag, userId, workspaceId, "修改");
         if (tagName != null && !tagName.isBlank()) {
             tag.setTagName(tagName.trim());
         }
@@ -139,11 +180,9 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
     }
 
     @Override
-    public List<KnowledgeTag> listTreeByUser(Long userId) {
+    public List<KnowledgeTag> listTreeByUser(Long userId, Long workspaceId) {
         List<KnowledgeTag> allTags = knowledgeTagMapper.selectList(
-                new LambdaQueryWrapper<KnowledgeTag>()
-                        .eq(KnowledgeTag::getUserId, userId)
-                        .eq(KnowledgeTag::getDeleted, 0)
+                scopeWrapper(userId, workspaceId)
                         .orderByAsc(KnowledgeTag::getCreateTime));
 
         // 构建 tagId → tag 映射
@@ -154,16 +193,30 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
             tagMap.put(tag.getId(), tag);
         }
 
-        // 获取所有 relation 记录，统计每个标签的直接知识点数
-        List<KnowledgeNodeTagRelation> allRelations = relationMapper.selectList(null);
-        Map<Long, Long> directNodeCount = new HashMap<>();
-        for (KnowledgeNodeTagRelation rel : allRelations) {
-            directNodeCount.merge(rel.getTagId(), 1L, Long::sum);
+        // 统计范围限定在当前可见的知识点内：
+        // 工作区只算该工作区的知识点，个人空间只算本人的知识点
+        List<Object> scopedNodeIds = knowledgeNodeMapper.selectObjs(
+                new LambdaQueryWrapper<KnowledgeNode>()
+                        .select(KnowledgeNode::getId)
+                        .eq(KnowledgeNode::getDeleted, 0)
+                        .eq(workspaceId != null, KnowledgeNode::getWorkspaceId, workspaceId)
+                        .isNull(workspaceId == null, KnowledgeNode::getWorkspaceId)
+                        .eq(workspaceId == null, KnowledgeNode::getUserId, userId));
+
+        // tagId → 该标签下直接挂靠的知识点ID集合（Set 天然去重，同一知识点重复关联只算一次）
+        Map<Long, Set<Long>> directNodes = new HashMap<>();
+        if (scopedNodeIds != null && !scopedNodeIds.isEmpty()) {
+            List<KnowledgeNodeTagRelation> relations = relationMapper.selectList(
+                    new LambdaQueryWrapper<KnowledgeNodeTagRelation>()
+                            .in(KnowledgeNodeTagRelation::getNodeId, scopedNodeIds));
+            for (KnowledgeNodeTagRelation rel : relations) {
+                directNodes.computeIfAbsent(rel.getTagId(), k -> new HashSet<>()).add(rel.getNodeId());
+            }
         }
 
         // 先设置直接知识点数
         for (KnowledgeTag tag : allTags) {
-            tag.setNodeCount(directNodeCount.getOrDefault(tag.getId(), 0L).intValue());
+            tag.setNodeCount(directNodes.getOrDefault(tag.getId(), Set.of()).size());
         }
 
         // 组装树：parentId==null 的为根节点
@@ -182,25 +235,27 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
             }
         }
 
-        // 递归汇总 nodeCount（子标签的知识点数计入父标签）
+        // 递归汇总 nodeCount（子标签的知识点计入父标签，用集合并集去重）
         for (KnowledgeTag root : roots) {
-            accumulateNodeCount(root);
+            aggregateNodeIds(root, directNodes);
         }
 
         return roots;
     }
 
     /**
-     * 递归汇总节点数：当前标签的 nodeCount += 所有子标签的 nodeCount.
+     * 递归汇总知识点：返回该标签及其所有子标签关联的知识点ID集合（去重）.
+     * <p>同一个知识点同时挂在父标签和子标签上时，向上汇总只计一次。</p>
      */
-    private void accumulateNodeCount(KnowledgeTag tag) {
-        if (tag.getChildren() == null || tag.getChildren().isEmpty()) {
-            return;
+    private Set<Long> aggregateNodeIds(KnowledgeTag tag, Map<Long, Set<Long>> directNodes) {
+        Set<Long> ids = new HashSet<>(directNodes.getOrDefault(tag.getId(), Set.of()));
+        if (tag.getChildren() != null) {
+            for (KnowledgeTag child : tag.getChildren()) {
+                ids.addAll(aggregateNodeIds(child, directNodes));
+            }
         }
-        for (KnowledgeTag child : tag.getChildren()) {
-            accumulateNodeCount(child);
-            tag.setNodeCount(tag.getNodeCount() + child.getNodeCount());
-        }
+        tag.setNodeCount(ids.size());
+        return ids;
     }
 
     /**
@@ -269,7 +324,7 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
     }
 
     @Override
-    public List<TagSuggestion> suggestTags(String title, String summary, Long userId) {
+    public List<TagSuggestion> suggestTags(String title, String summary, Long userId, Long workspaceId) {
         List<Map<String, String>> messages = List.of(
                 Map.of("role", "system", "content", """
                         你是一个知识分类专家。给定以下知识点的标题和摘要，请推荐1-3个最合适的分类标签。
@@ -286,7 +341,7 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
 
         try {
             String aiResponse = aiService.chat(userId, AiScenario.CHAT.getCode(), messages);
-            return parseTagSuggestions(aiResponse, userId);
+            return parseTagSuggestions(aiResponse, userId, workspaceId);
         } catch (Exception e) {
             log.warn("AI标签建议失败 title={} userId={}", title, userId, e);
             return List.of();
@@ -296,7 +351,7 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
     /**
      * 解析AI返回的标签建议，匹配已有标签.
      */
-    private List<TagSuggestion> parseTagSuggestions(String aiResponse, Long userId) {
+    private List<TagSuggestion> parseTagSuggestions(String aiResponse, Long userId, Long workspaceId) {
         List<TagSuggestion> suggestions = new ArrayList<>();
         // 提取JSON数组
         String json = aiResponse.trim();
@@ -311,10 +366,7 @@ public class KnowledgeTagServiceImpl implements KnowledgeTagService {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             List<Map<String, Object>> rawList = mapper.readValue(json,
                     new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
-            List<KnowledgeTag> existingTags = knowledgeTagMapper.selectList(
-                    new LambdaQueryWrapper<KnowledgeTag>()
-                            .eq(KnowledgeTag::getUserId, userId)
-                            .eq(KnowledgeTag::getDeleted, 0));
+            List<KnowledgeTag> existingTags = listByUser(userId, workspaceId);
 
             for (int i = 0; i < rawList.size(); i++) {
                 Map<String, Object> item = rawList.get(i);

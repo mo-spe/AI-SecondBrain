@@ -29,6 +29,12 @@ public class KnowledgeTag {
     private Long userId;
 
     /**
+     * 所属工作区ID，NULL 表示个人空间的标签
+     * <p>工作区内的标签对该工作区所有成员可见（共享），个人空间标签仅本人可见。</p>
+     */
+    private Long workspaceId;
+
+    /**
      * 标签名称
      */
     private String tagName;
