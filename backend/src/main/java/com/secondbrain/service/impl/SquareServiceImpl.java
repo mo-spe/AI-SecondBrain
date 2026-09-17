@@ -11,6 +11,7 @@ import com.secondbrain.mapper.SensitiveWordMapper;
 import com.secondbrain.mapper.SquareBookmarkMapper;
 import com.secondbrain.mapper.SquareCommentMapper;
 import com.secondbrain.mapper.SquareLikeMapper;
+import com.secondbrain.mapper.SquarePostNodeMapper;
 import com.secondbrain.mapper.SquarePostMapper;
 import com.secondbrain.mapper.SquareReportMapper;
 import com.secondbrain.mapper.UserMapper;
@@ -20,6 +21,7 @@ import com.secondbrain.service.SquareNotificationService;
 import com.secondbrain.service.SquareService;
 import com.secondbrain.util.SensitiveWordMatcher;
 import com.secondbrain.vo.SquareCommentVO;
+import com.secondbrain.vo.SquarePostKnowledgeNodeVO;
 import com.secondbrain.vo.SquarePostVO;
 import com.secondbrain.vo.SquareReportVO;
 import org.slf4j.Logger;
@@ -30,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,8 +51,10 @@ import java.util.stream.Collectors;
 public class SquareServiceImpl implements SquareService {
 
     private static final Logger log = LoggerFactory.getLogger(SquareServiceImpl.class);
+    private static final int MAX_PUBLISHED_NODE_COUNT = 10;
 
     private final SquarePostMapper squarePostMapper;
+    private final SquarePostNodeMapper squarePostNodeMapper;
     private final SquareLikeMapper squareLikeMapper;
     private final SquareCommentMapper squareCommentMapper;
     private final SquareBookmarkMapper squareBookmarkMapper;
@@ -69,7 +75,8 @@ public class SquareServiceImpl implements SquareService {
     private static final long MATCHER_TTL_MS = 5 * 60 * 1000L;
 
     public SquareServiceImpl(SquarePostMapper squarePostMapper,
-                             SquareLikeMapper squareLikeMapper,
+                              SquarePostNodeMapper squarePostNodeMapper,
+                              SquareLikeMapper squareLikeMapper,
                              SquareCommentMapper squareCommentMapper,
                              SquareBookmarkMapper squareBookmarkMapper,
                              SquareReportMapper squareReportMapper,
@@ -79,6 +86,7 @@ public class SquareServiceImpl implements SquareService {
                              SquareNotificationService notificationService,
                              WorkspaceMemberMapper workspaceMemberMapper, CacheService cacheService) {
         this.squarePostMapper = squarePostMapper;
+        this.squarePostNodeMapper = squarePostNodeMapper;
         this.squareLikeMapper = squareLikeMapper;
         this.squareCommentMapper = squareCommentMapper;
         this.squareBookmarkMapper = squareBookmarkMapper;
@@ -95,14 +103,10 @@ public class SquareServiceImpl implements SquareService {
 
     @Override
     @Transactional
-    public SquarePostVO publish(Long nodeId, String recommendText, String scope, Long workspaceId, Long userId) {
-        KnowledgeNode node = knowledgeNodeMapper.selectById(nodeId);
-        if (node == null) {
-            throw new BusinessException(400, "知识节点不存在");
-        }
-        if (!Objects.equals(node.getUserId(), userId)) {
-            throw new BusinessException(403, "只能发布自己的知识节点");
-        }
+    public SquarePostVO publish(List<Long> nodeIds, Long legacyNodeId, String recommendText, String scope,
+                                Long workspaceId, Long userId) {
+        List<Long> resolvedNodeIds = normalizeNodeIds(nodeIds, legacyNodeId);
+        Map<Long, KnowledgeNode> nodesById = loadPublishableNodes(resolvedNodeIds, userId);
 
         // 工作区范围校验
         String resolvedScope = (scope == null || scope.isBlank()) ? "global" : scope;
@@ -120,23 +124,16 @@ public class SquareServiceImpl implements SquareService {
             }
         }
 
-        // 检查敏感词
-        /// todo 后面还要考虑加上对知识点相关内容的检查
         checkSensitiveWords(recommendText);
-        checkSensitiveWords(node.getTitle());
-
-        // 检查是否已发布
-        Long existingCount = squarePostMapper.selectCount(
-                new LambdaQueryWrapper<SquarePost>()
-                        .eq(SquarePost::getNodeId, nodeId)
-                        .ne(SquarePost::getStatus, "removed"));
-        if (existingCount > 0) {
-            throw new BusinessException(400, "该知识节点已发布到广场，不能重复发布");
+        for (Long nodeId : resolvedNodeIds) {
+            checkSensitiveWords(nodesById.get(nodeId).getTitle());
         }
+        ensureNodesNotAlreadyPublished(resolvedNodeIds);
 
         LocalDateTime now = LocalDateTime.now();
         SquarePost post = new SquarePost();
-        post.setNodeId(nodeId);
+        // 旧字段始终保存首个节点，确保旧客户端和历史查询仍能读取帖子摘要。
+        post.setNodeId(resolvedNodeIds.get(0));
         post.setAuthorId(userId);
         post.setScope(resolvedScope);
         post.setWorkspaceId("workspace".equals(resolvedScope) ? workspaceId : null);
@@ -148,8 +145,10 @@ public class SquareServiceImpl implements SquareService {
         post.setCreatedAt(now);
         post.setUpdatedAt(now);
         squarePostMapper.insert(post);
+        savePostNodes(post.getId(), resolvedNodeIds, now);
 
-        log.info("square_post_published postId={} nodeId={} userId={}", post.getId(), nodeId, userId);
+        log.info("square_post_published postId={} nodeCount={} userId={}",
+                post.getId(), resolvedNodeIds.size(), userId);
         return toPostVO(post, userId);
     }
 
@@ -194,9 +193,20 @@ public class SquareServiceImpl implements SquareService {
             wrapper.eq(SquarePost::getWorkspaceId, workspaceId);
         }
 
-        // 关键词搜索（匹配推荐语）
+        // 关键词同时匹配推荐语、旧首节点和合集中的任一知识节点标题。
         if (keyword != null && !keyword.isBlank()) {
-            wrapper.like(SquarePost::getRecommendText, keyword.trim());
+            String normalizedKeyword = keyword.trim();
+            List<Long> matchingNodeIds = findMatchingKnowledgeNodeIds(normalizedKeyword);
+            List<Long> relatedPostIds = findRelatedPostIds(matchingNodeIds);
+            wrapper.and(query -> {
+                query.like(SquarePost::getRecommendText, normalizedKeyword);
+                if (!matchingNodeIds.isEmpty()) {
+                    query.or().in(SquarePost::getNodeId, matchingNodeIds);
+                }
+                if (!relatedPostIds.isEmpty()) {
+                    query.or().in(SquarePost::getId, relatedPostIds);
+                }
+            });
         }
 
         // 排序
@@ -606,6 +616,95 @@ public class SquareServiceImpl implements SquareService {
 
     // ==================== 私有方法 ====================
 
+    private List<Long> normalizeNodeIds(List<Long> nodeIds, Long legacyNodeId) {
+        List<Long> resolvedNodeIds = (nodeIds == null || nodeIds.isEmpty())
+                ? (legacyNodeId == null ? Collections.emptyList() : Collections.singletonList(legacyNodeId))
+                : nodeIds;
+        if (resolvedNodeIds.isEmpty()) {
+            throw new BusinessException(400, "请选择至少一个知识节点");
+        }
+        if (resolvedNodeIds.size() > MAX_PUBLISHED_NODE_COUNT) {
+            throw new BusinessException(400, "一次最多发布10个知识点");
+        }
+        if (resolvedNodeIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(400, "知识节点ID不能为空");
+        }
+        if (new LinkedHashSet<>(resolvedNodeIds).size() != resolvedNodeIds.size()) {
+            throw new BusinessException(400, "不能重复选择相同的知识节点");
+        }
+        return List.copyOf(resolvedNodeIds);
+    }
+
+    private Map<Long, KnowledgeNode> loadPublishableNodes(List<Long> nodeIds, Long userId) {
+        List<KnowledgeNode> nodes = knowledgeNodeMapper.selectBatchIds(nodeIds);
+        if (nodes.size() != nodeIds.size()) {
+            throw new BusinessException(400, "知识节点不存在或已删除");
+        }
+        if (nodes.stream().anyMatch(node -> !Objects.equals(node.getUserId(), userId))) {
+            throw new BusinessException(403, "只能发布自己的知识节点");
+        }
+        return nodes.stream().collect(Collectors.toMap(KnowledgeNode::getId, node -> node));
+    }
+
+    private void ensureNodesNotAlreadyPublished(List<Long> nodeIds) {
+        Long existingLegacyPostCount = squarePostMapper.selectCount(
+                new LambdaQueryWrapper<SquarePost>()
+                        .in(SquarePost::getNodeId, nodeIds)
+                        .ne(SquarePost::getStatus, "removed"));
+        if (existingLegacyPostCount > 0) {
+            throw new BusinessException(400, "所选知识节点中已有内容发布到广场");
+        }
+
+        List<SquarePostNode> nodeRelations = squarePostNodeMapper.selectList(
+                new LambdaQueryWrapper<SquarePostNode>().in(SquarePostNode::getNodeId, nodeIds));
+        if (nodeRelations.isEmpty()) {
+            return;
+        }
+        Set<Long> relatedPostIds = nodeRelations.stream()
+                .map(SquarePostNode::getPostId)
+                .collect(Collectors.toSet());
+        Long existingRelatedPostCount = squarePostMapper.selectCount(
+                new LambdaQueryWrapper<SquarePost>()
+                        .in(SquarePost::getId, relatedPostIds)
+                        .ne(SquarePost::getStatus, "removed"));
+        if (existingRelatedPostCount > 0) {
+            throw new BusinessException(400, "所选知识节点中已有内容发布到广场");
+        }
+    }
+
+    private void savePostNodes(Long postId, List<Long> nodeIds, LocalDateTime createdAt) {
+        for (int index = 0; index < nodeIds.size(); index++) {
+            SquarePostNode relation = new SquarePostNode();
+            relation.setPostId(postId);
+            relation.setNodeId(nodeIds.get(index));
+            relation.setPosition(index);
+            relation.setCreatedAt(createdAt);
+            squarePostNodeMapper.insert(relation);
+        }
+    }
+
+    private List<Long> findMatchingKnowledgeNodeIds(String keyword) {
+        return knowledgeNodeMapper.selectList(new LambdaQueryWrapper<KnowledgeNode>()
+                        .select(KnowledgeNode::getId)
+                        .like(KnowledgeNode::getTitle, keyword))
+                .stream()
+                .map(KnowledgeNode::getId)
+                .toList();
+    }
+
+    private List<Long> findRelatedPostIds(List<Long> nodeIds) {
+        if (nodeIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return new ArrayList<>(squarePostNodeMapper.selectList(
+                        new LambdaQueryWrapper<SquarePostNode>()
+                                .select(SquarePostNode::getPostId)
+                                .in(SquarePostNode::getNodeId, nodeIds))
+                .stream()
+                .map(SquarePostNode::getPostId)
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
+    }
+
     /**
      * 检查文本是否包含敏感词。
      * 使用 AC 自动机一次扫描完成多模式匹配，O(text_length)。
@@ -678,12 +777,7 @@ public class SquareServiceImpl implements SquareService {
         vo.setStatus(post.getStatus());
         vo.setCreatedAt(post.getCreatedAt());
 
-        // 节点信息
-        KnowledgeNode node = knowledgeNodeMapper.selectById(post.getNodeId());
-        if (node != null) {
-            vo.setNodeTitle(node.getTitle());
-            vo.setNodeSummary(node.getSummary());
-        }
+        fillKnowledgeNodes(vo, post, loadKnowledgeNodesByPost(Collections.singletonList(post)));
 
         // 作者信息
         User author = userMapper.selectById(post.getAuthorId());
@@ -712,10 +806,7 @@ public class SquareServiceImpl implements SquareService {
      * 批量帖子转 VO（使用批量查询优化 N+1）.
      */
     private List<SquarePostVO> batchToPostVO(List<SquarePost> posts, Long userId) {
-        // 批量查节点
-        Set<Long> nodeIds = posts.stream().map(SquarePost::getNodeId).collect(Collectors.toSet());
-        Map<Long, KnowledgeNode> nodeMap = knowledgeNodeMapper.selectBatchIds(nodeIds).stream()
-                .collect(Collectors.toMap(KnowledgeNode::getId, n -> n));
+        Map<Long, List<SquarePostKnowledgeNodeVO>> knowledgeNodesByPost = loadKnowledgeNodesByPost(posts);
 
         // 批量查作者
         Set<Long> authorIds = posts.stream().map(SquarePost::getAuthorId).collect(Collectors.toSet());
@@ -753,11 +844,7 @@ public class SquareServiceImpl implements SquareService {
             vo.setStatus(post.getStatus());
             vo.setCreatedAt(post.getCreatedAt());
 
-            KnowledgeNode node = nodeMap.get(post.getNodeId());
-            if (node != null) {
-                vo.setNodeTitle(node.getTitle());
-                vo.setNodeSummary(node.getSummary());
-            }
+            fillKnowledgeNodes(vo, post, knowledgeNodesByPost);
 
             User author = authorMap.get(post.getAuthorId());
             if (author != null) {
@@ -773,6 +860,83 @@ public class SquareServiceImpl implements SquareService {
             result.add(vo);
         }
         return result;
+    }
+
+    private Map<Long, List<SquarePostKnowledgeNodeVO>> loadKnowledgeNodesByPost(List<SquarePost> posts) {
+        if (posts.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<Long> postIds = posts.stream().map(SquarePost::getId).collect(Collectors.toSet());
+        List<SquarePostNode> relations = squarePostNodeMapper.selectList(
+                new LambdaQueryWrapper<SquarePostNode>()
+                        .in(SquarePostNode::getPostId, postIds)
+                        .orderByAsc(SquarePostNode::getPostId)
+                        .orderByAsc(SquarePostNode::getPosition));
+        Map<Long, List<SquarePostNode>> relationsByPost = relations.stream()
+                .collect(Collectors.groupingBy(SquarePostNode::getPostId));
+
+        Map<Long, List<SquarePostNode>> effectiveRelationsByPost = new HashMap<>();
+        for (SquarePost post : posts) {
+            List<SquarePostNode> postRelations = relationsByPost.get(post.getId());
+            if (postRelations == null || postRelations.isEmpty()) {
+                // 关联表在新版本才出现，旧帖仍以原 node_id 组成单节点合集返回。
+                if (post.getNodeId() == null) {
+                    effectiveRelationsByPost.put(post.getId(), Collections.emptyList());
+                    continue;
+                }
+                SquarePostNode fallbackRelation = new SquarePostNode();
+                fallbackRelation.setPostId(post.getId());
+                fallbackRelation.setNodeId(post.getNodeId());
+                fallbackRelation.setPosition(0);
+                effectiveRelationsByPost.put(post.getId(), Collections.singletonList(fallbackRelation));
+                continue;
+            }
+            effectiveRelationsByPost.put(post.getId(), postRelations);
+        }
+
+        Set<Long> nodeIds = effectiveRelationsByPost.values().stream()
+                .flatMap(List::stream)
+                .map(SquarePostNode::getNodeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, KnowledgeNode> nodeMap = nodeIds.isEmpty() ? Collections.emptyMap()
+                : knowledgeNodeMapper.selectBatchIds(nodeIds).stream()
+                .collect(Collectors.toMap(KnowledgeNode::getId, node -> node));
+
+        Map<Long, List<SquarePostKnowledgeNodeVO>> result = new HashMap<>();
+        for (SquarePost post : posts) {
+            List<SquarePostKnowledgeNodeVO> nodes = effectiveRelationsByPost.get(post.getId()).stream()
+                    .map(relation -> toKnowledgeNodeVO(relation, nodeMap.get(relation.getNodeId())))
+                    .toList();
+            result.put(post.getId(), nodes);
+        }
+        return result;
+    }
+
+    private SquarePostKnowledgeNodeVO toKnowledgeNodeVO(SquarePostNode relation, KnowledgeNode node) {
+        SquarePostKnowledgeNodeVO vo = new SquarePostKnowledgeNodeVO();
+        vo.setNodeId(relation.getNodeId());
+        vo.setPosition(relation.getPosition());
+        if (node == null) {
+            vo.setTitle("知识内容已不可见");
+            return vo;
+        }
+        vo.setTitle(node.getTitle());
+        vo.setSummary(node.getSummary());
+        vo.setContentMd(node.getContentMd());
+        return vo;
+    }
+
+    private void fillKnowledgeNodes(SquarePostVO vo, SquarePost post,
+                                    Map<Long, List<SquarePostKnowledgeNodeVO>> knowledgeNodesByPost) {
+        List<SquarePostKnowledgeNodeVO> knowledgeNodes = knowledgeNodesByPost.getOrDefault(
+                post.getId(), Collections.emptyList());
+        vo.setKnowledgeNodes(knowledgeNodes);
+        if (!knowledgeNodes.isEmpty()) {
+            SquarePostKnowledgeNodeVO primaryNode = knowledgeNodes.get(0);
+            vo.setNodeTitle(primaryNode.getTitle());
+            vo.setNodeSummary(primaryNode.getSummary());
+        }
     }
 
     /**

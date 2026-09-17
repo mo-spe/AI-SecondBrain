@@ -75,6 +75,12 @@ const routes = [
         meta: { title: "知识体系" },
       },
       {
+        path: "knowledge-graph",
+        name: "KnowledgeGraph",
+        component: () => import("@/views/KnowledgeGraph.vue"),
+        meta: { title: "知识网络图" },
+      },
+      {
         path: "research",
         name: "Research",
         redirect: "/ai-research",
@@ -105,6 +111,18 @@ const routes = [
         meta: { title: "知识广场" },
       },
       {
+        path: "community",
+        name: "CommunityQuestions",
+        component: () => import("@/views/CommunityQuestions.vue"),
+        meta: { title: "问答社区" },
+      },
+      {
+        path: "community/users/:id",
+        name: "CommunityUserProfile",
+        component: () => import("@/views/CommunityUserProfile.vue"),
+        meta: { title: "社区个人主页" },
+      },
+      {
         path: "notifications",
         name: "Notifications",
         component: () => import("@/views/Notifications.vue"),
@@ -117,16 +135,22 @@ const routes = [
         meta: { title: "平台管理", requiresAdmin: true },
       },
       {
+        path: "growth",
+        name: "GrowthCenter",
+        component: () => import("@/views/GrowthCenter.vue"),
+        meta: { title: "成长中心" },
+      },
+      {
         path: "achievements",
         name: "Achievements",
-        component: () => import("@/views/Achievements.vue"),
-        meta: { title: "成就殿堂" },
+        redirect: { name: "GrowthCenter", query: { tab: "achievements" } },
+        meta: { title: "成长中心" },
       },
       {
         path: "leaderboard",
         name: "Leaderboard",
-        component: () => import("@/views/Leaderboard.vue"),
-        meta: { title: "排行榜" },
+        redirect: { name: "GrowthCenter", query: { tab: "leaderboard" } },
+        meta: { title: "成长中心" },
       },
       {
         path: "report",

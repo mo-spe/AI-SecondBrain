@@ -360,21 +360,19 @@ export default defineConfig({
 
 ---
 
-## 3. 后端 vs 前端构建对比
+## 3. 五端构建对比
 
-| 对比维度 | 后端（Maven + Spring Boot） | 前端（Vite + Vue 3） |
-|---------|---------------------------|---------------------|
-| 配置文件 | pom.xml | package.json + vite.config.js |
-| 配置语言 | XML | JSON + JavaScript |
-| 构建产物 | 可执行 .jar 文件（包含所有依赖） | dist/ 目录（HTML + JS + CSS） |
-| 运行方式 | `java -jar xxx.jar` 或 `mvn spring-boot:run` | Nginx 托管静态文件，或 `npm run dev` |
-| 依赖管理 | Maven 中央仓库 | npm registry |
-| 依赖文件 | pom.xml | package.json + package-lock.json |
-| 开发模式热更新 | 不支持（需要 JRebel 等插件） | 支持（HMR 毫秒级） |
-| 入口文件 | AiSecondBrainApplication.java（main 方法） | main.js |
-| 运行端口 | 8080 | 3000（开发）/ 80（生产 Nginx） |
-| 构建命令 | `mvn package -DskipTests` | `npm run build` |
-| 构建速度 | 慢（几秒到几十秒） | 快（秒级） |
+| 对比维度 | 后端（Maven） | Web 前端（Vite） | 移动端（uni-app） | 浏览器扩展 | DeerFlow（Python） |
+|---------|-------------|-----------------|------------------|----------|------------------|
+| 配置文件 | pom.xml | package.json + vite.config.js | package.json + vite.config.js + pages.json | manifest.json | requirements.txt |
+| 配置语言 | XML | JSON/JS | JSON/JS | JSON | pip 文本 |
+| 构建产物 | .jar（fat jar） | dist/ 静态资源 | dist/build/{h5,mp-weixin,app}/ | 目录 + zip | Docker 镜像 |
+| 运行方式 | `java -jar` / `mvn spring-boot:run` | Nginx 托管 / `npm run dev` | 微信开发者工具 / HBuilderX | Chrome 加载已解压 | `python app.py` / Docker |
+| 依赖管理 | Maven 中央仓库 | npm registry | npm registry | 无（纯 JS） | PyPI |
+| 入口 | AiSecondBrainApplication.java | main.js | main.js（createSSRApp） | manifest.json → background.js | app.py |
+| 端口 | 8080 | 5173（dev） | 取决于端 | 无 | 8000 |
+| 构建命令 | `mvn package -DskipTests` | `npm run build` | `npm run build:mp-weixin` | `build.sh`（打 zip） | `docker build` |
+| 热更新 | 无（需 JRebel） | HMR 毫秒级 | 保存即重编译 | 需手动"重新加载扩展" | 需重启进程 |
 
 ---
 
@@ -488,14 +486,17 @@ npm run dev
 │  2. Redis ──────────┤                               │
 │  3. (可选) Kafka ───┤                               │
 │  4. (可选) ES ──────┤                               │
+│  5. DeerFlow ───────┤  (Python :8000)               │
 │                     ▼                               │
-│  5. 后端 Spring Boot (端口 8080)                    │
+│  6. 后端 Spring Boot (端口 8080)                    │
 │                     │                               │
-│                     ▼                               │
-│  6. 前端 Vite 开发服务器 (端口 3000)                 │
-│                     │                               │
-│                     ▼                               │
-│  7. 浏览器访问 http://localhost:3000                │
+│         ┌───────────┼───────────┐                   │
+│         ▼           ▼           ▼                   │
+│  Web 前端 Vite   移动端       浏览器扩展             │
+│  (:3000 或 5173)  (微信开发者工具)  (Chrome 加载)     │
+│         │           │           │                   │
+│         ▼           ▼           ▼                   │
+│  浏览器 / 微信 / Chrome 访问                        │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -511,7 +512,45 @@ start.bat
 ./start.sh
 ```
 
-Docker 方式会自动启动 MySQL、Redis、Kafka、Elasticsearch、后端、前端所有服务。
+Docker 方式会自动启动 **7 个服务**：MySQL、Redis、Zookeeper、Kafka、Elasticsearch、DeerFlow、后端 Spring Boot、前端构建器、Nginx（见 `docker-compose.yml`）。
+
+---
+
+### 移动端开发（微信小程序）
+
+前置：安装**微信开发者工具**（stable 版）。
+
+```bash
+cd mobile
+npm install
+npm run dev:mp-weixin
+# 产物目录：mobile/dist/dev/mp-weixin
+# 打开微信开发者工具 → 导入项目 → 选 mobile/dist/dev/mp-weixin 目录
+```
+
+> 小程序的 AppID 在 `mobile/src/manifest.json` 里配置，没有 AppID 也能用"测试号"跑，但无法真机预览。
+
+### 浏览器扩展开发
+
+```
+Chrome → 地址栏输入 chrome://extensions → 打开"开发者模式"
+→ 点击"加载已解压的扩展程序" → 选 d:\AI-SecondBrain\extension 目录
+→ 扩展图标会出现在工具栏
+```
+
+改了 content.js / background.js 后，需要在扩展管理页点**刷新按钮**（或 Ctrl+R）重新加载。
+
+### DeerFlow 本地开发
+
+```bash
+cd deerflow
+pip install -r requirements.txt
+# 复制 .env.example 为 .env，填入 QWEN_API_KEY
+python app.py
+# 验证：curl http://localhost:8000/health → {"status":"healthy"}
+```
+
+启动后，后端通过 `application.yml` 的 `deerflow.api-url` 或环境变量 `DEERFLOW_API_URL` 找到它。
 
 ---
 
@@ -546,18 +585,44 @@ Docker 方式会自动启动 MySQL、Redis、Kafka、Elasticsearch、后端、�
 | `npm run preview` | 预览构建结果 | 验证构建产物 |
 | `npm update` | 更新所有依赖 | 定期升级 |
 
-### 5.3 Docker Compose 命令（在项目根目录执行）
+### 5.3 移动端 npm 命令（在 mobile 目录执行）
+
+| 命令 | 作用 | 产物 |
+|------|------|------|
+| `npm run dev:h5` | H5 开发模式 | `mobile/dist/dev/h5` |
+| `npm run dev:mp-weixin` | 微信小程序开发 | `mobile/dist/dev/mp-weixin` |
+| `npm run dev:app` | App 开发（需 HBuilderX） | - |
+| `npm run build:h5` | H5 生产构建 | `mobile/dist/build/h5` |
+| `npm run build:mp-weixin` | 微信小程序生产构建 | `mobile/dist/build/mp-weixin` |
+| `npm run build:app` | App 打包（需 HBuilderX） | - |
+
+### 5.4 DeerFlow 命令（在 deerflow 目录执行）
 
 | 命令 | 作用 |
 |------|------|
-| `docker-compose up -d` | 后台启动所有服务 |
+| `pip install -r requirements.txt` | 安装依赖 |
+| `python app.py` | 本地启动（监听 8000） |
+| `curl http://localhost:8000/health` | 健康检查 |
+| `docker build -t deerflow .` | 构建镜像 |
+
+### 5.5 浏览器扩展
+
+无构建命令。改完代码在 `chrome://extensions` 点刷新按钮即可。打包用 `extension/build.sh` 产出 zip。
+
+### 5.6 Docker Compose 命令（在项目根目录执行）
+
+| 命令 | 作用 |
+|------|------|
+| `docker-compose up -d` | 后台启动所有服务（MySQL/Redis/ZK/Kafka/ES/DeerFlow/Backend/Frontend/Nginx） |
 | `docker-compose down` | 停止并删除所有容器 |
 | `docker-compose ps` | 查看服务状态 |
 | `docker-compose logs -f` | 实时查看所有日志 |
 | `docker-compose logs -f backend` | 查看后端日志 |
+| `docker-compose logs -f deerflow` | 查看 DeerFlow 日志 |
 | `docker-compose logs -f mysql` | 查看 MySQL 日志 |
 | `docker-compose restart backend` | 重启后端服务 |
 | `docker-compose build backend` | 重新构建后端镜像 |
+| `docker-compose up -d deerflow` | 只启动 DeerFlow（按需） |
 
 ---
 
@@ -603,7 +668,38 @@ Docker 方式会自动启动 MySQL、Redis、Kafka、Elasticsearch、后端、�
 | 修改代码后页面不更新 | 热更新失效 | 刷新页面，或重启 `npm run dev` |
 | `Port 3000 is already in use` | 3000 端口被占了 | 1. 关掉占用端口的程序<br>2. 或修改 vite.config.js 的 port 为其他值 |
 
-### 6.3 Docker 相关
+### 6.3 移动端（uni-app）相关
+
+| 报错信息 | 原因 | 修复方法 |
+|---------|------|---------|
+| `not found module '@dcloudio/uni-app'` | 依赖没装或版本不对 | `cd mobile && npm install`，确保用的是项目锁定的版本 |
+| 微信开发者工具打开后白屏 | main.js 用了 `createApp` 而不是 `createSSRApp` | 改回 `createSSRApp`（见 03 特性 11） |
+| `navigateTo:fail page not found` | pages.json 没注册该页面 | 在 `mobile/src/pages.json` 的 pages 数组里加上 |
+| `uni.request` 跨域报错（H5 端） | H5 端浏览器 CORS | 开发环境在 `vite.config.js` 配 proxy；生产走 Nginx 反代 |
+| 小程序端 `storage` 读不到 token | 用了 `localStorage` 而不是 `uni.getStorageSync` | 全局替换为 `uni.setStorageSync` / `uni.getStorageSync` |
+| TabBar 图标不显示 | pages.json 里 iconPath 路径错 | 检查图标文件是否存在、路径是否相对 pages.json |
+
+### 6.4 浏览器扩展相关
+
+| 报错信息 | 原因 | 修复方法 |
+|---------|------|---------|
+| 扩展加载后点图标没反应 | popup.html 里的 JS 路径错 | 检查 manifest.json 的 `action.default_popup` 路径 |
+| content.js 没注入到目标页面 | manifest.json 的 `matches` 不匹配当前域名 | 在 `content_scripts[0].matches` 加上目标域名 |
+| background.js 发请求报 CORS | host_permissions 没加后端域名 | 在 manifest.json 的 `host_permissions` 加 `http://localhost:8080/*` |
+| `chrome is not defined` | 代码跑在了 content.js 里误用了 chrome.* API 的同步版本 | content.js 里用 `chrome.runtime.sendMessage` 异步发消息给 background |
+| 改了代码扩展不生效 | 没重新加载扩展 | chrome://extensions → 点扩展卡片的刷新按钮 |
+
+### 6.5 DeerFlow 相关
+
+| 报错信息 | 原因 | 修复方法 |
+|---------|------|---------|
+| `ModuleNotFoundError: No module named 'flask'` | 依赖没装 | `pip install -r requirements.txt` |
+| `/health` 返回 500 或连不上 | 8000 端口被占或进程没起来 | `netstat -ano | findstr 8000` 查占用；`python app.py` 看启动日志 |
+| 调用通义千问超时 | QWEN_API_KEY 没配或网络不通 | 检查 `.env` 里的 `QWEN_API_KEY`；确认能访问 `dashscope.aliyuncs.com` |
+| Java 后端调 DeerFlow 报 Connection refused | DEERFLOW_API_URL 配错或 DeerFlow 没启动 | 检查 `application.yml` 的 `deerflow.api-url`，确保指向运行中的 DeerFlow |
+| 返回内容为 null | 通义千问接口报错 | 看 DeerFlow 控制台日志，通常是 API Key 无效或 model 名错 |
+
+### 6.6 Docker 相关
 
 | 报错信息 | 原因 | 修复方法 |
 |---------|------|---------|

@@ -10,6 +10,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    private static final String[] AUTHENTICATED_PATHS = {
+            "/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**",
+            "/async-task/**", "/workspace/**", "/admin/**", "/share/**", "/square/**", "/community/**",
+            "/notification/**", "/statistics/**", "/user/**", "/gamification/**", "/tags/**", "/ai/**",
+            "/sessions/**", "/research/**"
+    };
+
     private final JwtInterceptor jwtInterceptor;
     private final WorkspaceInterceptor workspaceInterceptor;
 
@@ -32,7 +39,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**", "/async-task/**", "/workspace/**", "/admin/**", "/share/**", "/square/**", "/notification/**", "/statistics/**", "/user/**", "/gamification/**", "/tags/**", "/ai/**", "/sessions/**", "/research/**")
+                .addPathPatterns(AUTHENTICATED_PATHS)
                 .excludePathPatterns("/auth/**", "/health/**");
 
         registry.addInterceptor(workspaceInterceptor)

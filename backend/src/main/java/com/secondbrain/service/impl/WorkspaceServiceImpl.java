@@ -95,18 +95,25 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         wrapper.eq(WorkspaceMember::getUserId, userId);
         List<WorkspaceMember> memberships = memberMapper.selectList(wrapper);
 
-        return memberships.stream().map(m -> {
-            Workspace workspace = workspaceMapper.selectById(m.getWorkspaceId());
-            if (workspace == null || workspace.getDeleted() == 1) {
-                return null;
-            }
-            // 仅统计已确认的成员
-            long memberCount = memberMapper.selectCount(
-                    new LambdaQueryWrapper<WorkspaceMember>()
-                            .eq(WorkspaceMember::getWorkspaceId, m.getWorkspaceId())
-                            .eq(WorkspaceMember::getStatus, "accepted"));
-            return toResponse(workspace, m.getRole(), (int) memberCount);
-        }).filter(r -> r != null).collect(Collectors.toList());
+        return memberships.stream()
+                .filter(m -> m.getDeleted() == null || m.getDeleted() == 0)
+                // 旧版本成员记录没有 status 字段，按已加入处理；明确 pending 的邀请不能进入可切换列表。
+                .filter(m -> m.getStatus() == null || "accepted".equalsIgnoreCase(m.getStatus()))
+                .map(m -> {
+                    Workspace workspace = workspaceMapper.selectById(m.getWorkspaceId());
+                    if (workspace == null || workspace.getDeleted() == 1) {
+                        return null;
+                    }
+                    // 仅统计已确认的成员
+                    long memberCount = memberMapper.selectCount(
+                            new LambdaQueryWrapper<WorkspaceMember>()
+                                    .eq(WorkspaceMember::getWorkspaceId, m.getWorkspaceId())
+                                    .and(status -> status
+                                            .eq(WorkspaceMember::getStatus, "accepted")
+                                            .or()
+                                            .isNull(WorkspaceMember::getStatus)));
+                    return toResponse(workspace, m.getRole(), (int) memberCount);
+                }).filter(r -> r != null).collect(Collectors.toList());
     }
 
     /**
@@ -400,7 +407,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         return memberMapper.selectOne(
                 new LambdaQueryWrapper<WorkspaceMember>()
                         .eq(WorkspaceMember::getWorkspaceId, workspaceId)
-                        .eq(WorkspaceMember::getUserId, userId));
+                        .eq(WorkspaceMember::getUserId, userId)
+                        // 旧表可能没有软删除值，NULL 与未删除 0 都视为有效记录。
+                        .and(deleted -> deleted
+                                .eq(WorkspaceMember::getDeleted, 0)
+                                .or()
+                                .isNull(WorkspaceMember::getDeleted)));
     }
 
     /**

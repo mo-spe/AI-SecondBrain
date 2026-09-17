@@ -514,7 +514,181 @@ async function login(username, password) {
 
 ---
 
-## 三、命名规范速查表
+## 三、移动端 uni-app 特性
+
+uni-app 是**一套 Vue 3 代码产出多端**的框架（H5 / 微信小程序 / Android / iOS）。它在 Vue 3 基础上做了三件事：① 统一了端能力 API（`uni.request` / `uni.setStorage` 等）；② 用 `pages.json` 代替 vue-router 管理页面路由和 TabBar；③ 入口用 `createSSRApp` 兼容小程序的服务端渲染模式。
+
+### 特性 9：pages.json —— 集中声明路由与 TabBar
+
+**项目里在哪用**：[`mobile/src/pages.json`](../mobile/src/pages.json) 是移动端的"路由总表"，所有页面、TabBar 项、全局样式都在这里声明。
+
+**为什么不用 vue-router**：微信小程序没有浏览器 history 概念，路由必须在 `pages.json` 里静态声明给小程序引擎，不能像 Web 那样在运行时动态注册。
+
+```json
+// mobile/src/pages.json（节选）
+{
+  "pages": [
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录" } },
+    { "path": "pages/knowledge/index", "style": { "navigationBarTitleText": "知识" } },
+    { "path": "pages/review/index", "style": { "navigationBarTitleText": "复习" } }
+  ],
+  "tabBar": {
+    "list": [
+      { "pagePath": "pages/ai/chat", "text": "AI" },
+      { "pagePath": "pages/knowledge/index", "text": "知识" },
+      { "pagePath": "pages/review/index", "text": "复习" },
+      { "pagePath": "pages/square/index", "text": "广场" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
+  }
+}
+```
+
+**要点**：
+- 新增页面 = 在 `pages.json` 的 `pages` 数组加一项 + 新建对应 `.vue` 文件，缺一不可
+- `tabBar.list` 里的页面会显示在底部导航栏，非 tabBar 页面用 `uni.navigateTo` 跳转
+
+### 特性 10：uni.request —— 跨端 HTTP 请求
+
+Web 端用 axios，移动端用 `uni.request`（因为小程序没有 XMLHttpRequest）。项目在 `mobile/src/utils/request.js` 里封装了一层，逻辑和 Web 端的 axios 拦截器一致：自动加 JWT、统一解 `Result.code`、失败弹 toast。
+
+```javascript
+// mobile/src/utils/request.js（核心思路）
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+export function request(options) {
+  const token = uni.getStorageSync('token');
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: BASE_URL + options.url,
+      method: options.method || 'GET',
+      data: options.data,
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (res) => {
+        if (res.data.code === 200) resolve(res.data.data);
+        else { uni.showToast({ title: res.data.message, icon: 'none' }); reject(res.data); }
+      },
+      fail: reject
+    });
+  });
+}
+```
+
+> ⚠️ **本地存储 API 不一样**：Web 用 `localStorage.setItem`，移动端必须用 `uni.setStorageSync('key', value)` / `uni.getStorageSync('key')`，在微信小程序里没有 `localStorage`。
+
+### 特性 11：createSSRApp —— 兼容小程序的入口
+
+**项目里在哪用**：[`mobile/src/main.js`](../mobile/src/main.js)
+
+```javascript
+import { createSSRApp } from 'vue';
+import App from './App.vue';
+
+export function createApp() {
+  const app = createSSRApp(App);   // 不是 createApp！
+  return { app };
+}
+```
+
+`createSSRApp` 是 uni-app 对 Vue 3 `createApp` 的封装，让同一份代码在 H5（CSR）和小程序（逻辑层渲染）下都能跑。**移动端 main.js 必须用这个，直接用 `createApp` 会在小程序端白屏。**
+
+---
+
+## 四、DeerFlow Python 服务特性
+
+DeerFlow 是一个独立的 Python Flask 微服务，和 Java 后端解耦。代码里不追求"工程化"（没有分层、没有 ORM），因为它的职责很单一：接收一个 prompt，调通义千问，返回结果。
+
+### 特性 12：Flask 极简路由 + 环境变量驱动
+
+**项目里在哪用**：[`deerflow/app.py`](../deerflow/app.py)
+
+```python
+import os
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+
+load_dotenv()                       # 加载 .env 文件
+app = Flask(__name__)
+
+QWEN_API_KEY = os.getenv('QWEN_API_KEY', '')
+QWEN_BASE_URL = os.getenv('QWEN_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'healthy'})
+
+@app.route('/api/research/learning-report', methods=['POST'])
+def generate_learning_report():
+    prompt = request.json.get('prompt', '')
+    content = call_qwen_api(prompt, user_api_key=request.json.get('api_key'))
+    return jsonify({'report': content})
+```
+
+**关键约定**：
+- 所有敏感配置（API Key、Base URL）走环境变量，`load_dotenv()` 从 `.env` 加载，Docker 环境由 `docker-compose.yml` 注入
+- 用户自带 key 优先：`api_key = user_api_key if user_api_key else QWEN_API_KEY`（app.py:25）—— 这样不强制用户用平台 key
+- 异常处理用 `try/except requests.exceptions.RequestException`，返回 `None` 而不是抛 500，由调用方判断
+
+---
+
+## 五、Chrome 扩展（Manifest V3）特性
+
+浏览器扩展是纯 JS，没有构建工具，理解 3 个角色的协作就够了。
+
+### 特性 13：MV3 三角色模型
+
+```
+┌─────────────────┐   chrome.runtime.sendMessage    ┌──────────────────────┐
+│  content.js     │ ◄──────────────────────────────► │  background.js       │
+│  (注入网页DOM)   │   跨标签页中转、调 API           │  (Service Worker)    │
+│  解析AI对话文本  │                                  │  无 DOM、无localStorage│
+└────────┬────────┘                                  └──────────┬───────────┘
+         │ DOM 操作 + 注入"采集"按钮                           │ chrome.storage.local
+         ▼                                                      ▼
+   ChatGPT / Kimi / 豆包 网页                          popup.js（点击图标时打开）
+                                                     配置 API 地址 + Token
+```
+
+**manifest.json 里声明三者关系**（[`extension/manifest.json`](../extension/manifest.json)）：
+
+```json
+{
+  "manifest_version": 3,
+  "permissions": ["activeTab", "storage", "scripting"],
+  "content_scripts": [{
+    "matches": ["https://chatgpt.com/*", "https://www.kimi.com/*", ...],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle"
+  }],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup/popup.html" }
+}
+```
+
+**三个角色分工**：
+
+| 角色 | 文件 | 能力 | 限制 |
+|-----|------|------|------|
+| content script | content.js | 操作网页 DOM、读对话文本 | 不能直接调 chrome.storage（跨上下文）、不能跨 tab 通信 |
+| service worker | background.js | 中转消息、调 `chrome.storage`、发网络请求 | 无 DOM、无 `window`、无 `localStorage`，随时被浏览器休眠 |
+| popup | popup.html + popup.js | 用户点击图标时的配置面板 | 关闭即销毁，不持久状态 |
+
+**数据存储用 `chrome.storage.local`**（不是 localStorage）：
+
+```javascript
+// popup.js / background.js 里都能这样读写
+chrome.storage.local.get(['apiBase', 'token'], (res) => {
+  console.log(res.apiBase, res.token);
+});
+chrome.storage.local.set({ apiBase: 'http://localhost:8080' });
+```
+
+> ⚠️ Service Worker 是**事件驱动**的：没有事件时浏览器会把它休眠，所以不能在 background.js 里写 `setInterval` 这种长驻逻辑，要用 `chrome.alarms` 或消息触发。
+
+---
+
+## 六、命名规范速查表
 
 ### 后端命名
 
@@ -551,11 +725,28 @@ async function login(username, password) {
 
 读代码前，确认你知道这些：
 
+**后端 Java**
 - [ ] 看到 `@Getter @Setter` 知道是 Lombok，不用找 getter/setter 方法
 - [ ] 看到 `extends BaseMapper<T>` 知道自带 CRUD 方法
 - [ ] 看到构造器里一堆 `private final Xxx xxx` 知道是 Spring 注入
 - [ ] 看到 `interface XxxService` + `class XxxServiceImpl` 知道是接口分离
 - [ ] 看到 `LocalDateTime` 知道是新时间 API，别用 `Date`
+
+**前端 Vue 3**
 - [ ] 看到 `<script setup>` 知道是 Vue 3 组合式 API
 - [ ] 看到 `useXxxStore()` 知道是 Pinia 状态管理
 - [ ] 看到 `import request from '@/utils/request'` 知道是封装好的 axios
+
+**移动端 uni-app**
+- [ ] 看到 `pages.json` 知道是路由+TabBar 总表，新增页面必须改它
+- [ ] 看到 `uni.request` / `uni.setStorageSync` 知道是跨端 API，不是浏览器原生
+- [ ] 看到 `createSSRApp` 知道是 uni-app 入口，不能换成 `createApp`
+
+**DeerFlow Python**
+- [ ] 看到 `os.getenv('XXX')` 知道是从环境变量读配置，不是写死的
+- [ ] 看到 `requests.post` 知道是在调外部 LLM 接口
+
+**Chrome 扩展**
+- [ ] 看到 `content.js` 知道它跑在网页里，能改 DOM 但不能跨 tab
+- [ ] 看到 `background.js` 知道是 Service Worker，无 DOM、随时休眠
+- [ ] 看到 `chrome.storage.local` 知道是扩展存储，不是 localStorage

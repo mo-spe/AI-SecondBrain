@@ -2,7 +2,7 @@
   <div class="gamification-widget">
     <div class="widget-header">
       <h4 class="widget-title">学习成长</h4>
-      <router-link to="/achievements" class="widget-link">全部成就</router-link>
+      <router-link :to="{ path: '/growth', query: { tab: 'achievements' } }" class="widget-link">成长中心</router-link>
     </div>
 
     <div class="widget-body" v-if="profile">
@@ -36,7 +36,15 @@
         </div>
       </div>
 
-      <div class="next-achievement" v-if="profile.nextAchievement" @click="$router.push('/achievements')">
+      <div
+        class="next-achievement"
+        v-if="profile.nextAchievement"
+        role="button"
+        tabindex="0"
+        @click="$router.push({ path: '/growth', query: { tab: 'achievements' } })"
+        @keydown.enter="$router.push({ path: '/growth', query: { tab: 'achievements' } })"
+        @keydown.space.prevent="$router.push({ path: '/growth', query: { tab: 'achievements' } })"
+      >
         <span class="next-label">下一个成就</span>
         <div class="next-info">
           <span class="next-name">{{ profile.nextAchievement.name }}</span>
@@ -143,6 +151,9 @@ onMounted(() => {
 }
 
 .widget-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-size: 12px;
   color: var(--color-primary);
   text-decoration: none;
@@ -234,6 +245,7 @@ onMounted(() => {
 }
 
 .next-achievement {
+  min-height: 44px;
   padding: 10px;
   background: rgba(99, 102, 241, 0.04);
   border-radius: var(--radius-md);

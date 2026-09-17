@@ -15,9 +15,10 @@
           <el-empty description="暂无通知" />
         </div>
 
-        <div
+        <button
           v-for="item in list"
           :key="item.id"
+          type="button"
           class="notification-item"
           :class="{ unread: item.isRead === 0 }"
           @click="handleClick(item)"
@@ -28,7 +29,7 @@
             <p v-if="item.content" class="notification-content">{{ item.content }}</p>
             <span class="notification-time">{{ formatDate(item.createdAt) }}</span>
           </div>
-        </div>
+        </button>
       </div>
 
       <div v-if="pagination.total > 0" class="pagination-wrap">
@@ -88,6 +89,8 @@ const handleClick = async (item) => {
   if (item.targetType === "post" && item.targetId) {
     // Navigate to square with post detail — for now just go to square
     router.push("/square");
+  } else if (item.targetType === "knowledge" && item.targetId) {
+    router.push(`/knowledge/${item.targetId}`);
   }
 };
 
@@ -154,6 +157,7 @@ onMounted(() => {
 }
 
 .notification-item {
+  width: 100%;
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -163,6 +167,9 @@ onMounted(() => {
   cursor: pointer;
   transition: background 0.15s;
   border: 1px solid var(--border-lighter);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .notification-item:hover {
@@ -172,6 +179,11 @@ onMounted(() => {
 .notification-item.unread {
   background: rgba(99, 102, 241, 0.04);
   border-left: 3px solid var(--color-primary);
+}
+
+.notification-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .notification-dot {

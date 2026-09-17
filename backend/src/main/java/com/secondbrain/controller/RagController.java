@@ -4,7 +4,6 @@ import com.secondbrain.common.Result;
 import com.secondbrain.dto.RagRequest;
 import com.secondbrain.dto.RagResponse;
 import com.secondbrain.dto.StreamEvent;
-import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.service.KnowledgeVectorService;
 import com.secondbrain.service.RagService;
@@ -17,7 +16,10 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CompletableFuture;
 
 /** RAG知识问答控制器. <p>提供基于知识库的智能问答接口</p> */
@@ -55,7 +57,6 @@ public class RagController {
             HttpServletRequest httpRequest) {
         
         Long userId = (Long) httpRequest.getAttribute("userId");
-
         RagResponse response = ragService.answer(request, userId);
         
         return Result.success(response);
@@ -75,61 +76,56 @@ public class RagController {
             HttpServletRequest httpRequest) {
 
         Long userId = (Long) httpRequest.getAttribute("userId");
+        Long workspaceId = (Long) httpRequest.getAttribute("workspaceId");
 
         SseEmitter emitter = new SseEmitter(600_000L);
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                ragStreamingService.streamAnswer(request, userId, event -> {
+        AtomicBoolean terminated = new AtomicBoolean();
+        emitter.onCompletion(() -> terminated.set(true));
+        emitter.onError(error -> terminated.set(true));
+        emitter.onTimeout(() -> finishStreamWithError(emitter, terminated, "回答等待超时，请稍后重试"));
+
+        // Future 会收集 LinkageError 等非 Exception 异常，必须在完成回调中结束 SSE，避免页面永久等待。
+        CompletableFuture.runAsync(() ->
+                ragStreamingService.streamAnswer(request, userId, workspaceId, event -> {
+                    if (terminated.get()) {
+                        return;
+                    }
                     try {
-                        switch (event.getType()) {
-                            case TOKEN:
-                                emitter.send(SseEmitter.event()
-                                        .name("token")
-                                        .data(event.getData()));
-                                break;
-                            case REFERENCES:
-                                emitter.send(SseEmitter.event()
-                                        .name("references")
-                                        .data(event.getData()));
-                                break;
-                            case METRICS:
-                                emitter.send(SseEmitter.event()
-                                        .name("metrics")
-                                        .data(event.getData()));
-                                break;
-                            case DONE:
-                                emitter.send(SseEmitter.event()
-                                        .name("done")
-                                        .data("completed"));
-                                emitter.complete();
-                                break;
-                            case ERROR:
-                                emitter.send(SseEmitter.event()
-                                        .name("error")
-                                        .data(event.getData()));
-                                emitter.complete();
-                                break;
+                        emitter.send(SseEmitter.event()
+                                .name(event.getType().name().toLowerCase(Locale.ROOT))
+                                .data(event.getType() == StreamEvent.Type.DONE ? "completed" : event.getData()));
+                        if (event.getType() == StreamEvent.Type.DONE || event.getType() == StreamEvent.Type.ERROR) {
+                            terminated.set(true);
+                            emitter.complete();
                         }
-                    } catch (Exception e) {
-                        log.error("sse_send_failed", e);
-                        emitter.completeWithError(e);
+                    } catch (IOException error) {
+                        throw new UncheckedIOException("Unable to send RAG stream event", error);
+                    }
+                }))
+                .whenComplete((unused, failure) -> {
+                    if (failure != null) {
+                        log.error("stream_answer_failed", failure);
+                        finishStreamWithError(emitter, terminated, "问答服务暂时不可用，请稍后重试");
+                    } else if (!terminated.get()) {
+                        finishStreamWithError(emitter, terminated, "回答意外中断，请稍后重试");
                     }
                 });
-            } catch (Exception e) {
-                log.error("stream_answer_failed", e);
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("error")
-                            .data(e.getMessage() != null ? e.getMessage() : "未知错误"));
-                } catch (Exception ignored) {
-                    // emitter already completed
-                }
-                emitter.complete();
-            }
-        });
 
         return emitter;
+    }
+
+    private void finishStreamWithError(SseEmitter emitter, AtomicBoolean terminated, String message) {
+        if (!terminated.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            emitter.send(SseEmitter.event().name("error").data(message));
+            emitter.complete();
+        } catch (IOException | IllegalStateException error) {
+            log.debug("rag_error_delivery_failed", error);
+            emitter.completeWithError(error);
+        }
     }
 
     /**

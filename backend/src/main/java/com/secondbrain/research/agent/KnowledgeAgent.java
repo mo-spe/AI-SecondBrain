@@ -162,7 +162,9 @@ public class KnowledgeAgent implements ResearchAgent {
             }
 
             researchMemoryService.deleteByProjectAndType(projectId, userId, "BACKGROUND");
-            researchMemoryService.save(projectId, userId, "知识背景总览", "BACKGROUND", md.toString());
+            researchMemoryService.save(projectId, userId,
+                    ResearchMemoryKey.of("BACKGROUND", "知识背景总览"),
+                    "BACKGROUND", md.toString());
         } catch (Exception e) {
             log.warn("persist_background_memory_failed projectId={}", projectId, e);
         }

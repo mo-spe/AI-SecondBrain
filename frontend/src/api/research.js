@@ -209,4 +209,18 @@ export const researchAPI = {
       method: "get",
     });
   },
+
+  acceptCandidate(projectId, memoryId) {
+    return request({
+      url: `/research/projects/${projectId}/memory/${memoryId}/accept`,
+      method: "post",
+    });
+  },
+
+  dismissCandidate(projectId, memoryId) {
+    return request({
+      url: `/research/projects/${projectId}/memory/${memoryId}/candidate`,
+      method: "delete",
+    });
+  },
 };

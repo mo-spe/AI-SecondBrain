@@ -22,6 +22,10 @@
           </button>
         </div>
         <div class="topbar-right">
+          <el-button plain size="default" @click="showReminderDialog = true">
+            <el-icon size="14"><Bell /></el-icon>
+            <span>定时复习</span>
+          </el-button>
           <el-button plain size="default" @click="handleShare" :loading="shareLoading">
             <el-icon size="14"><Share /></el-icon>
             <span>分享</span>
@@ -139,6 +143,11 @@
         <el-button link size="small" @click="shareLink = ''" style="margin-top:12px;">重新生成</el-button>
       </div>
     </el-dialog>
+
+    <KnowledgeReviewReminderDialog
+      v-model="showReminderDialog"
+      :node="knowledge"
+    />
   </div>
 </template>
 
@@ -147,7 +156,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import {
-  ArrowLeft, Clock, Edit, Share,
+  ArrowLeft, Bell, Clock, Edit, Share,
 } from "@element-plus/icons-vue";
 import { knowledgeAPI } from "@/api/knowledge";
 import { collaborationAPI } from "@/api/collaboration";
@@ -155,6 +164,7 @@ import { tagsAPI } from "@/api/tags";
 import { renderMarkdown } from "@/utils/markdown";
 import TagChips from "@/components/TagChips.vue";
 import VersionHistory from "@/components/VersionHistory.vue";
+import KnowledgeReviewReminderDialog from "@/components/KnowledgeReviewReminderDialog.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -167,6 +177,7 @@ const shareLink = ref("");
 const shareLoading = ref(false);
 const shareForm = ref({ expireType: "permanent" });
 const flatTagList = ref([]);
+const showReminderDialog = ref(false);
 
 const renderedContent = computed(() => {
   if (!knowledge.value?.contentMd) return "";

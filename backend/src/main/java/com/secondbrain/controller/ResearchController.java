@@ -407,4 +407,42 @@ public class ResearchController {
         List<ResearchMemory> memories = researchMemoryService.listByType(projectId, userId, type);
         return Result.success(memories);
     }
+
+    /**
+     * 将研究知识候选保存到当前项目所属工作区的知识库。
+     *
+     * @param projectId 项目ID
+     * @param memoryId 候选记忆ID
+     * @param httpRequest HTTP请求
+     * @return 保存结果
+     */
+    @PostMapping("/{projectId}/memory/{memoryId}/accept")
+    @Operation(summary = "保存研究知识候选")
+    public Result<Void> acceptCandidate(
+            @Parameter(description = "项目ID") @PathVariable Long projectId,
+            @Parameter(description = "候选记忆ID") @PathVariable Long memoryId,
+            HttpServletRequest httpRequest) {
+        Long userId = getUserId(httpRequest);
+        researchMemoryService.acceptCandidate(projectId, memoryId, userId);
+        return Result.success("知识已保存到知识库", null);
+    }
+
+    /**
+     * 持久化忽略研究知识候选，使其刷新后不再出现。
+     *
+     * @param projectId 项目ID
+     * @param memoryId 候选记忆ID
+     * @param httpRequest HTTP请求
+     * @return 忽略结果
+     */
+    @DeleteMapping("/{projectId}/memory/{memoryId}/candidate")
+    @Operation(summary = "忽略研究知识候选")
+    public Result<Void> dismissCandidate(
+            @Parameter(description = "项目ID") @PathVariable Long projectId,
+            @Parameter(description = "候选记忆ID") @PathVariable Long memoryId,
+            HttpServletRequest httpRequest) {
+        Long userId = getUserId(httpRequest);
+        researchMemoryService.dismissCandidate(projectId, memoryId, userId);
+        return Result.success("知识候选已忽略", null);
+    }
 }

@@ -1,0 +1,37 @@
+{
+  "name": "ai-second-brain-mobile",
+  "version": "1.0.0",
+  "description": "AI-SecondBrain 移动端（uni-app Vue3 + Vite，一套源码产出 App / 微信小程序 / H5）",
+  "scripts": {
+    "dev:h5": "uni",
+    "dev:app": "uni -p app",
+    "dev:app-android": "uni -p app-android",
+    "dev:app-ios": "uni -p app-ios",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "dev:mp-alipay": "uni -p mp-alipay",
+    "build:h5": "uni build",
+    "build:app": "uni build -p app",
+    "build:mp-weixin": "uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4060520250512001",
+    "@dcloudio/uni-app-plus": "3.0.0-4060520250512001",
+    "@dcloudio/uni-components": "3.0.0-4060520250512001",
+    "@dcloudio/uni-h5": "3.0.0-4060520250512001",
+    "@dcloudio/uni-mp-alipay": "3.0.0-4060520250512001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4060520250512001",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-i18n": "^9.1.9"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-automator": "3.0.0-4060520250512001",
+    "@dcloudio/uni-cli-shared": "3.0.0-4060520250512001",
+    "@dcloudio/uni-stacktracey": "3.0.0-4060520250512001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4060520250512001",
+    "@vue/runtime-core": "^3.4.21",
+    "sass": "^1.103.1",
+    "vite": "5.2.8"
+  }
+}

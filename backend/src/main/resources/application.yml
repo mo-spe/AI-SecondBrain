@@ -140,6 +140,11 @@ jwt:
   secret: ${JWT_SECRET:ai-second-brain-secret-key-2024-very-long-and-secure-key-for-jwt-token-generation-and-validation-256-bits-minimum}
   expiration: ${JWT_EXPIRATION:86400000}
 
+wechat:
+  # 微信小程序后台配置；未配置时接口会明确返回不可用，不会降级为伪登录。
+  app-id: ${WECHAT_APP_ID:}
+  app-secret: ${WECHAT_APP_SECRET:}
+
 aliyun:
   oss:
     endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
@@ -148,6 +153,10 @@ aliyun:
     bucket-name: ${ALIYUN_OSS_BUCKET_NAME:thesecondbrain}
 
 research:
+  budget:
+    max-tokens: ${RESEARCH_MAX_TOKENS:60000}
+    max-tool-calls: ${RESEARCH_MAX_TOOL_CALLS:60}
+    project-timeout-ms: ${RESEARCH_PROJECT_TIMEOUT_MS:600000}
   proxy:
     enabled: ${RESEARCH_PROXY_ENABLED:true}
     host: ${RESEARCH_PROXY_HOST:127.0.0.1}

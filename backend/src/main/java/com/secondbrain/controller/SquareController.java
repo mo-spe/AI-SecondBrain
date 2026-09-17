@@ -42,7 +42,11 @@ public class SquareController {
     }
 
     /**
-     * 发布知识节点到广场.
+     * 发布一个或多个知识节点到广场。
+     *
+     * @param request     发布请求，兼容旧版单节点字段
+     * @param httpRequest 当前请求，用于读取登录用户
+     * @return 创建后的广场帖子
      */
     @PostMapping("/publish")
     @Operation(summary = "发布到广场")
@@ -50,7 +54,7 @@ public class SquareController {
                                          HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         String scope = request.getScope() != null ? request.getScope() : "global";
-        SquarePostVO vo = squareService.publish(request.getNodeId(), request.getRecommendText(),
+        SquarePostVO vo = squareService.publish(request.getNodeIds(), request.getNodeId(), request.getRecommendText(),
                 scope, request.getWorkspaceId(), userId);
         return Result.success("发布成功", vo);
     }

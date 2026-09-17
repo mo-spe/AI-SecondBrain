@@ -2,12 +2,14 @@ package com.secondbrain.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.secondbrain.common.Result;
+import com.secondbrain.dto.RenameChatSessionRequest;
 import com.secondbrain.entity.ChatMessage;
 import com.secondbrain.entity.ChatSession;
 import com.secondbrain.service.ChatSessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -58,6 +60,24 @@ public class SessionController {
         String title = body.getOrDefault("title", "新对话");
         ChatSession session = chatSessionService.createSession(userId, workspaceId, title);
         return Result.success(session);
+    }
+
+    /**
+     * 修改指定会话的标题。
+     *
+     * @param id      会话ID
+     * @param body    重命名请求
+     * @param request HTTP请求
+     * @return 更新后的会话
+     */
+    @PutMapping("/{id}/title")
+    @Operation(summary = "重命名会话", description = "修改当前用户可访问的RAG对话会话标题")
+    public Result<ChatSession> rename(@PathVariable Long id,
+                                      @Valid @RequestBody RenameChatSessionRequest body,
+                                      HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        Long workspaceId = getWorkspaceId(request);
+        return Result.success(chatSessionService.renameSession(id, userId, workspaceId, body.getTitle()));
     }
 
     /**

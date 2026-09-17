@@ -5,6 +5,7 @@ import com.secondbrain.vo.SquareCommentVO;
 import com.secondbrain.vo.SquarePostVO;
 import com.secondbrain.vo.SquareReportVO;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -15,7 +16,21 @@ import java.util.List;
 public interface SquareService {
 
     /**
-     * 发布知识节点到广场.
+     * 发布一个或多个知识节点到广场.
+     *
+     * @param nodeIds       知识节点ID列表，顺序决定合集展示顺序
+     * @param legacyNodeId  旧版单节点字段，列表为空时用于兼容旧客户端
+     * @param recommendText 推荐语（可选，≤200字）
+     * @param scope         发布范围：global / workspace
+     * @param workspaceId   工作区ID（scope=workspace 时必填）
+     * @param userId        当前用户ID
+     * @return 创建后的帖子VO
+     */
+    SquarePostVO publish(List<Long> nodeIds, Long legacyNodeId, String recommendText, String scope,
+                         Long workspaceId, Long userId);
+
+    /**
+     * 兼容旧调用方发布单个知识节点。
      *
      * @param nodeId        知识节点ID
      * @param recommendText 推荐语（可选，≤200字）
@@ -24,7 +39,10 @@ public interface SquareService {
      * @param userId        当前用户ID
      * @return 创建后的帖子VO
      */
-    SquarePostVO publish(Long nodeId, String recommendText, String scope, Long workspaceId, Long userId);
+    default SquarePostVO publish(Long nodeId, String recommendText, String scope, Long workspaceId, Long userId) {
+        List<Long> nodeIds = nodeId == null ? Collections.emptyList() : Collections.singletonList(nodeId);
+        return publish(nodeIds, nodeId, recommendText, scope, workspaceId, userId);
+    }
 
     /**
      * 下架自己的帖子.

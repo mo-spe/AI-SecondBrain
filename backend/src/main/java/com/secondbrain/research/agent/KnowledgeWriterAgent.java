@@ -183,7 +183,7 @@ public class KnowledgeWriterAgent implements ResearchAgent {
                     md.append("**重要性**：").append(importance).append("\n");
                 }
 
-                String memoryKey = title.length() > 80 ? title.substring(0, 80) : title;
+                String memoryKey = ResearchMemoryKey.of("CANDIDATE", title);
                 researchMemoryService.save(projectId, userId, memoryKey, "CANDIDATE", md.toString());
             }
             log.info("candidate_memories_persisted projectId={} count={}", projectId, candidates.size());
@@ -236,10 +236,11 @@ public class KnowledgeWriterAgent implements ResearchAgent {
                         if (i < conclusions.size()) {
                             candidate.put("sourceConclusionId", i + 1);
                         }
-                        candidate.put("dedupCheck", Map.of(
-                                "isDuplicate", false,
-                                "mostSimilarNodeId", null,
-                                "similarityScore", 0.0));
+                        Map<String, Object> dedupCheck = new LinkedHashMap<>();
+                        dedupCheck.put("isDuplicate", false);
+                        dedupCheck.put("mostSimilarNodeId", null);
+                        dedupCheck.put("similarityScore", 0.0);
+                        candidate.put("dedupCheck", dedupCheck);
                     }
 
                     return candidates;

@@ -1102,7 +1102,231 @@ export const notificationAPI = {
 
 ---
 
-## 12. 代码阅读路线建议
+## 12. 移动端：从启动到复习答题的完整链路
+
+前面 1~11 节走的是 **Web 端** 的登录流程。这一节换成**移动端微信小程序**，看同一套后端契约如何被 uni-app 消费。重点看 3 件事：① 启动时怎么恢复登录态；② TabBar 切换"复习"时怎么拉取今日卡片；③ 提交一道题的答题结果。
+
+### 12.1 启动：从本地存储恢复 token
+
+`mobile/src/main.js` 用 `createSSRApp` 创建应用后，`App.vue` 的 `onLaunch` 钩子会尝试恢复登录态：
+
+```javascript
+// mobile/src/App.vue（核心逻辑）
+onLaunch(() => {
+  const token = uni.getStorageSync('token');
+  const userInfo = uni.getStorageSync('userInfo');
+  if (token && userInfo) {
+    useUserStore().setToken(token);
+    useUserStore().setUserInfo(userInfo);
+  } else {
+    uni.reLaunch({ url: '/pages/login/index' });  // 没登录跳登录
+  }
+});
+```
+
+> 和 Web 端的差别：Web 端是 `localStorage.getItem`，移动端必须 `uni.getStorageSync`。后端完全不感知差别——同样解析 `Authorization: Bearer <token>`。
+
+### 12.2 切换到"复习"Tab：拉取今日卡片
+
+`mobile/src/pages.json` 里 TabBar 第 3 项是 `pages/review/index`。用户点底部"复习"图标后，uni-app 路由到该页，`onShow` 钩子触发请求：
+
+```javascript
+// mobile/src/pages/review/index.vue
+import { reviewAPI } from '@/api/review';
+
+async function loadTodayCards() {
+  const cards = await reviewAPI.getTodayCards({ workspaceId: currentWorkspaceId });
+  cardList.value = cards;
+}
+
+onShow(() => {
+  // 每次切到这个 tab 都刷新（因为答题后卡片状态会变）
+  loadTodayCards();
+});
+```
+
+后端对应 `ReviewCardController.getTodayReviewCards`，Service 层按 `nextReviewTime <= now` 过滤。
+
+### 12.3 提交答题：答对/答错影响下次复习时间
+
+```javascript
+// mobile/src/pages/review/answer.vue
+async function submitAnswer(cardId, userAnswer) {
+  const result = await reviewAPI.submitReviewResult({
+    cardId,
+    userAnswer,
+    duration: 30,  // 答题耗时（秒）
+  });
+  // result 里带回：是否答对、下次复习时间、更新后的掌握度
+  if (result.isCorrect) {
+    uni.showToast({ title: '答对了！', icon: 'success' });
+  } else {
+    uni.showToast({ title: '答错了，已安排重学', icon: 'none' });
+  }
+}
+```
+
+后端 `ReviewCardServiceImpl.submitReviewResult` 内部：
+1. 记录 `ReviewLog`
+2. 调 `EbbinghausService.calculateNextReviewInterval(reviewCount, isCorrect)` 算下次间隔
+3. 更新 `ReviewCard.nextReviewTime`
+4. 如果答对次数达阈值，`masteryLevel++`
+5. 同时给用户加积分（`GamificationService`）—— 这就是"复习即赚积分"的闭环
+
+整条链路涉及的真实文件：
+
+| 层 | 文件 |
+|---|------|
+| 移动端页面 | `mobile/src/pages/review/index.vue`、`answer.vue` |
+| 移动端 API | `mobile/src/api/review.js` |
+| 后端 Controller | `ReviewCardController.java` |
+| 后端 Service | `ReviewCardServiceImpl.java` + `EbbinghausServiceImpl.java` |
+| 数据库 | `review_card`、`review_log`、`points_log` |
+
+---
+
+## 13. 浏览器扩展：一键采集 AI 对话到知识库
+
+扩展的"采集"流程是整个项目里**唯一不走 Nginx、直接打后端**的链路，也是连接"外部 AI 平台"和"我的知识库"的关键桥梁。
+
+### 13.1 content.js 在 AI 平台页面注入按钮
+
+扩展声明（`extension/manifest.json`）让 `content.js` 注入到 `chatgpt.com`、`kimi.com`、`doubao.com` 等 9 个域名。脚本 `document_idle` 时执行，找到对话容器后插入一个"采集到 AI-SecondBrain"浮动按钮：
+
+```javascript
+// extension/content.js（核心思路）
+const btn = document.createElement('button');
+btn.textContent = '采集';
+btn.onclick = async () => {
+  const conversation = parseConversationFromDOM();  // 从页面 DOM 抽取用户/AI 消息
+  chrome.runtime.sendMessage({
+    type: 'CAPTURE',
+    payload: { platform: 'chatgpt', content: conversation }
+  });
+};
+document.body.appendChild(btn);
+```
+
+### 13.2 background.js 转发到后端
+
+content.js 不能直接发网络请求到跨域后端（受 CSP 限制），所以把消息丢给 Service Worker 转发：
+
+```javascript
+// extension/background.js
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'CAPTURE') {
+    chrome.storage.local.get(['apiBase', 'token'], async (cfg) => {
+      await fetch(`${cfg.apiBase}/api/capture`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${cfg.token}`
+        },
+        body: JSON.stringify(msg.payload)
+      });
+      sendResponse({ ok: true });
+    });
+    return true;  // 异步响应必须 return true
+  }
+});
+```
+
+### 13.3 后端：先落 pending_knowledge，不直接入库
+
+`CaptureController` 接收后调 `KnowledgeCaptureService`，AI 抽摘要、估重要性、打标签建议，**全部存进 `pending_knowledge` 表**（不写 `knowledge_node`），等用户在 Web 端"待确认"列表里二次处理。
+
+```
+ChatGPT 网页 (content.js)
+    │  解析 DOM 抽取对话
+    ▼
+background.js
+    │  fetch POST /api/capture  (带 JWT)
+    ▼
+CaptureController
+    │
+    ▼
+KnowledgeCaptureService.createPending()
+    │  1. AI 抽摘要/标签/重要性
+    │  2. 写 pending_knowledge 表（status=PENDING）
+    ▼
+返回 pendingId + 推荐的标题/标签
+    │
+    │  用户在 Web 端"待确认"页：
+    │    确认 → 转 knowledge_node + 发积分
+    │    丢弃 → 删 pending 记录
+```
+
+**为什么不直接入库**：这是思想 11（PendingKnowledge 中间态）的体现——AI 推荐的内容必须经用户确认，否则知识库会被污染。
+
+---
+
+## 14. DeerFlow 研究报告：Java → Python → 通义千问 的跨语言调用
+
+DeerFlow 是项目里**唯一的 Python 服务**，专门处理"长文生成"这类 Java 不擅长的活。这里走一遍"生成学习报告"的完整链路。
+
+### 14.1 前端发起
+
+`frontend/src/api/deerflow.js` 里封装：
+
+```javascript
+// frontend/src/api/deerflow.js
+export const deerflowAPI = {
+  generateLearningReport(data) {
+    return request({
+      url: '/deerflow/learning-report',
+      method: 'post',
+      data,  // { prompt, apiKey? }
+    });
+  },
+};
+```
+
+### 14.2 Java 后端做协议适配 + 鉴权透传
+
+`DeerFlowResearchController` → `DeerFlowResearchService` 用 RestTemplate 调 `DEERFLOW_API_URL`：
+
+```java
+// DeerFlowResearchServiceImpl（核心思路）
+String url = deerflowApiUrl + "/api/research/learning-report";
+HttpHeaders headers = new HttpHeaders();
+headers.setContentType(MediaType.APPLICATION_JSON);
+HttpEntity<Map<String, Object>> entity = new HttpEntity<>(params, headers);
+ResponseEntity<String> resp = restTemplate.postForEntity(url, entity, String.class);
+return resp.getBody();
+```
+
+> **为什么不直接让前端调 deerflow:8000？** 因为 deerflow 在内网不暴露，且它本身不处理登录鉴权。由 Java 后端做鉴权网关，既安全又能统一日志。
+
+### 14.3 DeerFlow 调通义千问
+
+`deerflow/app.py` 的 `call_qwen_api(prompt, user_api_key)`：
+
+```python
+def call_qwen_api(prompt, user_api_key=None):
+    api_key = user_api_key if user_api_key else QWEN_API_KEY
+    url = f"{QWEN_BASE_URL}/chat/completions"
+    data = {'model': QWEN_MODEL, 'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': 0.7, 'max_tokens': 4000}
+    response = requests.post(url, headers={'Authorization': f'Bearer {api_key}'},
+                             json=data, timeout=300)
+    return response.json()['choices'][0]['message']['content']
+```
+
+返回的 Markdown 报告沿原路回到前端展示。
+
+### 14.4 整条链路的文件清单
+
+| 步骤 | 文件 |
+|-----|------|
+| 前端调用 | `frontend/src/api/deerflow.js` |
+| 后端控制器 | `DeerFlowResearchController.java` |
+| 后端服务 | `DeerFlowResearchServiceImpl.java`（RestTemplate） |
+| Python 入口 | `deerflow/app.py` |
+| Python 报告服务 | `deerflow/deerflow_report.py` |
+
+---
+
+## 15. 代码阅读路线建议
 
 按这个顺序读，循序渐进不迷路：
 

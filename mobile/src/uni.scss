@@ -1,0 +1,130 @@
+/* ======================================================================
+   uni.scss — 全局设计令牌（自动注入每个 scoped 样式）
+   延续 Scholar's Desk 暖色学术气质，但做 anti-slop 处理：
+   - 拒绝等分卡片 / 8px机械间距
+   - 建立 Display/Title/Body/Caption 四级字号阶梯（1:1.25 比例）
+   - 卡片分三层：平面 card、浮起 card-raised、强调 card-accent
+   ====================================================================== */
+
+/* ---------- 核心色板：墨色青绿 × 暖铜，降低旧版黄褐底带来的沉闷感 ---------- */
+$uni-color-primary:        #174a45;
+$uni-color-primary-dark:   #0f3430;
+$uni-color-primary-soft:   #2f756c;
+$uni-color-primary-fog:    rgba(23, 74, 69, 0.08);
+$uni-color-primary-tint:   rgba(23, 74, 69, 0.16);
+
+$uni-color-accent:         #c9793f;
+$uni-color-accent-dark:    #945225;
+$uni-color-accent-soft:    #e2a06a;
+$uni-color-accent-fog:     rgba(201, 121, 63, 0.10);
+
+/* 语义 */
+$uni-color-success:        #2f7560;
+$uni-color-warning:        #b96c32;
+$uni-color-danger:         #b8443a;
+$uni-color-info:           #2f5d7a;
+
+/* ---------- 中性文字：轻微青灰倾向，提高信息界面的清晰度 ---------- */
+$uni-text-primary:   #162320;
+$uni-text-regular:   #35433f;
+$uni-text-secondary: #66736f;
+$uni-text-placeholder: #929d99;
+$uni-text-inverse:   #ffffff;
+
+/* ---------- 背景：纸白保留温度，但以中性灰绿承担层次 ---------- */
+$uni-bg-page:  #f3f6f5;
+$uni-bg-card:  #ffffff;
+$uni-bg-input: #edf2f0;
+$uni-bg-hover: #e6edeb;
+$uni-bg-badge: #e2ebe8;
+
+/* ---------- 边框：暖棕灰，拒绝冷灰边 ---------- */
+$uni-border-light:  #e4ebe8;
+$uni-border-base:   #ced9d5;
+$uni-border-strong: #aebfba;
+
+/* ---------- 间距：8 基准 + 非等分变奏，拒绝机械递增 ---------- */
+$space-1: 4rpx;
+$space-2: 8rpx;
+$space-3: 12rpx;   /* ← 变奏 */
+$space-4: 16rpx;
+$space-5: 24rpx;   /* ← 跳过 20 */
+$space-6: 36rpx;   /* ← 变奏 */
+$space-7: 56rpx;   /* ← 大呼吸 */
+$space-8: 88rpx;
+
+$uni-spacing-sm:    16rpx;
+$uni-spacing-base:  24rpx;
+$uni-spacing-lg:    36rpx;
+$uni-spacing-xl:    56rpx;
+$uni-spacing-row-sm: 20rpx;
+$uni-spacing-row-base: 32rpx;
+$uni-spacing-row-lg: 48rpx;
+
+/* ---------- 圆角：三层节奏 ---------- */
+$uni-border-radius-xs: 8rpx;    /* 徽章、芯片 */
+$uni-border-radius-sm: 12rpx;   /* 小按钮 */
+$uni-border-radius-base: 20rpx; /* 默认（拒绝 16rpx 样板感） */
+$uni-border-radius-lg:  32rpx;  /* 大卡片 */
+$uni-border-radius-xl:  40rpx;  /* Hero 横幅 */
+$uni-border-radius-full: 9999rpx;
+
+/* ---------- 字号阶梯：4 级以上（1:1.25 古典比例）---------- */
+/* 12 / 15 / 18 / 22.5 / 28.1 / 35.2 / 44  （单位 rpx: 1CSSpx=2rpx）*/
+$uni-font-size-caption: 22rpx;  /* 注释 */
+$uni-font-size-xs:      24rpx;  /* 次级说明 */
+$uni-font-size-sm:      26rpx;  /* 列表说明 */
+$uni-font-size-base:    28rpx;  /* 正文基准 */
+$uni-font-size-md:      30rpx;  /* 子标题 */
+$uni-font-size-lg:      34rpx;  /* 标题 */
+$uni-font-size-xl:      44rpx;  /* 页面主标题 */
+$uni-font-size-display: 56rpx;  /* 大数字 / 展示字 */
+
+/* ---------- 字重：差异 2 档以上 ---------- */
+$weight-regular: 400;
+$weight-medium:  500;
+$weight-semibold: 600;
+$weight-bold:    700;
+
+/* ---------- 阴影：暖阴影（带色透，不是纯黑）---------- */
+$shadow-1: 0 4rpx 14rpx rgba(18, 44, 39, 0.045);
+$shadow-2: 0 10rpx 30rpx rgba(18, 44, 39, 0.075);
+$shadow-3: 0 18rpx 48rpx rgba(18, 44, 39, 0.13);
+$shadow-accent: 0 12rpx 32rpx rgba(201, 121, 63, 0.22);
+$shadow-primary: 0 12rpx 32rpx rgba(23, 74, 69, 0.20);
+
+/* ---------- 线宽 ---------- */
+$hairline: 1rpx;
+$stroke-s:  2rpx;
+$stroke-m:  3rpx;
+
+/* ---------- 通用工具：用于 scoped 内引用 ---------- */
+@mixin card {
+  background: $uni-bg-card;
+  border: $hairline solid $uni-border-light;
+  border-radius: $uni-border-radius-base;
+}
+@mixin card-raised {
+  background: $uni-bg-card;
+  border-radius: $uni-border-radius-base;
+  box-shadow: $shadow-2;
+}
+@mixin pill {
+  border-radius: $uni-border-radius-full;
+}
+@mixin truncate($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* 为兼容旧调用保留别名 */
+@mixin truncate-2 { @include truncate(2); }
+@mixin truncate-3 { @include truncate(3); }

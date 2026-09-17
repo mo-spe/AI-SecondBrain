@@ -96,6 +96,43 @@ export const reviewAPI = {
     });
   },
 
+  getPreferences() {
+    return request({
+      url: "/review/preferences",
+      method: "get",
+    });
+  },
+
+  updatePreferences(data) {
+    return request({
+      url: "/review/preferences",
+      method: "put",
+      data,
+    });
+  },
+
+  getReminders() {
+    return request({
+      url: "/review/reminders",
+      method: "get",
+    });
+  },
+
+  scheduleReminder(nodeId, data) {
+    return request({
+      url: `/review/reminders/nodes/${nodeId}`,
+      method: "put",
+      data,
+    });
+  },
+
+  cancelReminder(nodeId) {
+    return request({
+      url: `/review/reminders/nodes/${nodeId}`,
+      method: "delete",
+    });
+  },
+
   // ========== 题目池接口 ==========
 
   getPoolList(workspaceId) {

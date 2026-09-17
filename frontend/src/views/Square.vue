@@ -69,7 +69,25 @@
               <span class="post-time">{{ formatDate(post.createdAt) }}</span>
             </div>
 
-            <h3 class="post-title">{{ post.nodeTitle }}</h3>
+            <div class="post-title-row">
+              <h3 class="post-title">{{ getPostTitle(post) }}</h3>
+              <span v-if="getKnowledgeNodes(post).length > 1" class="collection-count">
+                合集 · {{ getKnowledgeNodes(post).length }} 个知识点
+              </span>
+            </div>
+
+            <div v-if="getKnowledgeNodes(post).length > 1" class="collection-preview" aria-label="合集中的知识点">
+              <span
+                v-for="node in getKnowledgeNodes(post).slice(0, 3)"
+                :key="node.nodeId"
+                class="collection-chip"
+              >
+                {{ node.nodeTitle }}
+              </span>
+              <span v-if="getKnowledgeNodes(post).length > 3" class="collection-more">
+                +{{ getKnowledgeNodes(post).length - 3 }}
+              </span>
+            </div>
 
             <p v-if="post.recommendText" class="post-recommend">
               "{{ post.recommendText }}"
@@ -151,20 +169,44 @@
                 </div>
               </div>
 
-              <h1 class="detail-title">{{ currentPost.nodeTitle }}</h1>
+              <div class="detail-title-row">
+                <h1 class="detail-title">{{ getPostTitle(currentPost) }}</h1>
+                <span v-if="getKnowledgeNodes(currentPost).length > 1" class="collection-count collection-count--detail">
+                  知识合集 · {{ getKnowledgeNodes(currentPost).length }} 个知识点
+                </span>
+              </div>
 
               <blockquote v-if="currentPost.recommendText" class="recommend-quote">
                 <span class="quote-mark">"</span>
                 {{ currentPost.recommendText }}
               </blockquote>
 
-              <div v-if="currentPost.nodeSummary" class="node-summary">
-                <div class="summary-label">
-                  <el-icon><Document /></el-icon>
-                  <span>内容摘要</span>
-                </div>
-                <p>{{ currentPost.nodeSummary }}</p>
-              </div>
+              <section class="knowledge-collection" aria-label="分享的知识点">
+                <article
+                  v-for="(node, index) in getKnowledgeNodes(currentPost)"
+                  :key="node.nodeId"
+                  class="knowledge-item"
+                >
+                  <div class="knowledge-item-index">{{ String(index + 1).padStart(2, '0') }}</div>
+                  <div class="knowledge-item-body">
+                    <button
+                      type="button"
+                      class="knowledge-item-title"
+                      @click="openKnowledgeDetail(node.nodeId)"
+                    >
+                      {{ node.nodeTitle }}
+                    </button>
+                    <p v-if="node.nodeSummary" class="knowledge-item-summary">{{ node.nodeSummary }}</p>
+                    <button
+                      type="button"
+                      class="knowledge-item-link"
+                      @click="openKnowledgeDetail(node.nodeId)"
+                    >
+                      查看知识详情
+                    </button>
+                  </div>
+                </article>
+              </section>
 
               <div class="detail-actions">
                 <button
@@ -294,12 +336,17 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="选择知识节点" required>
+      <el-form-item label="选择知识点" required>
         <el-select
-          v-model="publishForm.nodeId"
-          placeholder="请选择要分享的知识节点"
+          v-model="publishForm.nodeIds"
+          placeholder="选择 1 至 10 个知识点组成合集"
           filterable
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          :multiple-limit="10"
           style="width: 100%"
+          aria-label="选择要发布的知识点"
         >
           <el-option
             v-for="node in userNodes"
@@ -308,6 +355,7 @@
             :value="node.id"
           />
         </el-select>
+        <p class="publish-field-hint">合集中的知识点会按这里的选择顺序展示，并共享点赞、评论和收藏。</p>
       </el-form-item>
       <el-form-item label="推荐语">
         <el-input
@@ -362,6 +410,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Plus,
@@ -372,7 +421,6 @@ import {
   Collection,
   Warning,
   ArrowLeft,
-  Document,
 } from "@element-plus/icons-vue";
 import { squareAPI } from "@/api/square";
 import { knowledgeAPI } from "@/api/knowledge";
@@ -380,6 +428,7 @@ import { workspaceAPI } from "@/api/workspace";
 import { useUserStore } from "@/stores/user";
 
 const userStore = useUserStore();
+const router = useRouter();
 
 const loading = ref(false);
 const postList = ref([]);
@@ -392,7 +441,7 @@ const pagination = reactive({ current: 1, size: 10, total: 0 });
 // 发布对话框
 const showPublishDialog = ref(false);
 const publishLoading = ref(false);
-const publishForm = reactive({ nodeId: null, recommendText: "", scope: "global", workspaceId: null });
+const publishForm = reactive({ nodeIds: [], recommendText: "", scope: "global", workspaceId: null });
 const userNodes = ref([]);
 const workspaces = ref([]);
 
@@ -451,7 +500,7 @@ const onTabChange = () => {
 // ========== 发布 ==========
 
 const openPublishDialog = () => {
-  publishForm.nodeId = null;
+  publishForm.nodeIds = [];
   publishForm.recommendText = "";
   publishForm.scope = "global";
   publishForm.workspaceId = null;
@@ -483,8 +532,8 @@ const loadWorkspaces = async () => {
 };
 
 const handlePublish = async () => {
-  if (!publishForm.nodeId) {
-    ElMessage.warning("请选择知识节点");
+  if (!publishForm.nodeIds.length) {
+    ElMessage.warning("请选择至少一个知识点");
     return;
   }
   if (publishForm.scope === "workspace" && !publishForm.workspaceId) {
@@ -494,7 +543,7 @@ const handlePublish = async () => {
   publishLoading.value = true;
   try {
     await squareAPI.publish({
-      nodeId: publishForm.nodeId,
+      nodeIds: publishForm.nodeIds,
       recommendText: publishForm.recommendText || undefined,
       scope: publishForm.scope,
       workspaceId: publishForm.scope === "workspace" ? publishForm.workspaceId : undefined,
@@ -506,6 +555,30 @@ const handlePublish = async () => {
     ElMessage.error("发布失败: " + (error.message || "未知错误"));
   } finally {
     publishLoading.value = false;
+  }
+};
+
+const getKnowledgeNodes = (post) => {
+  if (Array.isArray(post?.knowledgeNodes) && post.knowledgeNodes.length > 0) {
+    return post.knowledgeNodes;
+  }
+  if (!post?.nodeId) return [];
+  return [{
+    nodeId: post.nodeId,
+    nodeTitle: post.nodeTitle || "未命名知识点",
+    nodeSummary: post.nodeSummary || "",
+  }];
+};
+
+const getPostTitle = (post) => {
+  const nodes = getKnowledgeNodes(post);
+  if (nodes.length <= 1) return nodes[0]?.nodeTitle || "知识分享";
+  return `${nodes[0]?.nodeTitle || "知识分享"} 等 ${nodes.length} 个知识点`;
+};
+
+const openKnowledgeDetail = (nodeId) => {
+  if (nodeId) {
+    router.push(`/knowledge/${nodeId}`);
   }
 };
 
@@ -772,6 +845,61 @@ onMounted(() => {
   line-height: 1.4;
 }
 
+.post-title-row,
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.post-title-row .post-title {
+  flex: 1;
+}
+
+.collection-count {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border: 1px solid var(--color-primary-alpha-20);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.collection-count--detail {
+  margin-top: 8px;
+}
+
+.collection-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -2px 0 12px;
+}
+
+.collection-chip,
+.collection-more {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-list-item);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.collection-more {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
 .post-recommend {
   font-size: 14px;
   color: var(--text-secondary);
@@ -1013,6 +1141,85 @@ onMounted(() => {
   margin: 0;
 }
 
+.knowledge-collection {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.knowledge-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-md);
+  background: var(--bg-list-item);
+}
+
+.knowledge-item-index {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2px;
+  color: var(--color-accent);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.knowledge-item-body {
+  min-width: 0;
+}
+
+.knowledge-item-title,
+.knowledge-item-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.knowledge-item-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.45;
+  text-align: left;
+}
+
+.knowledge-item-title:hover,
+.knowledge-item-link:hover {
+  color: var(--color-primary);
+}
+
+.knowledge-item-title:focus-visible,
+.knowledge-item-link:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.knowledge-item-summary {
+  display: -webkit-box;
+  margin: 6px 0 8px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.knowledge-item-link {
+  min-height: 28px;
+  color: var(--color-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
 .detail-actions {
   display: flex;
   gap: var(--spacing-md);
@@ -1185,6 +1392,13 @@ onMounted(() => {
   padding: 0 var(--spacing-xs);
 }
 
+.publish-field-hint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
+}
+
 /* —— 过渡：卡片列表 —— */
 .card-list-enter-active { transition: opacity 0.25s ease, transform 0.25s ease; }
 .card-list-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; position: absolute; width: 100%; }
@@ -1211,6 +1425,9 @@ onMounted(() => {
   .detail-actions { flex-wrap: wrap; }
   .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
   .search-box { width: 100%; }
+  .post-title-row,
+  .detail-title-row { flex-direction: column; gap: 6px; }
+  .collection-count--detail { margin-top: 0; }
 }
 
 /* 尊重用户的减弱动效偏好 */

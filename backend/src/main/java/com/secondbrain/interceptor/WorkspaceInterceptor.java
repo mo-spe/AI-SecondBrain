@@ -94,7 +94,7 @@ public class WorkspaceInterceptor implements HandlerInterceptor {
         }
 
         // 已确认成员切换工作区（签发新JWT，非数据变更），允许所有已确认成员访问
-        if (requestUri.matches("/api/workspace/\\d+/switch") && "accepted".equals(member.getStatus())) {
+        if (requestUri.matches("/api/workspace/\\d+/switch") && isAcceptedMember(member)) {
             request.setAttribute("workspaceId", workspaceId);
             request.setAttribute("memberRole", member.getRole());
             return true;
@@ -142,5 +142,17 @@ public class WorkspaceInterceptor implements HandlerInterceptor {
      */
     private boolean isWriteMethod(String method) {
         return "POST".equals(method) || "PUT".equals(method) || "DELETE".equals(method) || "PATCH".equals(method);
+    }
+
+    /**
+     * 判断成员是否可以访问工作区。
+     *
+     * @param member 工作区成员
+     * @return 已确认或旧版本兼容成员返回 true
+     */
+    private boolean isAcceptedMember(WorkspaceMember member) {
+        // V10 之前创建的成员记录 status 为空，但其本身已经代表有效成员，不能因此阻断切换。
+        return member != null
+                && (member.getStatus() == null || "accepted".equalsIgnoreCase(member.getStatus()));
     }
 }
