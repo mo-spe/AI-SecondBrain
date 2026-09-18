@@ -11,7 +11,7 @@
  Target Server Version : 80026 (8.0.26)
  File Encoding         : 65001
 
- Date: 18/09/2026 16:44:26
+ Date: 18/09/2026 16:57:59
 */
 
 SET NAMES utf8mb4;
@@ -275,7 +275,7 @@ CREATE TABLE `daily_check_in`  (
   UNIQUE INDEX `uk_user_date`(`user_id` ASC, `check_in_date` ASC) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_check_in_date`(`check_in_date` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 17 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '每日签到记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '每日签到记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for editing_lock
@@ -291,7 +291,7 @@ CREATE TABLE `editing_lock`  (
   UNIQUE INDEX `node_id`(`node_id` ASC) USING BTREE,
   INDEX `idx_node_id`(`node_id` ASC) USING BTREE,
   INDEX `idx_expires_at`(`expires_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 48 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '编辑锁' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 49 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '编辑锁' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for knowledge_embedding
@@ -432,12 +432,14 @@ CREATE TABLE `knowledge_tag`  (
   `tag_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '标签名称',
   `tag_color` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '标签颜色',
   `parent_id` bigint NULL DEFAULT NULL COMMENT '父标签ID，NULL表示顶级标签',
+  `workspace_id` bigint NULL DEFAULT NULL COMMENT '工作区ID，NULL表示个人空间标签（工作区标签对所有成员共享）',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除标识',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_tag_name`(`tag_name` ASC) USING BTREE,
-  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE
+  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE,
+  INDEX `idx_tag_ws`(`workspace_id` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '知识标签表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -456,7 +458,7 @@ CREATE TABLE `leaderboard_snapshot`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_user_period_domain_date`(`user_id` ASC, `period` ASC, `domain` ASC, `snapshot_date` ASC) USING BTREE,
   INDEX `idx_period_domain_rank`(`period` ASC, `domain` ASC, `snapshot_date` ASC, `rank_position` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3697 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '排行榜快照表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3713 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '排行榜快照表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for learning_report
@@ -494,7 +496,7 @@ CREATE TABLE `notification`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_read`(`user_id` ASC, `is_read` ASC) USING BTREE,
   INDEX `idx_created_at`(`created_at` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '通知' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '通知' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for pending_knowledge
@@ -532,7 +534,7 @@ CREATE TABLE `points_log`  (
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_type`(`type` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 60 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '积分变动日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 61 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '积分变动日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for raw_chat_record
@@ -998,11 +1000,29 @@ CREATE TABLE `square_comment`  (
   `post_id` bigint NOT NULL COMMENT '帖子ID',
   `user_id` bigint NOT NULL COMMENT '评论者用户ID',
   `content` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '评论内容',
+  `parent_id` bigint NULL DEFAULT NULL COMMENT '父评论ID，顶层评论为NULL；楼中楼回复统一挂在其所属顶层评论下',
+  `reply_to_user_id` bigint NULL DEFAULT NULL COMMENT '被回复人用户ID，用于展示“回复 @昵称”，顶层评论为NULL',
+  `like_count` int NOT NULL DEFAULT 0 COMMENT '评论点赞数，从 square_comment_like 重算',
   `created_at` datetime NOT NULL COMMENT '评论时间',
   `deleted` tinyint NULL DEFAULT 0 COMMENT '逻辑删除标记',
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_post_id`(`post_id` ASC) USING BTREE
+  INDEX `idx_post_id`(`post_id` ASC) USING BTREE,
+  INDEX `idx_square_comment_parent`(`parent_id` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for square_comment_like
+-- ----------------------------
+DROP TABLE IF EXISTS `square_comment_like`;
+CREATE TABLE `square_comment_like`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `comment_id` bigint NOT NULL COMMENT '评论ID',
+  `user_id` bigint NOT NULL COMMENT '点赞用户ID',
+  `created_at` datetime NOT NULL COMMENT '点赞时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_comment_user`(`comment_id` ASC, `user_id` ASC) USING BTREE,
+  INDEX `idx_square_comment_like_comment`(`comment_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论点赞记录' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for square_like
