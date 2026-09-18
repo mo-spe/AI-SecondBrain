@@ -1,5 +1,6 @@
 package com.secondbrain.research.tool;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.secondbrain.dto.GraphEdge;
 import com.secondbrain.dto.KnowledgeGraph;
 import com.secondbrain.service.CacheService;
@@ -30,6 +31,8 @@ import java.util.concurrent.TimeUnit;
 public class KnowledgeSearchTool implements Tool {
 
     private static final Logger log = LoggerFactory.getLogger(KnowledgeSearchTool.class);
+    private static final TypeReference<List<KnowledgeNodeVO>> KNOWLEDGE_NODE_LIST_TYPE =
+            new TypeReference<>() { };
 
     private final KnowledgeService knowledgeService;
     private final KnowledgeGraphService knowledgeGraphService;
@@ -95,7 +98,7 @@ public class KnowledgeSearchTool implements Tool {
 
         try {
             List<KnowledgeNodeVO> results = cacheService.getOrLoad(cacheKey,
-                    (Class<List<KnowledgeNodeVO>>) (Object) List.class,
+                    KNOWLEDGE_NODE_LIST_TYPE,
                     5, TimeUnit.MINUTES,
                     () -> hybridSearch(query, searchMode, topK, expandByGraph, userId, workspaceId));
 

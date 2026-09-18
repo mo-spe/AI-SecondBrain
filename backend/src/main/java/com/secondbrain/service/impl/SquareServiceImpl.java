@@ -3,6 +3,7 @@ package com.secondbrain.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.secondbrain.common.SystemConstants;
 import com.secondbrain.entity.*;
 import com.secondbrain.exception.BusinessException;
@@ -55,6 +56,8 @@ public class SquareServiceImpl implements SquareService {
 
     private static final Logger log = LoggerFactory.getLogger(SquareServiceImpl.class);
     private static final int MAX_PUBLISHED_NODE_COUNT = 10;
+    private static final TypeReference<List<SensitiveWord>> SENSITIVE_WORD_LIST_TYPE =
+            new TypeReference<>() { };
 
     private final SquarePostMapper squarePostMapper;
     private final SquarePostNodeMapper squarePostNodeMapper;
@@ -798,7 +801,7 @@ public class SquareServiceImpl implements SquareService {
     private List<SensitiveWord> getSensitiveWordCache() {
         return cacheService.getOrLoad(
                 SystemConstants.SENSITIVE_WORD_CACHE_KEY,
-                List.class,
+                SENSITIVE_WORD_LIST_TYPE,
                 SystemConstants.CACHE_TTL_HOURS,
                 TimeUnit.HOURS,
                 () -> sensitiveWordMapper.selectList(null)
