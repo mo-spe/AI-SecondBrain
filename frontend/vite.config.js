@@ -14,7 +14,7 @@ export default defineConfig({
     proxy: {
       // SSE 流式端点 — selfHandleResponse=true 让 http-proxy 不自动 pipe，手动逐块转发
       '/api/rag/answer/stream': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
         selfHandleResponse: true,
         configure: (proxy, options) => {
