@@ -1,0 +1,394 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Feynman Course API",
+    "version": "0.1.0",
+    "description": "课程版 Feynman 学习工作台 API。导入 Apifox 后，请先调用注册或登录接口获取 token，再在鉴权设置中配置 Bearer Token。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000/api",
+      "description": "本地课程版服务端"
+    }
+  ],
+  "tags": [
+    { "name": "Health", "description": "服务健康检查" },
+    { "name": "Auth", "description": "注册、登录和当前用户" },
+    { "name": "Knowledge", "description": "知识点 CRUD" },
+    { "name": "Feynman", "description": "费曼复述、AI 评价和复述记录" },
+    { "name": "Quiz", "description": "智能测验生成和答题" },
+    { "name": "RAG", "description": "基于个人知识库的检索问答" },
+    { "name": "Graph", "description": "知识图谱数据" },
+    { "name": "Demo", "description": "课程演示数据" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "登录或注册响应中的 token。请求头格式：Authorization: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string", "description": "错误信息", "example": "知识点不存在" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "username", "email"],
+        "properties": {
+          "id": { "type": "string", "readOnly": true, "example": "66d123456789012345678901" },
+          "username": { "type": "string", "minLength": 2, "maxLength": 40, "example": "walliam" },
+          "email": { "type": "string", "format": "email", "example": "walliam@example.com" },
+          "createdAt": { "type": "string", "format": "date-time", "readOnly": true },
+          "updatedAt": { "type": "string", "format": "date-time", "readOnly": true }
+        }
+      },
+      "Knowledge": {
+        "type": "object",
+        "required": ["id", "title", "content", "tags"],
+        "properties": {
+          "id": { "type": "string", "readOnly": true, "example": "66d123456789012345678902" },
+          "title": { "type": "string", "maxLength": 120, "example": "向量数据库" },
+          "content": { "type": "string", "maxLength": 30000, "example": "向量数据库用于保存高维向量，并通过相似度搜索找到语义接近的内容。" },
+          "tags": { "type": "array", "maxItems": 8, "items": { "type": "string" }, "example": ["AI", "数据库"] },
+          "reviewScore": { "type": "integer", "minimum": 0, "maximum": 100, "nullable": true, "example": 82 },
+          "lastReviewedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time", "readOnly": true },
+          "updatedAt": { "type": "string", "format": "date-time", "readOnly": true }
+        }
+      },
+      "KnowledgeInput": {
+        "type": "object",
+        "required": ["title", "content"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 120, "example": "向量数据库" },
+          "content": { "type": "string", "maxLength": 30000, "example": "向量数据库用于保存高维向量，并通过相似度搜索找到语义接近的内容。" },
+          "tags": { "type": "array", "maxItems": 8, "items": { "type": "string" }, "example": ["AI", "数据库"] }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": ["token", "user"],
+        "properties": {
+          "token": { "type": "string", "description": "7 天有效期的 JWT" },
+          "user": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "FeynmanEvaluation": {
+        "type": "object",
+        "required": ["score", "evaluation", "polishedText", "strengths", "weaknesses", "provider"],
+        "properties": {
+          "score": { "type": "integer", "minimum": 0, "maximum": 100, "example": 82 },
+          "evaluation": { "type": "string", "maxLength": 2000, "example": "解释覆盖了核心机制，下一次可以补充一个具体例子。" },
+          "polishedText": { "type": "string", "maxLength": 30000, "example": "向量数据库把内容转换成向量，再通过相似度检索相关信息。" },
+          "strengths": { "type": "array", "maxItems": 4, "items": { "type": "string" }, "example": ["包含核心定义"] },
+          "weaknesses": { "type": "array", "maxItems": 4, "items": { "type": "string" }, "example": ["补充一个具体例子"] },
+          "provider": { "type": "string", "example": "mock" }
+        }
+      },
+      "FeynmanAttempt": {
+        "allOf": [
+          { "$ref": "#/components/schemas/FeynmanEvaluation" },
+          {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "readOnly": true },
+              "knowledgeId": { "type": "string", "readOnly": true },
+              "transcript": { "type": "string", "maxLength": 30000 },
+              "createdAt": { "type": "string", "format": "date-time", "readOnly": true },
+              "updatedAt": { "type": "string", "format": "date-time", "readOnly": true }
+            }
+          }
+        ]
+      },
+      "Quiz": {
+        "type": "object",
+        "required": ["quizId", "question", "options", "difficulty", "difficultyLabel", "knowledgeId", "knowledgeTitle", "provider"],
+        "properties": {
+          "quizId": { "type": "string", "example": "66d123456789012345678903" },
+          "question": { "type": "string", "example": "如果要向同学解释“向量数据库”，下面哪种说法最符合知识库记录？" },
+          "options": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "string" } },
+          "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "example": "medium" },
+          "difficultyLabel": { "type": "string", "example": "进阶" },
+          "knowledgeId": { "type": "string" },
+          "knowledgeTitle": { "type": "string" },
+          "provider": { "type": "string", "example": "mock" }
+        }
+      },
+      "QuizResult": {
+        "type": "object",
+        "required": ["isCorrect", "score", "userAnswer", "correctIndex", "correctAnswer", "explanation"],
+        "properties": {
+          "isCorrect": { "type": "boolean", "example": true },
+          "score": { "type": "integer", "enum": [0, 100], "example": 100 },
+          "userAnswer": { "type": "integer", "minimum": 0, "maximum": 3, "example": 1 },
+          "correctIndex": { "type": "integer", "minimum": 0, "maximum": 3, "example": 1 },
+          "correctAnswer": { "type": "string" },
+          "explanation": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "健康检查",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "服务正常",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "example": "ok" }, "service": { "type": "string", "example": "feynman-course-server" }, "ai": { "type": "object", "properties": { "configured": { "type": "boolean" }, "provider": { "type": "string" }, "model": { "type": "string", "nullable": true } } } } } } }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "注册用户",
+        "operationId": "register",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["username", "email", "password"], "properties": { "username": { "type": "string", "minLength": 2, "maxLength": 40, "example": "walliam" }, "email": { "type": "string", "format": "email", "example": "walliam@example.com" }, "password": { "type": "string", "minLength": 6, "format": "password", "example": "12345678" } } }, "example": { "username": "walliam", "email": "walliam@example.com", "password": "12345678" } } }
+        },
+        "responses": {
+          "201": { "description": "注册成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "400": { "description": "参数格式错误", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "用户名或邮箱已存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "登录",
+        "operationId": "login",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email", "example": "walliam@example.com" }, "password": { "type": "string", "format": "password", "example": "12345678" } } }, "example": { "email": "walliam@example.com", "password": "12345678" } } } },
+        "responses": {
+          "200": { "description": "登录成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "401": { "description": "邮箱或密码错误", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "获取当前用户",
+        "operationId": "getCurrentUser",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "当前用户", "content": { "application/json": { "schema": { "type": "object", "properties": { "user": { "$ref": "#/components/schemas/User" } } } } } },
+          "401": { "description": "未登录或 token 无效", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/knowledge": {
+      "get": {
+        "tags": ["Knowledge"],
+        "summary": "获取当前用户的知识点列表",
+        "operationId": "listKnowledge",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "知识点列表", "content": { "application/json": { "schema": { "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Knowledge" } } } } } } },
+          "401": { "description": "未授权", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "post": {
+        "tags": ["Knowledge"],
+        "summary": "创建知识点",
+        "operationId": "createKnowledge",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KnowledgeInput" } } } },
+        "responses": {
+          "201": { "description": "创建成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "item": { "$ref": "#/components/schemas/Knowledge" } } } } } },
+          "400": { "description": "标题或内容为空", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/knowledge/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "知识点 MongoDB ObjectId", "example": "66d123456789012345678902" }],
+      "get": {
+        "tags": ["Knowledge"],
+        "summary": "获取单个知识点",
+        "operationId": "getKnowledge",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "知识点详情", "content": { "application/json": { "schema": { "type": "object", "properties": { "item": { "$ref": "#/components/schemas/Knowledge" } } } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Knowledge"],
+        "summary": "更新知识点",
+        "operationId": "updateKnowledge",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KnowledgeInput" } } } },
+        "responses": {
+          "200": { "description": "更新成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "item": { "$ref": "#/components/schemas/Knowledge" } } } } } },
+          "400": { "description": "标题或内容为空", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Knowledge"],
+        "summary": "删除知识点",
+        "operationId": "deleteKnowledge",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "204": { "description": "删除成功，无响应体" },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/feynman/transcribe": {
+      "post": {
+        "tags": ["Feynman"],
+        "summary": "上传费曼复述音频并转录",
+        "description": "课程版服务端使用百度智能云短语音识别。前端会把浏览器录音转换为单声道 16kHz WAV；单段建议不超过 60 秒，音频大小上限为 10MB。",
+        "operationId": "transcribeFeynman",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "required": ["knowledgeId", "audio"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "audio": { "type": "string", "format": "binary", "description": "单声道 16kHz WAV，建议不超过 60 秒" } }, "example": { "knowledgeId": "66d123456789012345678902" } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "百度语音识别成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "transcript": { "type": "string" }, "provider": { "type": "string", "example": "baidu-asr" }, "durationMs": { "type": "integer", "nullable": true, "example": null } } } } } },
+          "400": { "description": "没有音频文件", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "百度语音识别凭证未配置", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/feynman/evaluate": {
+      "post": {
+        "tags": ["Feynman"],
+        "summary": "评价费曼复述",
+        "operationId": "evaluateFeynman",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId", "transcript"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "transcript": { "type": "string", "minLength": 1, "maxLength": 30000, "example": "向量数据库把内容转成向量，然后通过相似度找到相关信息。" } } } } } },
+        "responses": {
+          "200": { "description": "评价成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeynmanEvaluation" } } } },
+          "400": { "description": "转录内容为空", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "502": { "description": "AI Provider 请求失败或返回格式不正确", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/feynman/attempts": {
+      "post": {
+        "tags": ["Feynman"],
+        "summary": "保存一次费曼复述（支持幂等）",
+        "description": "clientAttemptId 用于防止网络重试或重复点击产生重复复述记录；相同用户和相同 clientAttemptId 再次提交时返回已有记录。",
+        "operationId": "createFeynmanAttempt",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId", "transcript", "polishedText", "score", "evaluation"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "clientAttemptId": { "type": "string", "maxLength": 100, "description": "客户端生成的本次复述唯一标识，建议使用 UUID" }, "transcript": { "type": "string", "maxLength": 30000 }, "polishedText": { "type": "string", "maxLength": 30000 }, "score": { "type": "integer", "minimum": 0, "maximum": 100 }, "evaluation": { "type": "string", "maxLength": 2000 }, "strengths": { "type": "array", "items": { "type": "string" } }, "weaknesses": { "type": "array", "items": { "type": "string" } } } } } } },
+        "responses": {
+          "200": { "description": "重复请求，返回已存在的复述记录", "content": { "application/json": { "schema": { "type": "object", "properties": { "attempt": { "$ref": "#/components/schemas/FeynmanAttempt" }, "duplicate": { "type": "boolean", "example": true } } } } } },
+          "201": { "description": "保存成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "attempt": { "$ref": "#/components/schemas/FeynmanAttempt" } } } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/feynman/attempts/{knowledgeId}": {
+      "get": {
+        "tags": ["Feynman"],
+        "summary": "查询知识点的费曼复述记录",
+        "operationId": "listFeynmanAttempts",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "knowledgeId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66d123456789012345678902" }],
+        "responses": {
+          "200": { "description": "复述记录列表", "content": { "application/json": { "schema": { "type": "object", "properties": { "attempts": { "type": "array", "items": { "$ref": "#/components/schemas/FeynmanAttempt" } } } } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/quiz/generate": {
+      "post": {
+        "tags": ["Quiz"],
+        "summary": "生成一道智能测验题",
+        "operationId": "generateQuiz",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "default": "medium", "example": "medium" } } } } } },
+        "responses": {
+          "200": { "description": "题目生成成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "quiz": { "$ref": "#/components/schemas/Quiz" }, "provider": { "type": "string" } } } } } },
+          "400": { "description": "题目难度不支持", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/quiz/grade": {
+      "post": {
+        "tags": ["Quiz"],
+        "summary": "提交测验答案",
+        "operationId": "gradeQuiz",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quizId", "userAnswer"], "properties": { "quizId": { "type": "string", "example": "66d123456789012345678903" }, "userAnswer": { "type": "integer", "minimum": 0, "maximum": 3, "description": "选项下标，从 0 开始", "example": 1 } } } } } },
+        "responses": {
+          "200": { "description": "判题成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "result": { "$ref": "#/components/schemas/QuizResult" }, "attempt": { "type": "object" }, "provider": { "type": "string" } } } } } },
+          "400": { "description": "答案或题目编号无效", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "题目不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "410": { "description": "题目已过期", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/quiz/attempts/{knowledgeId}": {
+      "get": {
+        "tags": ["Quiz"],
+        "summary": "查询知识点的测验记录",
+        "operationId": "listQuizAttempts",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "knowledgeId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66d123456789012345678902" }],
+        "responses": {
+          "200": { "description": "测验记录列表，最多返回最近 20 条", "content": { "application/json": { "schema": { "type": "object", "properties": { "attempts": { "type": "array", "items": { "type": "object" } } } } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/rag/ask": {
+      "post": {
+        "tags": ["RAG"],
+        "summary": "基于个人知识库提问",
+        "operationId": "askKnowledgeBase",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["query"], "properties": { "query": { "type": "string", "minLength": 2, "example": "什么是向量数据库？" } } } } } },
+        "responses": {
+          "200": { "description": "回答成功", "content": { "application/json": { "schema": { "type": "object", "required": ["query", "answer", "sources", "provider"], "properties": { "query": { "type": "string" }, "answer": { "type": "string" }, "sources": { "type": "array", "items": { "type": "object", "properties": { "knowledgeId": { "type": "string" }, "title": { "type": "string" }, "excerpt": { "type": "string" }, "score": { "type": "number" } } } }, "provider": { "type": "string", "example": "local-hash-vector" } } } } } },
+          "400": { "description": "问题少于 2 个字符", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/graph/knowledge-map": {
+      "get": {
+        "tags": ["Graph"],
+        "summary": "获取知识图谱",
+        "operationId": "getKnowledgeMap",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "知识图谱节点和关系", "content": { "application/json": { "schema": { "type": "object", "required": ["nodes", "links", "stats"], "properties": { "nodes": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "excerpt": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "score": { "type": "number", "nullable": true } } } }, "links": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "source": { "type": "string" }, "target": { "type": "string" }, "label": { "type": "string" }, "weight": { "type": "integer" } } } }, "stats": { "type": "object", "properties": { "nodeCount": { "type": "integer" }, "linkCount": { "type": "integer" }, "tagCount": { "type": "integer" } } } } } } } }
+        }
+      }
+    },
+    "/demo/seed": {
+      "post": {
+        "tags": ["Demo"],
+        "summary": "为当前用户导入演示知识",
+        "operationId": "seedDemoKnowledge",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "导入完成", "content": { "application/json": { "schema": { "type": "object", "required": ["createdCount", "skippedCount"], "properties": { "createdCount": { "type": "integer", "example": 6 }, "skippedCount": { "type": "integer", "example": 0 } } } } } }
+        }
+      }
+    }
+  }
+}

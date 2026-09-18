@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Check, ClipboardCheck, RotateCcw, Sparkles, X } from 'lucide-react';
 import { apiRequest } from '../lib/api.js';
+import PageLoading from '../components/PageLoading.jsx';
+import { cachedRequest } from '../lib/dataCache.js';
 
 const difficultyOptions = [
   { value: 'easy', label: '基础', hint: '抓住核心定义' },
@@ -19,14 +21,16 @@ export default function QuizPage() {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [loadingItems, setLoadingItems] = useState(true);
 
   useEffect(() => {
-    apiRequest('/knowledge')
+    cachedRequest('knowledge', '/knowledge')
       .then(({ items: nextItems }) => {
         setItems(nextItems);
         if (nextItems[0]) setSelectedId(nextItems[0].id);
       })
-      .catch((requestError) => setError(requestError.message));
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoadingItems(false));
   }, []);
 
   const generateQuiz = async () => {
@@ -81,7 +85,7 @@ export default function QuizPage() {
         <div className="quiz-provider"><Sparkles size={16} /><span>{quiz?.provider === 'mock' ? 'Mock fallback · 可替换' : quiz?.provider || 'Provider ready'}</span></div>
       </header>
       {error && <div className="inline-message">{error}</div>}
-      {items.length === 0 ? <div className="list-empty"><ClipboardCheck size={22} /><h2>先准备一点知识</h2><p>创建知识点或在学习概览加载演示数据，然后开始测验。</p></div> : <div className="quiz-layout">
+      {loadingItems ? <PageLoading label="正在准备智能测验…" /> : items.length === 0 ? <div className="list-empty"><ClipboardCheck size={22} /><h2>先准备一点知识</h2><p>创建知识点或在学习概览加载演示数据，然后开始测验。</p></div> : <div className="quiz-layout">
         <section className="quiz-setup">
           <div className="card-kicker"><span>01 / 设置本轮练习</span><span>{items.length} 个知识点</span></div>
           <label className="quiz-field">练习哪个知识点？<select value={selectedId} onChange={(event) => { setSelectedId(event.target.value); resetQuiz(); }}><option value="" disabled>选择知识点</option>{items.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>

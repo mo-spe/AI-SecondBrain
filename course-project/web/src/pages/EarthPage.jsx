@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Globe, RotateCcw, Sparkles } from 'lucide-react';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
-import { apiRequest } from '../lib/api.js';
+import PageLoading from '../components/PageLoading.jsx';
+import { cachedRequest } from '../lib/dataCache.js';
 
 function coordinatesFor(index, total) {
   if (total === 1) return { longitude: 12, latitude: 28 };
@@ -14,10 +15,11 @@ export default function EarthPage() {
   const [graph, setGraph] = useState({ nodes: [], links: [], stats: {} });
   const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const selected = useMemo(() => graph.nodes.find((node) => node.id === selectedId), [graph.nodes, selectedId]);
 
   useEffect(() => {
-    apiRequest('/graph/knowledge-map').then(setGraph).catch((requestError) => setError(requestError.message));
+    cachedRequest('knowledge-graph', '/graph/knowledge-map').then(setGraph).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function EarthPage() {
     <div className="page-wrap earth-page">
       <header className="page-header"><div><p className="eyebrow">CesiumJS / 06</p><h1>把知识放上地球。</h1><p className="page-subtitle">这是课程版的地理化展示层，节点位置用于表达空间感，不改变知识关系数据。</p></div><div className="feynman-mark"><Globe size={18} /><span>CesiumJS · 无 Token 演示</span></div></header>
       {error && <div className="inline-message">{error}</div>}
-      {graph.nodes.length === 0 ? <div className="list-empty"><BookOpen size={22} /><h2>地球还没有知识节点</h2><p>先加载演示数据或创建自己的知识点。</p></div> : <div className="earth-layout"><section className="earth-card"><div className="earth-toolbar"><span><Sparkles size={14} /> {graph.stats.nodeCount} 个知识实体 · {graph.stats.linkCount} 条连接</span><small>拖拽旋转 · 滚轮缩放 · 点击实体</small></div><div className="earth-canvas" ref={globeRef} /></section><aside className="earth-detail">{selected ? <><span className="detail-label">当前实体</span><h2>{selected.label}</h2><p>{selected.excerpt}</p><div className="tag-row">{selected.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>{selected.score !== null && <div className="detail-score"><span>最近掌握度</span><strong>{selected.score}</strong></div>}</> : <div className="graph-detail-empty"><Globe size={22} /><p>点击地球上的实体，查看对应知识内容。</p></div>}<button className="outline-button universe-reset" type="button" onClick={() => { setSelectedId(''); }}><RotateCcw size={15} /> 清除聚焦</button></aside></div>}
+      {loading ? <PageLoading label="正在准备数字地球…" /> : graph.nodes.length === 0 ? <div className="list-empty"><BookOpen size={22} /><h2>地球还没有知识节点</h2><p>先加载演示数据或创建自己的知识点。</p></div> : <div className="earth-layout"><section className="earth-card"><div className="earth-toolbar"><span><Sparkles size={14} /> {graph.stats.nodeCount} 个知识实体 · {graph.stats.linkCount} 条连接</span><small>拖拽旋转 · 滚轮缩放 · 点击实体</small></div><div className="earth-canvas" ref={globeRef} /></section><aside className="earth-detail">{selected ? <><span className="detail-label">当前实体</span><h2>{selected.label}</h2><p>{selected.excerpt}</p><div className="tag-row">{selected.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>{selected.score !== null && <div className="detail-score"><span>最近掌握度</span><strong>{selected.score}</strong></div>}</> : <div className="graph-detail-empty"><Globe size={22} /><p>点击地球上的实体，查看对应知识内容。</p></div>}<button className="outline-button universe-reset" type="button" onClick={() => { setSelectedId(''); }}><RotateCcw size={15} /> 清除聚焦</button></aside></div>}
     </div>
   );
 }

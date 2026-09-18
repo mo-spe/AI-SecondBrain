@@ -14,5 +14,9 @@ export const env = {
   aiApiKey: process.env.AI_API_KEY || '',
   aiChatModel: process.env.AI_CHAT_MODEL || 'gpt-4o-mini',
   aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS || 30000),
-  aiDisableThinking: process.env.AI_DISABLE_THINKING !== 'false'
+  aiDisableThinking: process.env.AI_DISABLE_THINKING !== 'false',
+  baiduAppId: process.env.BAIDU_APP_ID || '',
+  baiduApiKey: process.env.BAIDU_API_KEY || '',
+  baiduSecretKey: process.env.BAIDU_SECRET_KEY || '',
+  baiduAsrTimeoutMs: Number(process.env.BAIDU_ASR_TIMEOUT_MS || 30000)
 };

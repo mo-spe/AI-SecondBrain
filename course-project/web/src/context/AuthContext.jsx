@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../lib/api.js';
+import { clearApiCache } from '../lib/dataCache.js';
 
 const AuthContext = createContext(null);
 
@@ -22,11 +23,13 @@ export function AuthProvider({ children }) {
   const signIn = async (payload, mode) => {
     const result = await apiRequest(`/auth/${mode}`, { method: 'POST', body: JSON.stringify(payload) });
     localStorage.setItem('feynman_token', result.token);
+    clearApiCache();
     setUser(result.user);
   };
 
   const signOut = () => {
     localStorage.removeItem('feynman_token');
+    clearApiCache();
     setUser(null);
   };
 

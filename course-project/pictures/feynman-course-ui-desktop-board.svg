@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1260" viewBox="0 0 1800 1260">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#17342f" flood-opacity=".10"/></filter>
+    <filter id="smallShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#17342f" flood-opacity=".10"/></filter>
+    <style>
+      .title{font:700 34px 'Microsoft YaHei',Arial,sans-serif;fill:#132b27}.subtitle{font:400 16px 'Microsoft YaHei',Arial,sans-serif;fill:#64736e}.label{font:700 13px 'DM Mono','Consolas',monospace;fill:#087f72;letter-spacing:1.2px}.h2{font:700 24px 'Microsoft YaHei',Arial,sans-serif;fill:#132b27}.h3{font:700 15px 'Microsoft YaHei',Arial,sans-serif;fill:#132b27}.body{font:400 13px 'Microsoft YaHei',Arial,sans-serif;fill:#64736e}.small{font:400 11px 'Microsoft YaHei',Arial,sans-serif;fill:#64736e}.nav{font:600 12px 'Microsoft YaHei',Arial,sans-serif;fill:#dcece6}.navMute{font:400 11px 'Microsoft YaHei',Arial,sans-serif;fill:#97b5ab}.num{font:700 12px 'DM Mono','Consolas',monospace;fill:#be6c10}.white{fill:#fff}.line{stroke:#d4ded9;stroke-width:1}.outline{fill:none;stroke:#d4ded9;stroke-width:1}.primary{fill:#087f72}.mint{fill:#d7f3eb}.mint2{fill:#bde9dc}.amber{fill:#f9e7c4}.ink{fill:#e2e9e3}.navBg{fill:#102c27}.surface{fill:#f7f8f3}.surface2{fill:#eef3ee}
+    </style>
+  </defs>
+  <rect width="1800" height="1260" fill="#edf1ec"/>
+  <text x="70" y="68" class="label">FEYNMAN COURSE / UI REVIEW BOARD 01</text>
+  <text x="70" y="113" class="title">把学习过程设计成一条可见的循环</text>
+  <text x="70" y="145" class="subtitle">Material 3 · 内容优先 · AI 学习工作台｜本稿用于确认信息架构、视觉方向与交互层级</text>
+  <g transform="translate(1420 58)"><rect width="300" height="58" rx="18" fill="#fff" stroke="#d4ded9"/><circle cx="28" cy="29" r="8" fill="#087f72"/><text x="48" y="25" class="h3">主色：深青绿</text><text x="48" y="43" class="small">信任 / 专注 / 长时间学习</text></g>
+
+  <!-- Dashboard -->
+  <g transform="translate(60 190)" filter="url(#shadow)">
+    <rect width="820" height="470" rx="28" fill="#f7f8f3"/>
+    <rect width="148" height="470" rx="28" class="navBg"/><rect x="128" width="20" height="470" class="navBg"/>
+    <rect x="23" y="22" width="40" height="40" rx="13" fill="#bde9dc"/><text x="34" y="49" font-size="22" fill="#102c27">✣</text><text x="75" y="40" class="h3" fill="#fff">Feynman</text><text x="75" y="56" class="small" fill="#97b5ab">学习工作台</text>
+    <text x="24" y="98" class="small" fill="#97b5ab">工作区</text><text x="24" y="127" class="small" fill="#97b5ab">学习</text>
+    <rect x="12" y="139" width="124" height="37" rx="13" fill="#28574e"/><rect x="12" y="139" width="4" height="37" rx="2" fill="#bde9dc"/><text x="28" y="163" class="nav">▦　学习概览</text>
+    <text x="28" y="201" class="nav">▢　我的知识</text><text x="28" y="239" class="nav">♧　费曼复述</text><text x="28" y="277" class="nav">☑　智能测验</text><text x="28" y="315" class="nav">◌　知识问答</text>
+    <text x="24" y="351" class="small" fill="#97b5ab">探索</text><text x="28" y="380" class="nav">⌘　知识图谱</text><text x="28" y="418" class="nav">◎　知识宇宙</text><text x="28" y="456" class="nav">⊕　数字地球</text>
+    <g transform="translate(180 32)"><text class="label">周三 · 9月18日</text><text y="42" class="title" font-size="30">早上好，Walliam。</text><text y="67" class="body">今天也用自己的话，确认一次真正的理解。</text><rect x="570" y="0" width="90" height="36" rx="18" fill="#fff" stroke="#cbd8d2"/><text x="585" y="23" class="small" fill="#087f72">＋ 新知识</text>
+      <g transform="translate(0 105)"><rect width="200" height="104" rx="20" class="surface2" stroke="#cbd8d2"/><rect x="18" y="16" width="34" height="34" rx="12" class="mint"/><text x="30" y="39" font-size="17" fill="#087f72">▢</text><text x="18" y="73" class="small">知识点总数</text><text x="18" y="95" class="h2">24</text></g>
+      <g transform="translate(218 105)"><rect width="200" height="104" rx="20" class="surface2" stroke="#cbd8d2"/><rect x="18" y="16" width="34" height="34" rx="12" class="amber"/><text x="30" y="39" font-size="17" fill="#be6c10">♧</text><text x="18" y="73" class="small">本周复述</text><text x="18" y="95" class="h2">8</text></g>
+      <g transform="translate(436 105)"><rect width="224" height="104" rx="20" class="surface2" stroke="#cbd8d2"/><rect x="18" y="16" width="34" height="34" rx="12" class="ink"/><text x="29" y="39" font-size="17" fill="#087f72">✦</text><text x="18" y="73" class="small">平均掌握度</text><text x="18" y="95" class="h2">78%</text></g>
+      <g transform="translate(0 228)"><rect width="400" height="154" rx="23" fill="#c5eee2"/><text x="26" y="35" class="label">TODAY'S FOCUS</text><text x="26" y="67" class="h2">把一个概念讲清楚</text><text x="26" y="91" class="body">建议复述：什么是向量数据库？</text><rect x="26" y="112" width="126" height="30" rx="15" class="primary"/><text x="43" y="132" class="small" fill="#fff">开始复述　↗</text></g>
+      <g transform="translate(418 228)"><rect width="242" height="154" rx="23" fill="#fff" stroke="#cbd8d2"/><text x="22" y="31" class="small">学习循环</text><text x="22" y="58" class="h2" font-size="20">接下来会发生什么</text><line x1="22" y1="75" x2="220" y2="75" class="line"/><text x="22" y="99" class="num">01</text><text x="56" y="99" class="h3">记录</text><text x="22" y="124" class="num">02</text><text x="56" y="124" class="h3">复述</text><text x="22" y="149" class="num">03</text><text x="56" y="149" class="h3">校准</text></g>
+    </g>
+  </g>
+  <text x="60" y="688" class="label">01 / LEARNING OVERVIEW</text><text x="60" y="710" class="small">用数据卡片 + 今日焦点，把“下一步学什么”放在首屏。</text>
+
+  <!-- Knowledge -->
+  <g transform="translate(920 190)" filter="url(#shadow)">
+    <rect width="820" height="470" rx="28" fill="#f7f8f3"/>
+    <rect width="148" height="470" rx="28" class="navBg"/><rect x="128" width="20" height="470" class="navBg"/>
+    <text x="24" y="45" class="h3" fill="#fff">Feynman</text><text x="24" y="63" class="small" fill="#97b5ab">我的知识</text>
+    <rect x="12" y="90" width="124" height="37" rx="13" fill="#28574e"/><rect x="12" y="90" width="4" height="37" rx="2" fill="#bde9dc"/><text x="28" y="114" class="nav">▢　我的知识</text><text x="28" y="153" class="nav">♧　费曼复述</text><text x="28" y="191" class="nav">☑　智能测验</text><text x="28" y="229" class="nav">◌　知识问答</text><text x="24" y="267" class="small" fill="#97b5ab">探索</text><text x="28" y="296" class="nav">⌘　知识图谱</text><text x="28" y="334" class="nav">◎　知识宇宙</text><text x="28" y="372" class="nav">⊕　数字地球</text>
+    <g transform="translate(180 30)"><text class="label">KNOWLEDGE BASE / 01</text><text y="43" class="title" font-size="30">我的知识。</text><text y="67" class="body">记录那些值得被再次讲清楚的东西。</text><rect x="548" y="3" width="112" height="36" rx="18" class="primary"/><text x="566" y="26" class="small" fill="#fff">＋ 新建知识点</text>
+      <rect y="95" width="660" height="40" rx="14" fill="#fff" stroke="#cbd8d2"/><text x="22" y="121" class="body">⌕　搜索知识点、标签或原文</text><text x="565" y="121" class="small">24 个知识点</text>
+      <g transform="translate(0 158)"><rect width="660" height="71" rx="18" fill="#fff" stroke="#d4ded9"/><rect x="18" y="17" width="37" height="37" rx="12" class="mint"/><text x="29" y="42" font-size="18" fill="#087f72">▢</text><text x="72" y="33" class="h3">向量数据库</text><text x="72" y="52" class="small">把知识切成可检索的语义片段 · AI / 数据库</text><rect x="538" y="20" width="94" height="28" rx="14" class="mint"/><text x="554" y="38" class="small" fill="#087f72">已掌握 78%</text></g>
+      <g transform="translate(0 240)"><rect width="660" height="71" rx="18" fill="#fff" stroke="#d4ded9"/><rect x="18" y="17" width="37" height="37" rx="12" class="amber"/><text x="29" y="42" font-size="18" fill="#be6c10">♧</text><text x="72" y="33" class="h3">费曼学习法</text><text x="72" y="52" class="small">通过解释暴露理解空白 · 学习方法</text><rect x="538" y="20" width="94" height="28" rx="14" fill="#fff2df"/><text x="554" y="38" class="small" fill="#be6c10">待复述</text></g>
+      <g transform="translate(0 322)"><rect width="660" height="71" rx="18" fill="#fff" stroke="#d4ded9"/><rect x="18" y="17" width="37" height="37" rx="12" class="ink"/><text x="29" y="42" font-size="18" fill="#087f72">✦</text><text x="72" y="33" class="h3">检索增强生成</text><text x="72" y="52" class="small">让回答带着自己的知识来源 · AI / RAG</text><rect x="538" y="20" width="94" height="28" rx="14" class="ink"/><text x="554" y="38" class="small">最近更新</text></g>
+    </g>
+  </g>
+  <text x="920" y="688" class="label">02 / KNOWLEDGE BASE</text><text x="920" y="710" class="small">列表页优先保证检索效率，状态标签直接告诉用户下一步。</text>
+
+  <!-- Feynman -->
+  <g transform="translate(60 750)" filter="url(#shadow)">
+    <rect width="820" height="430" rx="28" fill="#f7f8f3"/><rect width="148" height="430" rx="28" class="navBg"/><rect x="128" width="20" height="430" class="navBg"/>
+    <text x="24" y="45" class="h3" fill="#fff">Feynman</text><text x="24" y="63" class="small" fill="#97b5ab">费曼复述</text><rect x="12" y="90" width="124" height="37" rx="13" fill="#28574e"/><rect x="12" y="90" width="4" height="37" rx="2" fill="#bde9dc"/><text x="28" y="114" class="nav">♧　费曼复述</text><text x="28" y="153" class="nav">☑　智能测验</text><text x="28" y="191" class="nav">◌　知识问答</text><text x="24" y="229" class="small" fill="#97b5ab">探索</text><text x="28" y="258" class="nav">⌘　知识图谱</text><text x="28" y="296" class="nav">◎　知识宇宙</text><text x="28" y="334" class="nav">⊕　数字地球</text>
+    <g transform="translate(180 30)"><text class="label">FEYNMAN LOOP / 02</text><text y="43" class="title" font-size="30">用自己的话讲出来。</text><text y="67" class="body">先选择一个知识点，再开始不看资料的解释。</text><rect x="0" y="94" width="285" height="275" rx="22" fill="#fff" stroke="#cbd8d2"/><text x="24" y="125" class="small">选择知识点</text><text x="24" y="159" class="h2" font-size="21">向量数据库</text><text x="24" y="190" class="body">把向量化的内容存起来，</text><text x="24" y="211" class="body">然后根据相似度找到相关信息。</text><line x1="24" y1="233" x2="260" y2="233" class="line"/><text x="24" y="258" class="small">上次复述</text><text x="24" y="283" class="h3">掌握度 78%</text><rect x="24" y="319" width="138" height="32" rx="16" class="primary"/><text x="47" y="341" class="small" fill="#fff">开始录音复述</text>
+      <rect x="307" y="94" width="353" height="275" rx="22" fill="#d7f3eb"/><text x="332" y="126" class="label">REPEAT WITHOUT NOTES</text><text x="332" y="164" class="h2" font-size="21">准备好了吗？</text><text x="332" y="194" class="body">点击麦克风，用 60 秒讲清楚：</text><text x="332" y="219" class="h3">“向量数据库解决了什么问题？”</text><circle cx="483" cy="286" r="43" fill="#087f72"/><text x="468" y="297" font-size="27" fill="#fff">♩</text><text x="427" y="352" class="small" fill="#087f72">录音会在提交后进行 AI 评价</text></g>
+  </g>
+  <text x="60" y="1208" class="label">03 / FEYNMAN EXPLAINER</text><text x="60" y="1230" class="small">左侧保留知识上下文，右侧突出一个核心动作：不看笔记讲清楚。</text>
+
+  <!-- Quiz -->
+  <g transform="translate(920 750)" filter="url(#shadow)">
+    <rect width="820" height="430" rx="28" fill="#f7f8f3"/><rect width="148" height="430" rx="28" class="navBg"/><rect x="128" width="20" height="430" class="navBg"/>
+    <text x="24" y="45" class="h3" fill="#fff">Feynman</text><text x="24" y="63" class="small" fill="#97b5ab">智能测验</text><rect x="12" y="90" width="124" height="37" rx="13" fill="#28574e"/><rect x="12" y="90" width="4" height="37" rx="2" fill="#bde9dc"/><text x="28" y="114" class="nav">☑　智能测验</text><text x="28" y="153" class="nav">◌　知识问答</text><text x="24" y="191" class="small" fill="#97b5ab">探索</text><text x="28" y="220" class="nav">⌘　知识图谱</text><text x="28" y="258" class="nav">◎　知识宇宙</text><text x="28" y="296" class="nav">⊕　数字地球</text>
+    <g transform="translate(180 30)"><text class="label">SMART QUIZ / 01</text><text y="43" class="title" font-size="30">把理解变成一次小测。</text><text y="67" class="body">题目来自你的知识库，答案会被记录进学习循环。</text><text x="600" y="12" class="num">01 / 05</text><rect y="94" width="660" height="7" rx="4" fill="#d7e3dd"/><rect y="94" width="132" height="7" rx="4" class="primary"/><rect y="126" width="660" height="168" rx="22" fill="#fff" stroke="#cbd8d2"/><text x="24" y="159" class="small">向量数据库 · 基础概念</text><text x="24" y="197" class="h2" font-size="21">为什么需要对文档进行向量化？</text><text x="24" y="228" class="body">请选择最能解释“语义检索”价值的答案。</text><g transform="translate(0 318)"><rect width="315" height="42" rx="15" fill="#fff" stroke="#b9ccc4"/><circle cx="23" cy="21" r="9" fill="#eef3ee" stroke="#087f72"/><text x="43" y="26" class="body">A　让文本更容易被理解</text><rect x="337" width="323" height="42" rx="15" fill="#fff" stroke="#b9ccc4"/><circle cx="360" cy="21" r="9" fill="#eef3ee" stroke="#087f72"/><text x="380" y="26" class="body">B　支持相似语义的检索</text></g></g>
+  </g>
+  <text x="920" y="1208" class="label">04 / SMART QUIZ</text><text x="920" y="1230" class="small">测验页强调进度、题目上下文和可辨识的选项状态，避免 AI 反馈喧宾夺主。</text>
+</svg>

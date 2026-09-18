@@ -4,6 +4,7 @@ import { FeynmanAttempt } from '../models/FeynmanAttempt.js';
 import { Knowledge } from '../models/Knowledge.js';
 import { requireAuth } from '../middleware/auth.js';
 import { evaluateFeynmanWithAi, isAiConfigured } from '../services/ai.service.js';
+import { isBaiduAsrConfigured, transcribeWithBaidu } from '../services/speech.service.js';
 
 export const feynmanRouter = Router();
 feynmanRouter.use(requireAuth);
@@ -12,8 +13,12 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_request, file, callback) => {
-    const accepted = ['audio/webm', 'audio/wav', 'audio/mpeg', 'audio/ogg'].includes(file.mimetype);
-    callback(accepted ? null : new Error('暂不支持这个音频格式，请使用 WebM、WAV、MP3 或 OGG'), accepted);
+    const accepted = ['audio/wav', 'audio/x-wav', 'audio/wave'].includes(file.mimetype);
+    const error = accepted ? null : Object.assign(
+      new Error('暂不支持这个音频格式，请使用单声道 16kHz WAV 音频。'),
+      { statusCode: 400 }
+    );
+    callback(error, accepted);
   }
 });
 
@@ -24,9 +29,18 @@ feynmanRouter.post('/transcribe', upload.single('audio'), async (request, respon
     if (!request.file) return response.status(400).json({ message: '请先录制一段音频' });
     const knowledge = await findOwnedKnowledge(request, request.body.knowledgeId);
     if (!knowledge) return response.status(404).json({ message: '知识点不存在' });
-    const transcript = String(request.body.transcript || '').trim()
-      || `我来解释一下“${knowledge.title}”：${knowledge.content}`;
-    return response.json({ transcript, provider: 'mock', durationMs: 0 });
+    if (!isBaiduAsrConfigured()) {
+      return response.status(503).json({
+        message: '百度语音识别尚未配置，请先填写服务端 .env 中的 BAIDU_APP_ID、BAIDU_API_KEY 和 BAIDU_SECRET_KEY。'
+      });
+    }
+
+    const result = await transcribeWithBaidu(request.file.buffer, {
+      format: 'wav',
+      rate: 16000,
+      cuid: `feynman-${request.user.id}`
+    });
+    return response.json({ ...result, durationMs: null });
   } catch (error) {
     return next(error);
   }
@@ -61,20 +75,35 @@ feynmanRouter.post('/attempts', async (request, response, next) => {
     const knowledge = await findOwnedKnowledge(request, request.body.knowledgeId);
     if (!knowledge) return response.status(404).json({ message: '知识点不存在' });
 
-    const attempt = await FeynmanAttempt.create({
-      user: request.user.id,
-      knowledge: knowledge.id,
-      transcript: request.body.transcript,
-      polishedText: request.body.polishedText,
-      score: request.body.score,
-      evaluation: request.body.evaluation,
-      strengths: request.body.strengths,
-      weaknesses: request.body.weaknesses
-    });
-    knowledge.reviewScore = request.body.score;
-    knowledge.lastReviewedAt = new Date();
-    await knowledge.save();
-    return response.status(201).json({ attempt });
+    const clientAttemptId = String(request.body.clientAttemptId || '').trim();
+    if (clientAttemptId) {
+      const existingAttempt = await FeynmanAttempt.findOne({ user: request.user.id, clientAttemptId });
+      if (existingAttempt) return response.status(200).json({ attempt: existingAttempt, duplicate: true });
+    }
+
+    try {
+      const attempt = await FeynmanAttempt.create({
+        user: request.user.id,
+        knowledge: knowledge.id,
+        clientAttemptId: clientAttemptId || undefined,
+        transcript: request.body.transcript,
+        polishedText: request.body.polishedText,
+        score: request.body.score,
+        evaluation: request.body.evaluation,
+        strengths: request.body.strengths,
+        weaknesses: request.body.weaknesses
+      });
+      knowledge.reviewScore = request.body.score;
+      knowledge.lastReviewedAt = new Date();
+      await knowledge.save();
+      return response.status(201).json({ attempt });
+    } catch (error) {
+      if (error?.code === 11000 && clientAttemptId) {
+        const existingAttempt = await FeynmanAttempt.findOne({ user: request.user.id, clientAttemptId });
+        if (existingAttempt) return response.status(200).json({ attempt: existingAttempt, duplicate: true });
+      }
+      throw error;
+    }
   } catch (error) {
     return next(error);
   }

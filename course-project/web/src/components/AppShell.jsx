@@ -1,6 +1,7 @@
 import { BookOpen, BrainCircuit, ClipboardCheck, Globe, Globe2, LayoutDashboard, LogOut, MessageCircle, Mic2, Network, Settings2 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { preloadRoute } from '../lib/routes.js';
 
 const navItems = [
   { to: '/', label: '学习概览', icon: LayoutDashboard },
@@ -22,6 +23,9 @@ function NavigationItem({ item }) {
     <NavLink
       to={to}
       end={to === '/'}
+      onMouseEnter={() => preloadRoute(to)}
+      onFocus={() => preloadRoute(to)}
+      onTouchStart={() => preloadRoute(to)}
       className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
     >
       <Icon size={19} strokeWidth={1.9} />

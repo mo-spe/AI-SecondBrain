@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Globe2, RotateCcw, Sparkles } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { apiRequest } from '../lib/api.js';
+import PageLoading from '../components/PageLoading.jsx';
+import { cachedRequest } from '../lib/dataCache.js';
 
 const sceneSize = { width: 760, height: 540 };
 
@@ -23,10 +24,11 @@ export default function UniversePage() {
   const [graph, setGraph] = useState({ nodes: [], links: [], stats: {} });
   const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const selected = useMemo(() => graph.nodes.find((node) => node.id === selectedId), [graph.nodes, selectedId]);
 
   useEffect(() => {
-    apiRequest('/graph/knowledge-map').then(setGraph).catch((requestError) => setError(requestError.message));
+    cachedRequest('knowledge-graph', '/graph/knowledge-map').then(setGraph).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -147,7 +149,7 @@ export default function UniversePage() {
     <div className="page-wrap universe-page">
       <header className="page-header"><div><p className="eyebrow">Three.js / 05</p><h1>进入知识宇宙。</h1><p className="page-subtitle">拖拽旋转你的知识空间，节点大小代表最近一次掌握度。</p></div><div className="feynman-mark"><Globe2 size={18} /><span>三维视图 · 课程展示</span></div></header>
       {error && <div className="inline-message">{error}</div>}
-      {graph.nodes.length === 0 ? <div className="list-empty"><BookOpen size={22} /><h2>宇宙还没有星体</h2><p>先创建知识点，Three.js 会把它们放进空间。</p></div> : <div className="universe-layout"><section className="universe-card"><div className="universe-toolbar"><span><Sparkles size={14} /> {graph.stats.nodeCount} 个知识节点 · {graph.stats.linkCount} 条连接</span><small>拖拽旋转 · 滚轮缩放 · 点击节点</small></div><div className="universe-canvas" ref={canvasHostRef} /></section><aside className="universe-detail">{selected ? <><span className="detail-label">当前聚焦</span><h2>{selected.label}</h2><p>{selected.excerpt}</p><div className="tag-row">{selected.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>{selected.score !== null && <div className="detail-score"><span>最近掌握度</span><strong>{selected.score}</strong></div>}</> : <div className="graph-detail-empty"><Globe2 size={22} /><p>点击一个知识节点，聚焦查看它的内容。</p></div>}<button className="outline-button universe-reset" type="button" onClick={() => setSelectedId('')}><RotateCcw size={15} /> 清除聚焦</button></aside></div>}
+      {loading ? <PageLoading label="正在准备知识宇宙…" /> : graph.nodes.length === 0 ? <div className="list-empty"><BookOpen size={22} /><h2>宇宙还没有星体</h2><p>先创建知识点，Three.js 会把它们放进空间。</p></div> : <div className="universe-layout"><section className="universe-card"><div className="universe-toolbar"><span><Sparkles size={14} /> {graph.stats.nodeCount} 个知识节点 · {graph.stats.linkCount} 条连接</span><small>拖拽旋转 · 滚轮缩放 · 点击节点</small></div><div className="universe-canvas" ref={canvasHostRef} /></section><aside className="universe-detail">{selected ? <><span className="detail-label">当前聚焦</span><h2>{selected.label}</h2><p>{selected.excerpt}</p><div className="tag-row">{selected.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>{selected.score !== null && <div className="detail-score"><span>最近掌握度</span><strong>{selected.score}</strong></div>}</> : <div className="graph-detail-empty"><Globe2 size={22} /><p>点击一个知识节点，聚焦查看它的内容。</p></div>}<button className="outline-button universe-reset" type="button" onClick={() => setSelectedId('')}><RotateCcw size={15} /> 清除聚焦</button></aside></div>}
     </div>
   );
 }
