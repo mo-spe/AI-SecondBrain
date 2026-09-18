@@ -1,7 +1,7 @@
 package com.secondbrain.service.impl;
 
 import com.secondbrain.entity.RawChatRecord;
-import com.secondbrain.kafka.KafkaProducerService;
+import com.secondbrain.kafka.KafkaMessageProducer;
 import com.secondbrain.service.DocumentCaptureService;
 import com.secondbrain.service.FileProcessingService;
 import org.slf4j.Logger;
@@ -21,11 +21,11 @@ public class DocumentCaptureServiceImpl implements DocumentCaptureService {
     private static final Logger log = LoggerFactory.getLogger(DocumentCaptureServiceImpl.class);
 
     private final FileProcessingService fileProcessingService;
-    private final KafkaProducerService kafkaProducerService;
+    private final KafkaMessageProducer kafkaMessageProducer;
 
-    public DocumentCaptureServiceImpl(FileProcessingService fileProcessingService, KafkaProducerService kafkaProducerService) {
+    public DocumentCaptureServiceImpl(FileProcessingService fileProcessingService, KafkaMessageProducer kafkaMessageProducer) {
         this.fileProcessingService = fileProcessingService;
-        this.kafkaProducerService = kafkaProducerService;
+        this.kafkaMessageProducer = kafkaMessageProducer;
     }
 
     /**
@@ -60,7 +60,7 @@ public class DocumentCaptureServiceImpl implements DocumentCaptureService {
         record.setSourceUrl(source);
         record.setCreateTime(LocalDateTime.now());
 
-        kafkaProducerService.sendChatCollect(record);
+        kafkaMessageProducer.sendChatCollect(record);
         log.info("内容发送到采集处理成功");
     }
 }

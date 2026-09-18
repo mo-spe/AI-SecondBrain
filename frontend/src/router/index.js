@@ -152,6 +152,18 @@ const routes = [
         redirect: { name: "GrowthCenter", query: { tab: "leaderboard" } },
         meta: { title: "成长中心" },
       },
+      {
+        path: "report",
+        name: "Report",
+        component: () => import("@/views/Report.vue"),
+        meta: { title: "学习报告" },
+      },
+      {
+        path: "chat",
+        name: "Chat",
+        component: () => import("@/views/Chat.vue"),
+        meta: { title: "对话采集" },
+      },
     ],
   },
   {

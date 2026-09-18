@@ -1,5 +1,7 @@
 package com.secondbrain.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondbrain.service.CacheService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +17,11 @@ public class CacheServiceImpl implements CacheService {
     private static final Logger log = LoggerFactory.getLogger(CacheServiceImpl.class);
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
 
-    public CacheServiceImpl(RedisTemplate<String, Object> redisTemplate) {
+    public CacheServiceImpl(RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -59,6 +63,33 @@ public class CacheServiceImpl implements CacheService {
             return null;
         } catch (Exception e) {
             log.error("缓存获取失败，key：{}", key, e);
+            return null;
+        }
+    }
+
+    /**
+     * 按完整泛型类型获取缓存，避免 JSON 反序列化后的 Map 被误当成实体对象。
+     *
+     * @param key 缓存键
+     * @param typeReference 包含元素类型的目标类型
+     * @return 类型转换后的缓存值，缓存不存在或转换失败时返回 null
+     * @param <T> 值类型
+     */
+    @Override
+    public <T> T get(String key, TypeReference<T> typeReference) {
+        try {
+            Object value = redisTemplate.opsForValue().get(key);
+            if (value == null) {
+                log.debug("缓存未命中，key：{}", key);
+                return null;
+            }
+
+            T converted = objectMapper.convertValue(value, typeReference);
+            log.debug("缓存命中，key：{}", key);
+            return converted;
+        } catch (Exception e) {
+            // 缓存格式可能来自旧版本，转换失败时回源加载并覆盖旧值，避免缓存故障阻断业务。
+            log.warn("缓存类型转换失败，key：{}，将回源加载", key, e);
             return null;
         }
     }
@@ -147,6 +178,37 @@ public class CacheServiceImpl implements CacheService {
     public <T> T getOrLoad(String key, Class<T> clazz, long timeout, TimeUnit unit, CacheLoader<T> loader) {
         try {
             T cached = get(key, clazz);
+            if (cached != null) {
+                return cached;
+            }
+
+            T value = loader.load();
+            if (value != null) {
+                set(key, value, timeout, unit);
+            }
+            return value;
+        } catch (Exception e) {
+            log.error("缓存加载失败，key：{}", key, e);
+            return null;
+        }
+    }
+
+    /**
+     * 按完整泛型类型获取或加载缓存。
+     *
+     * @param key 缓存键
+     * @param typeReference 包含元素类型的目标类型
+     * @param timeout 过期时间
+     * @param unit 时间单位
+     * @param loader 缓存加载器
+     * @return 缓存值
+     * @param <T> 值类型
+     */
+    @Override
+    public <T> T getOrLoad(String key, TypeReference<T> typeReference, long timeout,
+                           TimeUnit unit, CacheLoader<T> loader) {
+        try {
+            T cached = get(key, typeReference);
             if (cached != null) {
                 return cached;
             }

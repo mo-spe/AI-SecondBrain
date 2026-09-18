@@ -1,5 +1,7 @@
 package com.secondbrain.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,6 +28,16 @@ public interface CacheService {
      * @return 缓存值
      */
     <T> T get(String key, Class<T> clazz);
+
+    /**
+     * 按完整泛型类型获取缓存。
+     *
+     * @param key 缓存键
+     * @param typeReference 包含元素类型的目标类型
+     * @return 缓存值，缓存不存在或转换失败时返回 null
+     * @param <T> 值类型
+     */
+    <T> T get(String key, TypeReference<T> typeReference);
 
     /**
      * 删除缓存.
@@ -71,6 +83,20 @@ public interface CacheService {
      * @return 缓存值
      */
     <T> T getOrLoad(String key, Class<T> clazz, long timeout, TimeUnit unit, CacheLoader<T> loader);
+
+    /**
+     * 按完整泛型类型获取或加载缓存。
+     *
+     * @param key 缓存键
+     * @param typeReference 包含元素类型的目标类型
+     * @param timeout 过期时间
+     * @param unit 时间单位
+     * @param loader 缓存加载器
+     * @return 缓存值
+     * @param <T> 值类型
+     */
+    <T> T getOrLoad(String key, TypeReference<T> typeReference, long timeout,
+                    TimeUnit unit, CacheLoader<T> loader);
 
     /**
      * 按模式删除缓存.

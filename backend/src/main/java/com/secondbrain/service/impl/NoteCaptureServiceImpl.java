@@ -2,7 +2,7 @@ package com.secondbrain.service.impl;
 
 import com.secondbrain.dto.NoteCaptureRequest;
 import com.secondbrain.entity.RawChatRecord;
-import com.secondbrain.kafka.KafkaProducerService;
+import com.secondbrain.kafka.KafkaMessageProducer;
 import com.secondbrain.service.NoteCaptureService;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
@@ -22,10 +22,10 @@ public class NoteCaptureServiceImpl implements NoteCaptureService {
 
     private static final Logger log = LoggerFactory.getLogger(NoteCaptureServiceImpl.class);
 
-    private final KafkaProducerService kafkaProducerService;
+    private final KafkaMessageProducer kafkaMessageProducer;
 
-    public NoteCaptureServiceImpl(KafkaProducerService kafkaProducerService) {
-        this.kafkaProducerService = kafkaProducerService;
+    public NoteCaptureServiceImpl(KafkaMessageProducer kafkaMessageProducer) {
+        this.kafkaMessageProducer = kafkaMessageProducer;
     }
 
     /**
@@ -52,7 +52,7 @@ public class NoteCaptureServiceImpl implements NoteCaptureService {
             log.info("【NoteCaptureService】准备发送 Kafka 消息，record: userId={}, contentLength={}, sourceUrl={}", 
                 record.getUserId(), record.getContent().length(), record.getSourceUrl());
 
-            kafkaProducerService.sendChatCollect(record);
+            kafkaMessageProducer.sendChatCollect(record);
             
             log.info("【NoteCaptureService】Kafka 消息发送成功，标题：{}", request.getTitle());
             log.info("笔记捕捉成功，标题：{}，内容长度：{}", request.getTitle(), content.length());

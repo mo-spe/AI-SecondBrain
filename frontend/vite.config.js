@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
@@ -14,7 +14,7 @@ export default defineConfig({
     proxy: {
       // SSE 流式端点 — selfHandleResponse=true 让 http-proxy 不自动 pipe，手动逐块转发
       '/api/rag/answer/stream': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
         selfHandleResponse: true,
         configure: (proxy, options) => {
@@ -36,17 +36,18 @@ export default defineConfig({
         }
       },
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('代理请求:', req.method, req.url);
+            console.log('浠ｇ悊璇锋眰:', req.method, req.url);
           });
           proxy.on('proxyRes', (proxyRes, req, res) => {
-            console.log('代理响应:', proxyRes.statusCode, req.url);
+            console.log('浠ｇ悊鍝嶅簲:', proxyRes.statusCode, req.url);
           });
         }
       }
     }
   }
 })
+

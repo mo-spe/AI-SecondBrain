@@ -1,15 +1,12 @@
 package com.secondbrain.service;
 
 import com.secondbrain.dto.AsyncTaskResponse;
-import com.secondbrain.dto.AsyncTaskRequest;
-import com.secondbrain.dto.DeerFlowResearchRequest;
 import com.secondbrain.dto.DeerFlowResearchResponse;
-import com.secondbrain.kafka.KafkaProducerService;
+import com.secondbrain.kafka.KafkaMessageProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
@@ -46,15 +43,15 @@ public class DeerFlowResearchService {
 
     private final RestTemplate restTemplate;
     private final AsyncTaskService asyncTaskService;
-    private final KafkaProducerService kafkaProducerService;
+    private final KafkaMessageProducer kafkaMessageProducer;
 
     @Autowired
     public DeerFlowResearchService(RestTemplate restTemplate,
                                    @Autowired(required = false) @Lazy AsyncTaskService asyncTaskService,
-                                   @Autowired(required = false) @Lazy KafkaProducerService kafkaProducerService) {
+                                   @Autowired(required = false) @Lazy KafkaMessageProducer kafkaMessageProducer) {
         this.restTemplate = restTemplate;
         this.asyncTaskService = asyncTaskService;
-        this.kafkaProducerService = kafkaProducerService;
+        this.kafkaMessageProducer = kafkaMessageProducer;
     }
 
     /**
@@ -68,8 +65,8 @@ public class DeerFlowResearchService {
      */
     public String generateDeepLearningReport(String learningData, String topic, String depth, String userApiKey) {
         try {
-            log.info("调用DeerFlow研究服务生成深度学习报告，主题：{}，深度：{}，使用用户API Key：{}", 
-                     topic, depth, userApiKey != null && !userApiKey.isEmpty());
+            log.info("调用DeerFlow研究服务生成深度学习报告，主题：{}，深度：{}，使用用户API Key：{}",
+                    topic, depth, userApiKey != null && !userApiKey.isEmpty());
 
             Map<String, Object> request = new HashMap<>();
             request.put("learning_data", learningData);
@@ -85,9 +82,9 @@ public class DeerFlowResearchService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
             ResponseEntity<DeerFlowResearchResponse> response = restTemplate.postForEntity(
-                deerFlowApiUrl + "/api/research/learning-report",
-                entity,
-                DeerFlowResearchResponse.class
+                    deerFlowApiUrl + "/api/research/learning-report",
+                    entity,
+                    DeerFlowResearchResponse.class
             );
 
             if (response.getStatusCode() == HttpStatus.OK) {
@@ -117,8 +114,8 @@ public class DeerFlowResearchService {
      */
     public String generateLearningPath(String topic, String currentLevel, String targetLevel, String userApiKey) {
         try {
-            log.info("生成学习路径，主题：{}，当前水平：{}，目标水平：{}，使用用户API Key：{}", 
-                     topic, currentLevel, targetLevel, userApiKey != null && !userApiKey.isEmpty());
+            log.info("生成学习路径，主题：{}，当前水平：{}，目标水平：{}，使用用户API Key：{}",
+                    topic, currentLevel, targetLevel, userApiKey != null && !userApiKey.isEmpty());
 
             Map<String, Object> request = new HashMap<>();
             request.put("topic", topic);
@@ -133,22 +130,22 @@ public class DeerFlowResearchService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
-            String apiUrl = useLocalService ? 
-                localLearningPathUrl + "/api/research/learning-path" : 
-                deerFlowApiUrl + "/api/research/learning-path";
+            String apiUrl = useLocalService ?
+                    localLearningPathUrl + "/api/research/learning-path" :
+                    deerFlowApiUrl + "/api/research/learning-path";
 
             log.info("使用{}服务，发送请求到：{}", useLocalService ? "本地" : "DeerFlow", apiUrl);
             log.info("请求体：{}", request);
 
             ResponseEntity<DeerFlowResearchResponse> response = restTemplate.postForEntity(
-                apiUrl,
-                entity,
-                DeerFlowResearchResponse.class
+                    apiUrl,
+                    entity,
+                    DeerFlowResearchResponse.class
             );
 
             log.info("响应状态码：{}", response.getStatusCode());
             log.info("响应头：{}", response.getHeaders());
-            
+
             if (response.getBody() != null) {
                 log.info("响应体类型：{}", response.getBody().getClass().getName());
                 log.info("响应体success：{}", response.getBody().getSuccess());
@@ -184,8 +181,8 @@ public class DeerFlowResearchService {
      */
     public String researchKnowledgeGap(java.util.List<String> userKnowledge, String targetTopic, String userApiKey) {
         try {
-            log.info("调用DeerFlow研究服务分析知识盲区，目标主题：{}，知识点数量：{}，使用用户API Key：{}", 
-                     targetTopic, userKnowledge.size(), userApiKey != null && !userApiKey.isEmpty());
+            log.info("调用DeerFlow研究服务分析知识盲区，目标主题：{}，知识点数量：{}，使用用户API Key：{}",
+                    targetTopic, userKnowledge.size(), userApiKey != null && !userApiKey.isEmpty());
 
             Map<String, Object> request = new HashMap<>();
             request.put("user_knowledge", userKnowledge);
@@ -199,16 +196,16 @@ public class DeerFlowResearchService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
-            String apiUrl = useLocalService ? 
-                localLearningPathUrl + "/api/research/knowledge-gap" : 
-                deerFlowApiUrl + "/api/research/knowledge-gap";
+            String apiUrl = useLocalService ?
+                    localLearningPathUrl + "/api/research/knowledge-gap" :
+                    deerFlowApiUrl + "/api/research/knowledge-gap";
 
             log.info("使用{}服务，发送请求到：{}", useLocalService ? "本地" : "DeerFlow", apiUrl);
 
             ResponseEntity<DeerFlowResearchResponse> response = restTemplate.postForEntity(
-                apiUrl,
-                entity,
-                DeerFlowResearchResponse.class
+                    apiUrl,
+                    entity,
+                    DeerFlowResearchResponse.class
             );
 
             if (response.getStatusCode() == HttpStatus.OK) {
@@ -238,8 +235,8 @@ public class DeerFlowResearchService {
     public boolean checkHealth() {
         try {
             ResponseEntity<Map> response = restTemplate.getForEntity(
-                deerFlowApiUrl + "/health",
-                Map.class
+                    deerFlowApiUrl + "/health",
+                    Map.class
             );
 
             if (response.getStatusCode() == HttpStatus.OK) {
@@ -283,7 +280,7 @@ public class DeerFlowResearchService {
      */
     public AsyncTaskResponse generateLearningReportAsync(Long userId, Long workspaceId, String topic, String depth, String userApiKey) {
         log.info("异步生成学习报告，用户ID：{}，workspaceId：{}，主题：{}，深度：{}",
-                 userId, workspaceId, topic, depth);
+                userId, workspaceId, topic, depth);
 
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("topic", topic);
@@ -293,9 +290,9 @@ public class DeerFlowResearchService {
         }
 
         AsyncTaskResponse task = asyncTaskService.createTask("LEARNING_REPORT", userId, workspaceId, parameters);
-        
+
         log.info("创建异步任务，taskNumber：{}，消息已发送到Kafka", task.getTaskId());
-        
+
         return task;
     }
 
@@ -322,12 +319,12 @@ public class DeerFlowResearchService {
         }
 
         AsyncTaskResponse task = asyncTaskService.createTask("LEARNING_PATH", userId, workspaceId, parameters);
-        
+
         log.info("创建异步任务，taskNumber：{}，消息已发送到Kafka", task.getTaskId());
-        
+
         return task;
     }
-    
+
     /**
      * 查询异步任务状态.
      *
@@ -359,9 +356,9 @@ public class DeerFlowResearchService {
         }
 
         AsyncTaskResponse task = asyncTaskService.createTask("KNOWLEDGE_BLIND_SPOT", userId, workspaceId, parameters);
-        
+
         log.info("创建异步任务，taskNumber：{}，消息已发送到Kafka", task.getTaskId());
-        
+
         return task;
     }
 

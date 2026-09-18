@@ -344,7 +344,6 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { chatAPI } from "@/api/chat";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useWorkspaceStore } from "@/stores/workspace";
 import {
   ChatDotRound,
   Search,

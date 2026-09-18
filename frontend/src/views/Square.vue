@@ -291,6 +291,126 @@
                   </el-button>
                 </div>
                 <p class="comment-content">{{ comment.content }}</p>
+
+                <div class="comment-actions">
+                  <button
+                    class="comment-action-btn"
+                    :class="{ active: comment.isLikedByMe }"
+                    @click="handleToggleCommentLike(comment)"
+                  >
+                    <el-icon :size="15"><Pointer /></el-icon>
+                    <span>{{ comment.likeCount || 0 }}</span>
+                    <span v-if="comment.isLikedByMe" class="comment-liked-tag">已赞</span>
+                  </button>
+                  <button class="comment-action-btn" @click="startReply(comment)">
+                    <el-icon :size="15"><ChatLineRound /></el-icon>
+                    <span>回复</span>
+                  </button>
+                </div>
+
+                <!-- 顶层评论下的行内回复输入框 -->
+                <div v-if="replyTarget && replyTarget.commentId === comment.id" class="reply-input-area">
+                  <el-input
+                    v-model="replyTarget.content"
+                    type="textarea"
+                    :rows="2"
+                    maxlength="500"
+                    show-word-limit
+                    :placeholder="'回复 @' + replyTarget.replyToUsername"
+                    class="comment-textarea"
+                  />
+                  <div class="reply-input-actions">
+                    <el-button size="small" @click="cancelReply">取消</el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :loading="replyLoading"
+                      :disabled="!replyTarget.content.trim()"
+                      @click="submitReply"
+                    >
+                      回复
+                    </el-button>
+                  </div>
+                </div>
+
+                <!-- 楼中楼回复 -->
+                <div v-if="comment.replies && comment.replies.length" class="reply-list">
+                  <div
+                    v-for="reply in visibleReplies(comment)"
+                    :key="reply.id"
+                    class="reply-item"
+                  >
+                    <div class="comment-header">
+                      <div class="comment-user">
+                        <el-avatar :size="24" :src="reply.avatar">
+                          {{ reply.username?.charAt(0) }}
+                        </el-avatar>
+                        <span class="comment-username">{{ reply.username }}</span>
+                        <span v-if="reply.replyToUsername" class="reply-to">回复 @{{ reply.replyToUsername }}</span>
+                        <span class="comment-time">{{ formatDate(reply.createdAt) }}</span>
+                      </div>
+                      <el-button
+                        v-if="reply.userId === userStore.userInfo.id"
+                        type="danger"
+                        size="small"
+                        text
+                        @click="handleDeleteReply(comment, reply.id)"
+                      >
+                        删除
+                      </el-button>
+                    </div>
+                    <p class="comment-content">{{ reply.content }}</p>
+
+                    <div class="comment-actions">
+                      <button
+                        class="comment-action-btn"
+                        :class="{ active: reply.isLikedByMe }"
+                        @click="handleToggleCommentLike(reply)"
+                      >
+                        <el-icon :size="15"><Pointer /></el-icon>
+                        <span>{{ reply.likeCount || 0 }}</span>
+                        <span v-if="reply.isLikedByMe" class="comment-liked-tag">已赞</span>
+                      </button>
+                      <button class="comment-action-btn" @click="startReply(reply)">
+                        <el-icon :size="15"><ChatLineRound /></el-icon>
+                        <span>回复</span>
+                      </button>
+                    </div>
+
+                    <!-- 回复下的行内回复输入框 -->
+                    <div v-if="replyTarget && replyTarget.commentId === reply.id" class="reply-input-area">
+                      <el-input
+                        v-model="replyTarget.content"
+                        type="textarea"
+                        :rows="2"
+                        maxlength="500"
+                        show-word-limit
+                        :placeholder="'回复 @' + replyTarget.replyToUsername"
+                        class="comment-textarea"
+                      />
+                      <div class="reply-input-actions">
+                        <el-button size="small" @click="cancelReply">取消</el-button>
+                        <el-button
+                          type="primary"
+                          size="small"
+                          :loading="replyLoading"
+                          :disabled="!replyTarget.content.trim()"
+                          @click="submitReply"
+                        >
+                          回复
+                        </el-button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    v-if="comment.replies.length > 5"
+                    class="reply-toggle"
+                    @click="toggleReplies(comment.id)"
+                  >
+                    {{ isRepliesExpanded(comment.id) ? '收起' : '展开 ' + (comment.replies.length - 5) + ' 条回复' }}
+                  </button>
+                </div>
               </div>
             </TransitionGroup>
             <div v-else class="comment-empty">
@@ -418,9 +538,11 @@ import {
   Star,
   StarFilled,
   ChatLineSquare,
+  ChatLineRound,
   Collection,
   Warning,
   ArrowLeft,
+  Pointer,
 } from "@element-plus/icons-vue";
 import { squareAPI } from "@/api/square";
 import { knowledgeAPI } from "@/api/knowledge";
@@ -451,6 +573,12 @@ const currentPost = ref(null);
 const comments = ref([]);
 const newComment = ref("");
 const commentLoading = ref(false);
+
+// 行内回复状态：commentId=被回复评论ID，parentId=传入后端的 parentId，replyToUserId/replyToUsername=展示用
+const replyTarget = ref(null);
+const replyLoading = ref(false);
+// 已展开的楼中楼（回复数 > 5 时折叠，记录展开过的顶层评论ID）
+const expandedReplies = reactive(new Set());
 
 // 举报对话框
 const showReportDialog = ref(false);
@@ -601,6 +729,8 @@ const closeDetail = () => {
   currentPost.value = null;
   comments.value = [];
   newComment.value = "";
+  replyTarget.value = null;
+  expandedReplies.clear();
 };
 
 // ========== 点赞 ==========
@@ -659,6 +789,63 @@ const submitComment = async () => {
   }
 };
 
+// 打开某条评论的行内回复框
+const startReply = (target) => {
+  replyTarget.value = {
+    commentId: target.id,
+    parentId: target.id,
+    replyToUserId: target.userId,
+    replyToUsername: target.username || "对方",
+    content: "",
+  };
+};
+
+const cancelReply = () => {
+  replyTarget.value = null;
+};
+
+// 提交楼中楼回复：后端统一归一到顶层评论下
+const submitReply = async () => {
+  if (!replyTarget.value || !replyTarget.value.content.trim()) return;
+  replyLoading.value = true;
+  try {
+    const sent = {
+      content: replyTarget.value.content.trim(),
+      parentId: replyTarget.value.parentId,
+      replyToUserId: replyTarget.value.replyToUserId,
+    };
+    const reply = await squareAPI.addComment(currentPost.value.postId, sent);
+    // reply.parentId 已被后端归一为顶层评论ID
+    const top = comments.value.find((c) => c.id === reply.parentId);
+    if (top) {
+      if (!top.replies) top.replies = [];
+      top.replies.push(reply);
+    } else {
+      comments.value.push(reply);
+    }
+    if (currentPost.value) {
+      currentPost.value.commentCount = (currentPost.value.commentCount || 0) + 1;
+    }
+    replyTarget.value = null;
+    ElMessage.success("回复成功");
+  } catch (error) {
+    ElMessage.error("回复失败: " + (error.message || "未知错误"));
+  } finally {
+    replyLoading.value = false;
+  }
+};
+
+// 评论点赞（顶层或楼中楼均可）：本地即时更新赞数与本人已赞
+const handleToggleCommentLike = async (comment) => {
+  try {
+    const liked = await squareAPI.toggleCommentLike(comment.id);
+    comment.isLikedByMe = liked;
+    comment.likeCount = liked ? (comment.likeCount || 0) + 1 : Math.max(0, (comment.likeCount || 0) - 1);
+  } catch (error) {
+    ElMessage.error("操作失败: " + (error.message || "未知错误"));
+  }
+};
+
 const handleDeleteComment = async (commentId) => {
   try {
     await ElMessageBox.confirm("确定要删除这条评论吗？", "删除评论", {
@@ -683,6 +870,52 @@ const handleDeleteComment = async (commentId) => {
   } catch (error) {
     ElMessage.error("删除失败: " + (error.message || "未知错误"));
   }
+};
+
+// 删除楼中楼回复：仅移除子项
+const handleDeleteReply = async (parent, replyId) => {
+  try {
+    await ElMessageBox.confirm("确定要删除这条回复吗？", "删除回复", {
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    await squareAPI.deleteComment(currentPost.value.postId, replyId);
+    parent.replies = (parent.replies || []).filter((r) => r.id !== replyId);
+    if (currentPost.value) {
+      currentPost.value.commentCount = Math.max(
+        0,
+        (currentPost.value.commentCount || 0) - 1
+      );
+    }
+    ElMessage.success("回复已删除");
+  } catch (error) {
+    ElMessage.error("删除失败: " + (error.message || "未知错误"));
+  }
+};
+
+// 回复折叠：超过 5 条时默认只显示前 5 条
+const isRepliesExpanded = (id) => expandedReplies.has(id);
+
+const toggleReplies = (id) => {
+  if (expandedReplies.has(id)) {
+    expandedReplies.delete(id);
+  } else {
+    expandedReplies.add(id);
+  }
+};
+
+const visibleReplies = (comment) => {
+  if (!comment.replies) return [];
+  if (comment.replies.length > 5 && !expandedReplies.has(comment.id)) {
+    return comment.replies.slice(0, 5);
+  }
+  return comment.replies;
 };
 
 // ========== 举报 ==========
@@ -1368,6 +1601,107 @@ onMounted(() => {
   line-height: 1.7;
   margin: 0;
   white-space: pre-wrap;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.comment-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.comment-action-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-alpha-10);
+}
+
+.comment-action-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.comment-action-btn.active {
+  color: var(--color-accent);
+}
+
+.comment-liked-tag {
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-alpha-10);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+  font-size: 11px;
+}
+
+/* —— 楼中楼回复 —— */
+.reply-list {
+  margin-top: 10px;
+  padding: 8px 0 4px 14px;
+  border-left: 2px solid var(--border-lighter);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reply-item {
+  padding: 8px 10px;
+  background: var(--bg-page);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-lighter);
+}
+
+.reply-to {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  margin-left: 6px;
+}
+
+.reply-input-area {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-list-item);
+  border-radius: var(--radius-md);
+}
+
+.reply-input-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.reply-toggle {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.reply-toggle:hover {
+  background: var(--color-primary-alpha-10);
 }
 
 .comment-empty {

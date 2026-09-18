@@ -29,18 +29,26 @@ public class KnowledgeTagController {
         this.knowledgeTagService = knowledgeTagService;
     }
 
+    /**
+     * 从请求中读取当前工作区ID（由 JwtInterceptor 根据 JWT 中的 currentWsId 写入）.
+     * <p>为 null 表示当前处于个人空间。</p>
+     */
+    private Long getWorkspaceId(HttpServletRequest request) {
+        return (Long) request.getAttribute("workspaceId");
+    }
+
     @GetMapping
-    @Operation(summary = "获取用户的所有标签（扁平列表）")
+    @Operation(summary = "获取当前空间的标签（扁平列表）", description = "工作区内返回共享标签，个人空间返回本人标签")
     public Result<List<KnowledgeTag>> listMyTags(HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        return Result.success(knowledgeTagService.listByUser(userId));
+        return Result.success(knowledgeTagService.listByUser(userId, getWorkspaceId(httpRequest)));
     }
 
     @GetMapping("/tree")
-    @Operation(summary = "获取用户的标签树（含层级结构和知识点数量）")
+    @Operation(summary = "获取当前空间的标签树", description = "工作区内返回共享标签树，个人空间返回本人标签树")
     public Result<List<KnowledgeTag>> listTree(HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        return Result.success(knowledgeTagService.listTreeByUser(userId));
+        return Result.success(knowledgeTagService.listTreeByUser(userId, getWorkspaceId(httpRequest)));
     }
 
     @GetMapping("/all")
@@ -57,7 +65,8 @@ public class KnowledgeTagController {
             @Parameter(description = "父标签ID") @RequestParam(required = false) Long parentId,
             HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        return Result.success("创建成功", knowledgeTagService.create(tagName, tagColor, parentId, userId));
+        return Result.success("创建成功",
+                knowledgeTagService.create(tagName, tagColor, parentId, userId, getWorkspaceId(httpRequest)));
     }
 
     @PutMapping("/{id}")
@@ -70,15 +79,16 @@ public class KnowledgeTagController {
         String tagName = (String) body.get("tagName");
         String tagColor = (String) body.get("tagColor");
         Long parentId = body.get("parentId") != null ? ((Number) body.get("parentId")).longValue() : null;
-        return Result.success("更新成功", knowledgeTagService.update(id, tagName, tagColor, parentId, userId));
+        return Result.success("更新成功",
+                knowledgeTagService.update(id, tagName, tagColor, parentId, userId, getWorkspaceId(httpRequest)));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "删除标签")
+    @Operation(summary = "删除标签", description = "工作区共享标签，有编辑权限的成员均可删除")
     public Result<Void> delete(@Parameter(description = "标签ID") @PathVariable Long id,
                                 HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        knowledgeTagService.delete(id, userId);
+        knowledgeTagService.delete(id, userId, getWorkspaceId(httpRequest));
         return Result.success("已删除");
     }
 
@@ -118,6 +128,6 @@ public class KnowledgeTagController {
         if (title == null || title.isBlank()) {
             return Result.success(List.of());
         }
-        return Result.success(knowledgeTagService.suggestTags(title, summary, userId));
+        return Result.success(knowledgeTagService.suggestTags(title, summary, userId, getWorkspaceId(httpRequest)));
     }
 }

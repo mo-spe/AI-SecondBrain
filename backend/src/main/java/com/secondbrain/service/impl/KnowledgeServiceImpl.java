@@ -25,6 +25,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -45,6 +47,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private static final Logger log = LoggerFactory.getLogger(KnowledgeServiceImpl.class);
 
     private static final String KNOWLEDGE_CACHE_PREFIX = "knowledge:";
+
+    /** 检索结果缓存前缀，与 KnowledgeSearchTool 中的缓存键保持一致. */
+    private static final String RESEARCH_SEARCH_CACHE_PREFIX = "research:cache:search:";
 
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final CacheService cacheService;
@@ -187,12 +192,85 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         knowledgeNodeMapper.deleteById(id);
 
+        cacheService.delete(KNOWLEDGE_CACHE_PREFIX + id);
+
         if (elasticsearchService != null) {
             elasticsearchService.deleteKnowledgeNode(id);
         }
 
         log.info("删除知识点，id：{}", id);
     }
+
+    /**
+     * 批量删除知识节点.
+     * <p>先逐个校验存在性与权限，全部通过后才执行删除，避免删到一半才报错；
+     * 删除后同步清理缓存与Elasticsearch文档。</p>
+     *
+     * @param ids         知识节点ID列表
+     * @param userId      用户ID
+     * @param workspaceId 工作区ID
+     * @return 实际删除的知识节点数量
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteBatchByIds(List<Long> ids, Long userId, Long workspaceId) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+
+        List<Long> targetIds = ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (targetIds.isEmpty()) {
+            return 0;
+        }
+
+        // 1. 全量校验：任一知识点不存在或无权删除，直接抛异常并整体回滚
+        for (Long id : targetIds) {
+            KnowledgeNode node = knowledgeNodeMapper.selectById(id);
+            if (node == null) {
+                throw new IllegalStateException("知识点不存在：" + id);
+            }
+            if (!hasAccess(node, userId, workspaceId)) {
+                throw new IllegalStateException("无权删除此知识点：" + id);
+            }
+        }
+
+        // 2. 数据库批量删除
+        int deleted = knowledgeNodeMapper.deleteBatchIds(targetIds);
+
+        // 3. 清理缓存：知识点详情缓存 + 该用户的检索结果缓存
+        for (Long id : targetIds) {
+            try {
+                cacheService.delete(KNOWLEDGE_CACHE_PREFIX + id);
+            } catch (Exception e) {
+                log.warn("清理知识点缓存失败，id：{}", id, e);
+            }
+        }
+        try {
+            cacheService.deletePattern(RESEARCH_SEARCH_CACHE_PREFIX + userId + ":*");
+        } catch (Exception e) {
+            log.warn("清理检索结果缓存失败，userId：{}", userId, e);
+        }
+
+        // 4. 同步删除Elasticsearch文档
+        if (elasticsearchService != null) {
+            for (Long id : targetIds) {
+                try {
+                    elasticsearchService.deleteKnowledgeNode(id);
+                } catch (Exception e) {
+                    log.error("从Elasticsearch删除知识点失败，id：{}", id, e);
+                }
+            }
+        }
+
+        log.info("批量删除知识点，ids：{}，实际删除：{}", targetIds, deleted);
+
+        return deleted;
+    }
+
 
     /**
      * 更新知识节点重要性.

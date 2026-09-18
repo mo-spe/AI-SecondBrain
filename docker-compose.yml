@@ -16,8 +16,19 @@ services:
     ports:
       - "${MYSQL_PORT}:3306"
     volumes:
+      # MySQL 会按 /docker-entrypoint-initdb.d/ 下文件名字典序执行，
+      # 故用数字前缀固定顺序：基础表 → V7(AI配置) → V8(待确认) → V9(题目池)
       - mysql-data:/var/lib/mysql
-      - ./complete_database_schema_verified.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./sql/second_brain.sql:/docker-entrypoint-initdb.d/01-second_brain.sql:ro
+      - ./sql/V7__add_ai_provider_tables.sql:/docker-entrypoint-initdb.d/02-V7__add_ai_provider_tables.sql:ro
+      - ./sql/V8__add_pending_knowledge.sql:/docker-entrypoint-initdb.d/03-V8__add_pending_knowledge.sql:ro
+      - ./sql/V9__add_review_card_pool.sql:/docker-entrypoint-initdb.d/04-V9__add_review_card_pool.sql:ro
+      # 社区 / 第三方登录 / 广场评论互动 / 复习自定义：补齐 second_brain.sql（51表）之后新增的领域表
+      - ./sql/V10__add_community_questions.sql:/docker-entrypoint-initdb.d/05-V10__add_community_questions.sql:ro
+      - ./sql/V11__add_community_profiles_and_follows.sql:/docker-entrypoint-initdb.d/06-V11__add_community_profiles_and_follows.sql:ro
+      - ./sql/V12__add_oauth_identities.sql:/docker-entrypoint-initdb.d/07-V12__add_oauth_identities.sql:ro
+      - ./sql/V13__add_growth_sharing_review_customization.sql:/docker-entrypoint-initdb.d/08-V13__add_growth_sharing_review_customization.sql:ro
+      - ./sql/V14__add_square_comment_interaction.sql:/docker-entrypoint-initdb.d/09-V14__add_square_comment_interaction.sql:ro
       - ./logs/mysql:/var/log/mysql
     networks:
       - ai-second-brain-network
