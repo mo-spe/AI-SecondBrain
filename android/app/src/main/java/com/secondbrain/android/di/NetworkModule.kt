@@ -3,6 +3,8 @@ package com.secondbrain.android.di
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.secondbrain.android.capture.SecondBrainDatabase
 import com.secondbrain.android.BuildConfig
 import com.secondbrain.android.data.remote.SecondBrainApi
@@ -32,10 +34,19 @@ object NetworkModule {
 
     @Provides @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SecondBrainDatabase =
-        Room.databaseBuilder(context, SecondBrainDatabase::class.java, "secondbrain.db").build()
+        Room.databaseBuilder(context, SecondBrainDatabase::class.java, "secondbrain.db")
+            .addMigrations(object : Migration(1, 2) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.execSQL("CREATE TABLE IF NOT EXISTS study_archive_drafts (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, archiveType TEXT NOT NULL, imagePath TEXT NOT NULL, ocrText TEXT NOT NULL, userAnswer TEXT NOT NULL, correctAnswer TEXT NOT NULL, explanation TEXT NOT NULL, content TEXT NOT NULL, subject TEXT NOT NULL, sourceBook TEXT NOT NULL, sourcePage TEXT NOT NULL, chapter TEXT NOT NULL, errorType TEXT NOT NULL, doubtType TEXT NOT NULL, knowledgePoints TEXT NOT NULL, userNote TEXT NOT NULL, aiRaw TEXT NOT NULL, aiConfidence REAL, createdAt INTEGER NOT NULL)")
+                }
+            })
+            .build()
 
     @Provides
     fun provideDraftDao(database: SecondBrainDatabase) = database.ocrDraftDao()
+
+    @Provides
+    fun provideStudyArchiveDraftDao(database: SecondBrainDatabase) = database.studyArchiveDraftDao()
 
     @Provides
     fun provideRagSource(client: com.secondbrain.android.rag.RagStreamClient): com.secondbrain.android.rag.RagAnswerSource = client
@@ -58,7 +69,7 @@ object NetworkModule {
             response
         })
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
         .build()
 
     @Provides @Singleton

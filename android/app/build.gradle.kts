@@ -10,6 +10,13 @@ android {
     namespace = "com.secondbrain.android"
     compileSdk = 35
 
+    // 真机联调时地址随网络环境变化，允许 Android Studio 的 Gradle 属性或环境变量覆盖，
+    // 避免把已经失效的虚拟网卡地址写进 APK 后只能通过重新改源码修复连接问题。
+    val debugApiBaseUrl = providers.gradleProperty("secondBrainApiBaseUrl")
+        .orElse(providers.environmentVariable("SECOND_BRAIN_API_BASE_URL"))
+        .orElse("http://10.161.179.104:8080/api/")
+        .get()
+
     defaultConfig {
         applicationId = "com.secondbrain.android"
         minSdk = 26
@@ -21,8 +28,8 @@ android {
 
     buildTypes {
         debug {
-            // This address is reachable only by devices on the same LAN during local development.
-            buildConfigField("String", "API_BASE_URL", "\"http://172.25.82.104:8080/api/\"")
+            // 设备必须与后端主机互通；USB 调试也可以传入 http://127.0.0.1:8080/api/ 并配合 adb reverse。
+            buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
         }
         release {
             // A release artifact must receive its real HTTPS endpoint from the signing/release pipeline.

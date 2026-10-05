@@ -94,6 +94,8 @@ private sealed interface FullScreenDestination {
     data object Capture : FullScreenDestination
     data object Rag : FullScreenDestination
     data object Review : FullScreenDestination
+    data object StudyArchive : FullScreenDestination
+    data object Vocabulary : FullScreenDestination
     data class Knowledge(val id: Long) : FullScreenDestination
     data class Post(val post: com.secondbrain.android.data.remote.SquarePost) : FullScreenDestination
     data class Question(val question: com.secondbrain.android.data.remote.CommunityQuestion) : FullScreenDestination
@@ -130,6 +132,8 @@ private fun AppShell() {
             FullScreenDestination.Capture -> listOf("capture")
             FullScreenDestination.Rag -> listOf("rag")
             FullScreenDestination.Review -> listOf("review")
+            FullScreenDestination.StudyArchive -> listOf("study-archive")
+            FullScreenDestination.Vocabulary -> listOf("vocabulary")
             is FullScreenDestination.Knowledge -> listOf("knowledge", destination.id.toString())
             is FullScreenDestination.Post -> listOf("post", destination.post.postId.toString())
             is FullScreenDestination.Question -> listOf("question", destination.question.id.toString())
@@ -139,6 +143,8 @@ private fun AppShell() {
             "capture" -> FullScreenDestination.Capture
             "rag" -> FullScreenDestination.Rag
             "review" -> FullScreenDestination.Review
+            "study-archive" -> FullScreenDestination.StudyArchive
+            "vocabulary" -> FullScreenDestination.Vocabulary
             "knowledge" -> FullScreenDestination.Knowledge(route[1].toLong())
             "post" -> FullScreenDestination.Post(com.secondbrain.android.data.remote.SquarePost(route[1].toLong()))
             "question" -> FullScreenDestination.Question(com.secondbrain.android.data.remote.CommunityQuestion(route[1].toLong(), ""))
@@ -161,6 +167,14 @@ private fun AppShell() {
                 onBack = { fullScreen = null },
                 onOpenKnowledge = { id -> fullScreen = FullScreenDestination.Knowledge(id) }
             )
+            return
+        }
+        FullScreenDestination.StudyArchive -> {
+            StudyArchiveScreen(onBack = { fullScreen = null })
+            return
+        }
+        FullScreenDestination.Vocabulary -> {
+            VocabularyArticleScreen(onBack = { fullScreen = null })
             return
         }
         is FullScreenDestination.Knowledge -> {
@@ -216,6 +230,8 @@ private fun AppShell() {
                 padding = padding,
                 onOpenRag = { fullScreen = FullScreenDestination.Rag },
                 onOpenCapture = { fullScreen = FullScreenDestination.Capture },
+                onOpenStudyArchive = { fullScreen = FullScreenDestination.StudyArchive },
+                onOpenVocabulary = { fullScreen = FullScreenDestination.Vocabulary },
                 onOpenReview = { cardId -> reviewViewModel.loadFrom(cardId); fullScreen = FullScreenDestination.Review }
             )
             1 -> KnowledgeScreen(padding, onOpen = { fullScreen = FullScreenDestination.Knowledge(it) })
@@ -402,6 +418,8 @@ private fun TodayScreen(
     padding: PaddingValues,
     onOpenRag: () -> Unit,
     onOpenCapture: () -> Unit,
+    onOpenStudyArchive: () -> Unit,
+    onOpenVocabulary: () -> Unit,
     onOpenReview: (Long?) -> Unit,
     viewModel: TodayViewModel = hiltViewModel()
 ) {
@@ -436,6 +454,8 @@ private fun TodayScreen(
                 item { TodayExploreHeader() }
                 item { TodayExploreRow("问问知识库", "基于已有资料获得回答", Icons.Outlined.ChatBubbleOutline, onOpenRag) }
                 item { TodayExploreRow("采集新知识", "图片、链接或手动记录", Icons.Outlined.Add, onOpenCapture, MaterialTheme.colorScheme.tertiaryContainer) }
+                item { TodayExploreRow("错题本与疑问箱", "归档原题，自己决定何时复盘", Icons.Outlined.Description, onOpenStudyArchive) }
+                item { TodayExploreRow("词表文章", "上传背词截图，在语境里重逢这些词", Icons.Outlined.MenuBook, onOpenVocabulary) }
             }
             is LoadState.Failure -> item { EmptyState(viewState.message, viewModel::load) }
             is LoadState.Content -> {
@@ -443,6 +463,8 @@ private fun TodayScreen(
                 item { TodayExploreHeader() }
                 item { TodayExploreRow("问问知识库", "基于已有资料获得回答", Icons.Outlined.ChatBubbleOutline, onOpenRag) }
                 item { TodayExploreRow("采集新知识", "图片、链接或手动记录", Icons.Outlined.Add, onOpenCapture, MaterialTheme.colorScheme.tertiaryContainer) }
+                item { TodayExploreRow("错题本与疑问箱", "归档原题，自己决定何时复盘", Icons.Outlined.Description, onOpenStudyArchive) }
+                item { TodayExploreRow("词表文章", "上传背词截图，在语境里重逢这些词", Icons.Outlined.MenuBook, onOpenVocabulary) }
             }
         }
     }
@@ -829,7 +851,8 @@ private fun ProfileScreen(
 ) {
     var remindersOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
     var draftsOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
-    BackHandler(enabled = remindersOpen || draftsOpen) { remindersOpen = false; draftsOpen = false }
+    var visionOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
+    BackHandler(enabled = remindersOpen || draftsOpen || visionOpen) { remindersOpen = false; draftsOpen = false; visionOpen = false }
     if (remindersOpen) {
         ReminderSettingsScreen(onBack = { remindersOpen = false })
         return
@@ -838,7 +861,12 @@ private fun ProfileScreen(
         DraftRecoveryScreen(onBack = { draftsOpen = false }, onOpenCapture = onOpenCapture)
         return
     }
-    WorkspaceProfile(padding, viewModel, onReminders = { remindersOpen = true }, onDrafts = { draftsOpen = true })
+    if (visionOpen) {
+        VisionSettingsScreen(onBack = { visionOpen = false })
+        return
+    }
+    WorkspaceProfile(padding, viewModel, onReminders = { remindersOpen = true },
+        onDrafts = { draftsOpen = true }, onVisionSettings = { visionOpen = true })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

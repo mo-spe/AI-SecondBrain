@@ -33,13 +33,33 @@ data class CreateKnowledgeRequest(val title: String, val summary: String, val co
 data class WorkspaceSwitchResponse(val token: String, val workspaceId: Long? = null)
 
 @JsonClass(generateAdapter = true)
-data class ReviewCard(val id: Long, val nodeId: Long? = null, val nodeTitle: String? = null, val question: String, val answer: String? = null, val cardType: String? = null)
+data class ReviewCard(
+    val id: Long,
+    val nodeId: Long? = null,
+    val nodeTitle: String? = null,
+    val question: String,
+    val answer: String? = null,
+    val cardType: String? = null,
+    val difficulty: Int? = null,
+    val reviewCount: Int? = null,
+    val masteryLevel: Int? = null,
+    val nextReviewTime: String? = null,
+    val status: Int? = null,
+    val generationType: String? = null
+)
 
 @JsonClass(generateAdapter = true)
 data class SubmitReviewRequest(val cardId: Long, val userAnswer: String, val duration: Int)
 
 @JsonClass(generateAdapter = true)
-data class ReviewResult(val isCorrect: Boolean, val correctAnswer: String? = null, val explanation: String? = null, val message: String? = null)
+data class ReviewResult(
+    val isCorrect: Boolean,
+    val correctAnswer: String? = null,
+    val explanation: String? = null,
+    val message: String? = null,
+    val nextReviewTime: String? = null,
+    val masteryLevel: Int? = null
+)
 
 @JsonClass(generateAdapter = true)
 data class RagRequest(val question: String, val topK: Int = 3, val includeReferences: Boolean = true, val sessionId: Long? = null)
@@ -70,6 +90,181 @@ data class CommunityAnswer(val id: Long, val authorName: String? = null, val con
 
 @JsonClass(generateAdapter = true)
 data class CreateCommunityAnswerRequest(val content: String, val knowledgeNodeIds: List<Long> = emptyList())
+
+@JsonClass(generateAdapter = true)
+data class StudyTextRequest(val text: String)
+
+@JsonClass(generateAdapter = true)
+data class StudyAiSuggestion(
+    val raw: String,
+    val subject: String? = null,
+    val chapter: String? = null,
+    val knowledgePoints: List<String> = emptyList(),
+    val errorType: String? = null,
+    val confidence: Double? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class VisualQuestionSuggestion(
+    val raw: String,
+    val questionText: String = "",
+    val subject: String = "",
+    val chapter: String = "",
+    val knowledgePoints: List<String> = emptyList(),
+    val errorType: String = "不确定",
+    val needsConfirmation: List<String> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class AiProviderOption(val id: Long, val code: String, val name: String,
+                            val apiType: String = "openai_compatible")
+
+@JsonClass(generateAdapter = true)
+data class AiScenarioConfig(val scenarioCode: String, val providerId: Long, val modelName: String,
+                            val apiKey: String? = null)
+
+@JsonClass(generateAdapter = true)
+data class VocabularyCandidate(val word: String, val sourceImageIndex: Int, val uncertain: Boolean)
+
+@JsonClass(generateAdapter = true)
+data class VocabularyExtraction(val words: List<VocabularyCandidate> = emptyList())
+
+@JsonClass(generateAdapter = true)
+data class VisionReadiness(val ready: Boolean, val message: String)
+
+@JsonClass(generateAdapter = true)
+data class VocabularyGenerateRequest(val words: List<String>, val topic: String, val difficulty: String)
+
+@JsonClass(generateAdapter = true)
+data class VocabularyArticle(val id: Long, val words: List<String>, val article: String,
+                             val meanings: Map<String, String> = emptyMap(),
+                             val missingWords: List<String> = emptyList(),
+                             val topic: String, val difficulty: String, val createTime: String = "")
+
+@JsonClass(generateAdapter = true)
+data class VocabularyArticleSummary(val id: Long, val topic: String, val difficulty: String,
+                                    val wordCount: Int, val coveredCount: Int, val createTime: String = "")
+
+@JsonClass(generateAdapter = true)
+data class CreateWrongQuestionRequest(
+    val imagePath: String,
+    val ocrText: String? = null,
+    val userAnswer: String? = null,
+    val correctAnswer: String? = null,
+    val explanation: String? = null,
+    val subject: String? = null,
+    val sourceBook: String? = null,
+    val sourcePage: String? = null,
+    val chapter: String? = null,
+    val knowledgePoints: List<String> = emptyList(),
+    val errorType: String? = null,
+    val userNote: String? = null,
+    val aiSuggestionJson: String? = null,
+    val aiConfidence: Double? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class WrongQuestionRecord(
+    val id: Long,
+    val imagePath: String,
+    val ocrText: String? = null,
+    val userAnswer: String? = null,
+    val correctAnswer: String? = null,
+    val explanation: String? = null,
+    val subject: String? = null,
+    val sourceBook: String? = null,
+    val sourcePage: String? = null,
+    val chapter: String? = null,
+    val knowledgePoints: String? = null,
+    val errorType: String? = null,
+    val userNote: String? = null,
+    val aiSuggestionJson: String? = null,
+    val aiConfidence: Double? = null,
+    val reviewStatus: String,
+    val nextReviewTime: String? = null,
+    val lastReviewTime: String? = null,
+    val createTime: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class WrongQuestionReviewLog(val id: Long, val result: String, val note: String? = null, val createTime: String? = null)
+
+@JsonClass(generateAdapter = true)
+data class WrongQuestionDetail(val record: WrongQuestionRecord, val reviews: List<WrongQuestionReviewLog> = emptyList())
+
+@JsonClass(generateAdapter = true)
+data class CreateDoubtRequest(
+    val content: String,
+    val imagePath: String? = null,
+    val sourceBook: String? = null,
+    val sourcePage: String? = null,
+    val chapter: String? = null,
+    val doubtType: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DoubtRecord(
+    val id: Long,
+    val imagePath: String? = null,
+    val content: String,
+    val sourceBook: String? = null,
+    val sourcePage: String? = null,
+    val chapter: String? = null,
+    val doubtType: String? = null,
+    val status: String,
+    val aiExplanationFeedback: String? = null,
+    val nextProcessTime: String? = null,
+    val createTime: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DoubtUnderstandingRevision(
+    val id: Long,
+    val content: String,
+    val understandingStatus: String,
+    val createTime: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DoubtDetail(val record: DoubtRecord, val understandings: List<DoubtUnderstandingRevision> = emptyList())
+
+@JsonClass(generateAdapter = true)
+data class AddUnderstandingRequest(val content: String, val understandingStatus: String = "INITIAL")
+
+@JsonClass(generateAdapter = true)
+data class UpdateDoubtRequest(
+    val status: String? = null,
+    val content: String? = null,
+    val sourceBook: String? = null,
+    val sourcePage: String? = null,
+    val chapter: String? = null,
+    val doubtType: String? = null,
+    val aiExplanationFeedback: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class StudyScheduleRequest(val scheduledAt: String?)
+
+@JsonClass(generateAdapter = true)
+data class WrongQuestionReviewRequest(val result: String, val note: String? = null)
+
+@JsonClass(generateAdapter = true)
+data class UpdateWrongQuestionRequest(
+    val subject: String? = null,
+    val ocrText: String? = null,
+    val userAnswer: String? = null,
+    val correctAnswer: String? = null,
+    val explanation: String? = null,
+    val sourceBook: String? = null,
+    val sourcePage: String? = null,
+    val chapter: String? = null,
+    val knowledgePoints: List<String> = emptyList(),
+    val errorType: String? = null,
+    val userNote: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TodayStudyArchives(val wrongQuestions: List<WrongQuestionRecord> = emptyList(), val doubts: List<DoubtRecord> = emptyList())
 
 @JsonClass(generateAdapter = true)
 data class PageResult<T>(val records: List<T> = emptyList(), val total: Long = 0)

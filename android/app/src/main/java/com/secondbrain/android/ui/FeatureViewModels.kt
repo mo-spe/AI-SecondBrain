@@ -23,12 +23,36 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
+import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 sealed interface LoadState<out T> {
     data object Loading : LoadState<Nothing>
     data class Content<T>(val value: T) : LoadState<T>
     data class Empty(val message: String) : LoadState<Nothing>
     data class Failure(val message: String) : LoadState<Nothing>
+}
+
+/**
+ * 将底层网络异常转换成可行动的提示，避免把设备 IP、端口和 OkHttp 内部信息直接展示给用户。
+ *
+ * <p>详细异常仍然保留在调用链中，调用方可以在接入统一日志后记录；界面只告诉用户检查网络和 API 地址。</p>
+ */
+internal fun userFacingLoadError(error: Throwable, fallback: String): String {
+    var current: Throwable? = error
+    while (current != null) {
+        if (current.message?.contains("maximum upload size exceeded", ignoreCase = true) == true) {
+            return "照片仍超过上传限制；本机草稿已保留，请换一张较小的照片后重试。"
+        }
+        if (current is ConnectException || current is SocketTimeoutException
+            || current is UnknownHostException || current is IOException) {
+            return "无法连接服务器，请确认手机与电脑在同一网络，或重新配置 API 地址后重试。"
+        }
+        current = current.cause
+    }
+    return error.message ?: fallback
 }
 
 @HiltViewModel
@@ -58,7 +82,7 @@ class KnowledgeViewModel @Inject constructor(private val repository: KnowledgeRe
                     _listing.value = _listing.value.copy(total = it.total)
                     _state.value = if (it.records.isEmpty()) LoadState.Empty(if (_listing.value.keyword == null) "还没有知识点，试试从采集开始。" else "没有找到匹配的知识，试试其他关键词。") else LoadState.Content(it.records)
                 },
-                onFailure = { _state.value = LoadState.Failure(it.message ?: "知识加载失败") }
+                onFailure = { _state.value = LoadState.Failure(userFacingLoadError(it, "知识加载失败")) }
             )
         }.also { loadJob = it }
     }
@@ -96,7 +120,7 @@ class TodayViewModel @Inject constructor(private val api: SecondBrainApi, sessio
             ensureActive()
             result.fold(
                 { _state.value = if (it.isEmpty()) LoadState.Empty("今天没有待复习卡片。") else LoadState.Content(it) },
-                { _state.value = LoadState.Failure(it.message ?: "复习计划加载失败") }
+                { _state.value = LoadState.Failure(userFacingLoadError(it, "复习计划加载失败")) }
             )
         }.also { loadJob = it }
     }
@@ -113,14 +137,14 @@ class CommunityViewModel @Inject constructor(private val api: SecondBrainApi) : 
         _square.value = LoadState.Loading
         runCatching { api.square().requireData().records }.fold(
             { _square.value = if (it.isEmpty()) LoadState.Empty("暂时没有公开分享。") else LoadState.Content(it) },
-            { _square.value = LoadState.Failure(it.message ?: "广场加载失败") }
+            { _square.value = LoadState.Failure(userFacingLoadError(it, "广场加载失败")) }
         )
     }
     fun loadQuestions() = viewModelScope.launch {
         _questions.value = LoadState.Loading
         runCatching { api.questions().requireData().records }.fold(
             { _questions.value = if (it.isEmpty()) LoadState.Empty("暂时没有公开问题。") else LoadState.Content(it) },
-            { _questions.value = LoadState.Failure(it.message ?: "问答加载失败") }
+            { _questions.value = LoadState.Failure(userFacingLoadError(it, "问答加载失败")) }
         )
     }
     suspend fun toggleLike(id: Long): Boolean = api.toggleLike(id).requireData().also { loadSquare() }
@@ -145,7 +169,7 @@ class WorkspaceViewModel @Inject constructor(
         _state.value = LoadState.Loading
         runCatching { api.workspaces().requireData() }.fold(
             { _state.value = LoadState.Content(it) },
-            { _state.value = LoadState.Failure(it.message ?: "工作区加载失败") }
+            { _state.value = LoadState.Failure(userFacingLoadError(it, "工作区加载失败")) }
         )
     }
 

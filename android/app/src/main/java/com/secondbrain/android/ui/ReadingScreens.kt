@@ -161,7 +161,9 @@ internal fun SquarePostScreen(post: SquarePost, onBack: () -> Unit, onLike: susp
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewModel, onReminders: () -> Unit, onDrafts: () -> Unit) {
+internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewModel,
+                              onReminders: () -> Unit, onDrafts: () -> Unit,
+                              onVisionSettings: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val selection by viewModel.selection.collectAsState()
     var switcherOpen by remember { mutableStateOf(false) }
@@ -227,6 +229,8 @@ internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewMo
         item { SectionHeading("学习管理") }
         item { SettingsRow("复习提醒", "按计划提醒，保持学习节奏", Icons.Outlined.AutoAwesome, onClick = onReminders) }
         item { SettingsRow("采集草稿", "快速保存灵感，整理到知识库", Icons.Outlined.Collections, onClick = onDrafts) }
+        item { SettingsRow("视觉识别设置", "为精准识别和词表文章配置个人 API Key", Icons.Outlined.AutoAwesome,
+            onClick = onVisionSettings) }
     }
     if (switcherOpen) {
         ModalBottomSheet(onDismissRequest = { switcherOpen = false }) {
