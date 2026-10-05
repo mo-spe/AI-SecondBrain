@@ -376,11 +376,11 @@
                 <template v-else>
                   <el-tag type="success" size="small">已加入</el-tag>
                   <el-button
-                    type="warning"
+                    type="primary"
                     size="small"
                     text
-                    @click="handleRejoinPool(item)"
-                  >重新加入</el-button>
+                    @click="activeTab = 'myPlan'; loadReviewCards()"
+                  >查看计划</el-button>
                 </template>
               </div>
             </div>
@@ -1269,8 +1269,6 @@ const submitReview = async () => {
     };
 
     ElMessage.success("提交成功");
-
-    loadReviewCards();
   } catch (error) {
     ElMessage.error("提交失败：" + error.message);
   } finally {
@@ -1455,20 +1453,6 @@ const handleJoinPool = async (item) => {
     loadReviewCards();
   } catch (e) {
     ElMessage.error("加入失败");
-  }
-};
-
-const handleRejoinPool = async (item) => {
-  try {
-    await ElMessageBox.confirm(
-      "重新加入将创建一份全新的复习副本，旧进度会保留为历史记录。",
-      "确认重新加入",
-      { confirmButtonText: "确定", cancelButtonText: "取消", type: "info" }
-    );
-    await reviewAPI.joinPool(item.id);
-    ElMessage.success("已重新加入");
-  } catch (e) {
-    if (e !== "cancel") ElMessage.error("操作失败");
   }
 };
 
