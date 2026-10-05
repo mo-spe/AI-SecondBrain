@@ -27,6 +27,15 @@ public interface AiService {
     AiCallConfig resolveConfig(Long userId, String scenarioCode);
 
     /**
+     * 校验用户的视觉模型配置，并供上传前检查与真实识别共用。
+     *
+     * @param userId 当前用户
+     * @param scenarioCode 视觉场景代码
+     * @return 可用于图片识别的配置
+     */
+    AiCallConfig resolveVisionConfig(Long userId, String scenarioCode);
+
+    /**
      * 使用用户配置生成答案.
      *
      * @param userId       用户ID
@@ -35,6 +44,19 @@ public interface AiService {
      * @return 答案内容
      */
     String generateAnswer(Long userId, String scenarioCode, String prompt);
+
+    /**
+     * 使用当前用户自行配置的视觉模型分析图片，不能回退到系统密钥。
+     *
+     * @param userId 当前用户标识
+     * @param scenarioCode 视觉模型场景
+     * @param prompt 识别要求
+     * @param images 图片字节列表
+     * @param mimeTypes 与图片一一对应的 MIME 类型
+     * @return 模型返回的文本
+     */
+    String analyzeImages(Long userId, String scenarioCode, String prompt,
+                         List<byte[]> images, List<String> mimeTypes);
 
     /**
      * 使用用户配置生成题目.

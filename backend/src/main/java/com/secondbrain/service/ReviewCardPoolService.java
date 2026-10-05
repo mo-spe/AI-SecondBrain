@@ -31,12 +31,12 @@ public interface ReviewCardPoolService {
     ReviewCardPoolVO getPoolDetail(Long poolId, Long userId);
 
     /**
-     * 加入复习（生成个人副本）.
-     * <p>已有非归档副本时归档旧副本并生成新副本（重新加入）</p>
+     * 加入复习（生成或返回个人副本）。
+     * <p>重复加入保持幂等，已有非归档副本时直接返回原副本；重新开始需要独立的用户操作。</p>
      *
      * @param poolId 池子题目ID
      * @param userId 当前用户ID
-     * @return 新生成的个人副本
+     * @return 已存在或新创建的个人副本
      */
     UserReviewCard joinPool(Long poolId, Long userId);
 

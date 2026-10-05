@@ -2,8 +2,10 @@ package com.secondbrain.config;
 
 import com.secondbrain.entity.KnowledgeNode;
 import com.secondbrain.entity.ReviewCard;
+import com.secondbrain.entity.UserReviewCard;
 import com.secondbrain.mapper.KnowledgeNodeMapper;
 import com.secondbrain.mapper.ReviewCardMapper;
+import com.secondbrain.mapper.UserReviewCardMapper;
 import com.secondbrain.service.ReviewCardService;
 import com.secondbrain.service.NotificationService;
 import org.quartz.JobExecutionContext;
@@ -27,6 +29,7 @@ public class ReviewJob extends QuartzJobBean {
     private final ReviewCardService reviewCardService;
     private final KnowledgeNodeMapper knowledgeNodeMapper;
     private final ReviewCardMapper reviewCardMapper;
+    private final UserReviewCardMapper userReviewCardMapper;
     private final NotificationService notificationService;
 
     /**
@@ -35,15 +38,18 @@ public class ReviewJob extends QuartzJobBean {
      * @param reviewCardService   复习卡片服务
      * @param knowledgeNodeMapper 知识点 Mapper
      * @param reviewCardMapper    复习卡片 Mapper
+     * @param userReviewCardMapper 用户复习副本 Mapper
      * @param notificationService 通知服务
      */
     public ReviewJob(ReviewCardService reviewCardService,
                      KnowledgeNodeMapper knowledgeNodeMapper,
                      ReviewCardMapper reviewCardMapper,
+                     UserReviewCardMapper userReviewCardMapper,
                      NotificationService notificationService) {
         this.reviewCardService = reviewCardService;
         this.knowledgeNodeMapper = knowledgeNodeMapper;
         this.reviewCardMapper = reviewCardMapper;
+        this.userReviewCardMapper = userReviewCardMapper;
         this.notificationService = notificationService;
     }
 
@@ -85,6 +91,14 @@ public class ReviewJob extends QuartzJobBean {
         
         for (KnowledgeNode node : nodesNeedReview) {
             try {
+                // 复习排期现在由个人卡片的 nextReviewTime 驱动；知识点到期时若已有卡片，
+                // 只需让原卡片重新进入队列，不能再次生成题目造成重复。
+                List<ReviewCard> existingCards = reviewCardService.getReviewCardsByNodeId(
+                        node.getId(), node.getUserId(), node.getWorkspaceId());
+                if (existingCards != null && !existingCards.isEmpty()) {
+                    log.debug("知识点已有复习卡片，跳过重复生成 nodeId={} count={}", node.getId(), existingCards.size());
+                    continue;
+                }
                 ReviewCard card = reviewCardService.generateReviewCard(node.getId(), "choice", "auto", node.getUserId());
                 if (card != null) {
                     generatedCount++;
@@ -103,32 +117,49 @@ public class ReviewJob extends QuartzJobBean {
     private void sendDailyReviewNotifications() {
         log.info("开始发送每日复习提醒");
 
+        LocalDateTime now = LocalDateTime.now();
+        java.util.Map<Long, Integer> userPendingCounts = new java.util.HashMap<>();
+
+        // 新题目池模型的排期保存在用户个人副本中，必须和旧表一起统计才能覆盖全部用户。
+        List<UserReviewCard> personalCards = userReviewCardMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserReviewCard>()
+                        .eq(UserReviewCard::getIsArchived, 0)
+                        .and(status -> status.eq(UserReviewCard::getStatus, 0)
+                                .or()
+                                .eq(UserReviewCard::getStatus, 1))
+                        .and(due -> due.isNull(UserReviewCard::getNextReviewTime)
+                                .or()
+                                .le(UserReviewCard::getNextReviewTime, now))
+        );
+        for (UserReviewCard card : personalCards) {
+            userPendingCounts.merge(card.getUserId(), 1, Integer::sum);
+        }
+
+        // 旧表继续保留兼容查询，避免存量卡片在迁移期间漏掉提醒。
         List<ReviewCard> todayCards = reviewCardMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewCard>()
-                        .eq(ReviewCard::getStatus, 0)
+                        .and(status -> status.eq(ReviewCard::getStatus, 0)
+                                .or()
+                                .eq(ReviewCard::getStatus, 1))
                         .eq(ReviewCard::getDeleted, 0)
-                        .le(ReviewCard::getNextReviewTime, LocalDateTime.now())
+                        .and(due -> due.isNull(ReviewCard::getNextReviewTime)
+                                .or()
+                                .le(ReviewCard::getNextReviewTime, now))
         );
-
-        java.util.Map<Long, List<ReviewCard>> userCards = new java.util.HashMap<>();
         for (ReviewCard card : todayCards) {
-            userCards.computeIfAbsent(card.getUserId(), k -> new java.util.ArrayList<>()).add(card);
+            userPendingCounts.merge(card.getUserId(), 1, Integer::sum);
         }
 
-        for (java.util.Map.Entry<Long, List<ReviewCard>> entry : userCards.entrySet()) {
+        for (java.util.Map.Entry<Long, Integer> entry : userPendingCounts.entrySet()) {
             Long userId = entry.getKey();
-            List<ReviewCard> cards = entry.getValue();
+            int pendingCount = entry.getValue();
 
-            log.info("用户{}今日待复习卡片数：{}", userId, cards.size());
+            log.info("用户{}今日待复习卡片数：{}", userId, pendingCount);
 
-            notificationService.sendDailyReviewNotification(userId, cards.size());
-
-            for (ReviewCard card : cards) {
-                log.debug("卡片ID：{}，下次复习时间：{}", card.getId(), card.getNextReviewTime());
-            }
+            notificationService.sendDailyReviewNotification(userId, pendingCount);
         }
 
-        log.info("每日复习提醒发送完成，共{}个用户", userCards.size());
+        log.info("每日复习提醒发送完成，共{}个用户", userPendingCounts.size());
     }
 
     private void generateWeeklyReport() {

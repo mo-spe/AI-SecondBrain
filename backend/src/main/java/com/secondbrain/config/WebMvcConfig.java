@@ -14,7 +14,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
             "/chat/**", "/knowledge/**", "/review/**", "/deerflow/**", "/rag/**", "/report/**",
             "/async-task/**", "/workspace/**", "/admin/**", "/share/**", "/square/**", "/community/**",
             "/notification/**", "/statistics/**", "/user/**", "/gamification/**", "/tags/**", "/ai/**",
-            "/sessions/**", "/research/**"
+            "/sessions/**", "/research/**", "/study/**", "/vocabulary/**"
     };
 
     private final JwtInterceptor jwtInterceptor;

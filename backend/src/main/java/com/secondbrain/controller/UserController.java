@@ -177,6 +177,6 @@ public class UserController {
         String avatarUrl = fileService.uploadAvatar(file, userId);
         userService.updateAvatar(userId, avatarUrl);
         log.info("头像上传成功，userId: {}, avatarUrl: {}", userId, avatarUrl);
-        return Result.success(avatarUrl);
+        return Result.success("头像上传成功", avatarUrl);
     }
 }

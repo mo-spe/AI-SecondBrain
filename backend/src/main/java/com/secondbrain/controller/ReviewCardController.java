@@ -103,6 +103,9 @@ public class ReviewCardController {
                 .sorted((a, b) -> {
                     switch (sortBy) {
                         case "time":
+                            if (a.getNextReviewTime() == null && b.getNextReviewTime() == null) return 0;
+                            if (a.getNextReviewTime() == null) return -1;
+                            if (b.getNextReviewTime() == null) return 1;
                             return a.getNextReviewTime().compareTo(b.getNextReviewTime());
                         case "difficulty":
                             return b.getDifficulty().compareTo(a.getDifficulty());

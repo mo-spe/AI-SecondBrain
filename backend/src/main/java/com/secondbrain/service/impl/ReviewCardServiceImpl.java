@@ -190,6 +190,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     @Override
     public List<ReviewCard> getTodayReviewCards(Long userId, Long workspaceId) {
         List<ReviewCard> result = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
 
         // 新数据源：user_review_card
         LambdaQueryWrapper<UserReviewCard> urcWrapper = new LambdaQueryWrapper<>();
@@ -197,8 +198,8 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         if (workspaceId != null && workspaceId > 0) {
             urcWrapper.eq(UserReviewCard::getWorkspaceId, workspaceId);
         }
-        urcWrapper.eq(UserReviewCard::getStatus, 0);
         urcWrapper.eq(UserReviewCard::getIsArchived, 0);
+        applyActiveDueFilterForUserReviewCard(urcWrapper, now);
         urcWrapper.orderByAsc(UserReviewCard::getNextReviewTime);
         List<UserReviewCard> urcList = userReviewCardMapper.selectList(urcWrapper);
 
@@ -212,8 +213,8 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         if (workspaceId != null && workspaceId > 0) {
             oldWrapper.eq(ReviewCard::getWorkspaceId, workspaceId);
         }
-        oldWrapper.eq(ReviewCard::getStatus, 0);
         oldWrapper.eq(ReviewCard::getDeleted, 0);
+        applyActiveDueFilterForReviewCard(oldWrapper, now);
         oldWrapper.orderByAsc(ReviewCard::getNextReviewTime);
         List<ReviewCard> oldCards = reviewCardMapper.selectList(oldWrapper);
         result.addAll(oldCards);
@@ -313,7 +314,8 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         urc.setMasteryLevel(ebbinghausService.calculateMasteryLevel(urc.getReviewCount(), accuracy));
         urc.setMemoryStrength(ebbinghausService.calculateMemoryStrength(urc.getReviewCount(), accuracy));
         urc.setLastReviewTime(LocalDateTime.now());
-        urc.setStatus(1);
+        // 卡片完成一次复习后仍保持活动状态，是否再次出现由 nextReviewTime 决定；掌握度高也不能永久移出队列。
+        urc.setStatus(0);
 
         userReviewCardMapper.updateById(urc);
 
@@ -328,14 +330,15 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
         gamificationService.awardReviewPoints(userId, difficulty, isCorrect, urc.getId());
 
+        updateReviewScheduleForUrc(urc, isCorrect);
         if ("auto".equals(generationType)) {
-            updateReviewScheduleForUrc(urc, isCorrect);
             syncToKnowledgeNodeForUrc(urc);
         }
 
         String explanation = extractExplanation(questionText);
         String message = isCorrect ? "回答正确！继续保持！" : "回答错误，正确答案是：" + correctAnswer;
-        return new ReviewResultDTO(isCorrect, correctAnswer, explanation, message);
+        return new ReviewResultDTO(isCorrect, correctAnswer, explanation, message,
+                urc.getNextReviewTime(), urc.getMasteryLevel());
     }
 
     /**
@@ -363,7 +366,8 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         card.setMasteryLevel(ebbinghausService.calculateMasteryLevel(card.getReviewCount(), accuracy));
         card.setMemoryStrength(ebbinghausService.calculateMemoryStrength(card.getReviewCount(), accuracy));
         card.setLastReviewTime(LocalDateTime.now());
-        card.setStatus(1);
+        // 旧表卡片也遵循“状态表示生命周期、时间决定是否到期”的规则，避免掌握后永久离队。
+        card.setStatus(0);
         reviewCardMapper.updateById(card);
 
         // 写入复习日志（保证今日已复习统计可用）
@@ -377,14 +381,15 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
         gamificationService.awardReviewPoints(userId, card.getDifficulty(), isCorrect, cardId);
 
+        updateReviewSchedule(cardId, isCorrect);
         if ("auto".equals(card.getGenerationType())) {
-            updateReviewSchedule(cardId, isCorrect);
             syncToKnowledgeNode(card);
         }
 
         String explanation = extractExplanation(card.getQuestion());
         String message = isCorrect ? "回答正确！继续保持！" : "回答错误，正确答案是：" + card.getAnswer();
-        return new ReviewResultDTO(isCorrect, card.getAnswer(), explanation, message);
+        return new ReviewResultDTO(isCorrect, card.getAnswer(), explanation, message,
+                card.getNextReviewTime(), card.getMasteryLevel());
     }
 
     private boolean checkAnswerStr(String correctAnswer, String userAnswer) {
@@ -415,7 +420,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
             return;
         }
         LocalDateTime nextReviewTime = ebbinghausService.calculateNextReviewTime(
-                card.getLastReviewTime(), card.getReviewCount(), isCorrect);
+                card.getLastReviewTime(), previousReviewCount(card.getReviewCount()), isCorrect);
         card.setNextReviewTime(nextReviewTime);
         reviewCardMapper.updateById(card);
         log.info("更新复习计划(旧) cardId={} isCorrect={} nextReviewTime={}", cardId, isCorrect, nextReviewTime);
@@ -423,7 +428,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
     private void updateReviewScheduleForUrc(UserReviewCard urc, boolean isCorrect) {
         LocalDateTime nextReviewTime = ebbinghausService.calculateNextReviewTime(
-                urc.getLastReviewTime(), urc.getReviewCount(), isCorrect);
+                urc.getLastReviewTime(), previousReviewCount(urc.getReviewCount()), isCorrect);
         urc.setNextReviewTime(nextReviewTime);
         userReviewCardMapper.updateById(urc);
         log.info("更新复习计划 urcId={} isCorrect={} nextReviewTime={}", urc.getId(), isCorrect, nextReviewTime);
@@ -690,15 +695,15 @@ public class ReviewCardServiceImpl implements ReviewCardService {
         if (workspaceId != null && workspaceId > 0) {
             urcWrapper.eq(UserReviewCard::getWorkspaceId, workspaceId);
         }
-        urcWrapper.eq(UserReviewCard::getStatus, 0);
         urcWrapper.eq(UserReviewCard::getIsArchived, 0);
+        applyActiveDueFilterForUserReviewCard(urcWrapper, LocalDateTime.now());
         count += userReviewCardMapper.selectCount(urcWrapper);
 
         // 旧表
         LambdaQueryWrapper<ReviewCard> oldWrapper = new LambdaQueryWrapper<>();
         applyUserOrWorkspaceFilter(oldWrapper, userId, workspaceId);
-        oldWrapper.eq(ReviewCard::getReviewCount, 0);
         oldWrapper.eq(ReviewCard::getDeleted, 0);
+        applyActiveDueFilterForReviewCard(oldWrapper, LocalDateTime.now());
         count += reviewCardMapper.selectCount(oldWrapper);
 
         return count;
@@ -1099,21 +1104,21 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
     private long countPendingOnDate(Long userId, Long workspaceId, LocalDate d) {
         LocalDateTime endOfDay = d.plusDays(1).atStartOfDay();
-        // 到某日 23:59:59 前应该复习但还没复习的数量 = nextReviewTime < endOfDay 且 reviewCount=0
+        // 历史统计按到期时间计算，已掌握状态的卡片到期后仍然属于待复习队列。
         long count = 0;
         LambdaQueryWrapper<UserReviewCard> urc = new LambdaQueryWrapper<>();
         urc.eq(UserReviewCard::getUserId, userId);
         if (workspaceId != null && workspaceId > 0) urc.eq(UserReviewCard::getWorkspaceId, workspaceId);
-        urc.eq(UserReviewCard::getStatus, 0);
         urc.eq(UserReviewCard::getIsArchived, 0);
+        urc.and(status -> status.eq(UserReviewCard::getStatus, 0).or().eq(UserReviewCard::getStatus, 1));
         urc.lt(UserReviewCard::getNextReviewTime, endOfDay);
         count += userReviewCardMapper.selectCount(urc);
 
         LambdaQueryWrapper<ReviewCard> old = new LambdaQueryWrapper<>();
         old.eq(ReviewCard::getUserId, userId);
         if (workspaceId != null && workspaceId > 0) old.eq(ReviewCard::getWorkspaceId, workspaceId);
-        old.eq(ReviewCard::getStatus, 0);
         old.eq(ReviewCard::getDeleted, 0);
+        old.and(status -> status.eq(ReviewCard::getStatus, 0).or().eq(ReviewCard::getStatus, 1));
         old.lt(ReviewCard::getNextReviewTime, endOfDay);
         count += reviewCardMapper.selectCount(old);
         return count;
@@ -1140,6 +1145,56 @@ public class ReviewCardServiceImpl implements ReviewCardService {
     }
 
     // ========== 私有辅助方法 ==========
+
+    /**
+     * 应用统一的活动卡片和到期条件。
+     *
+     * <p>状态 1 是历史数据中的“已掌握”，但掌握度不能让卡片永久离开间隔复习队列；
+     * 只有归档/删除或明确暂停的记录不再参与查询。</p>
+     *
+     * <p>与 ReviewCard 版本逻辑相同但操作实体不同；泛型擦除后两者签名一致，
+     * Java 不允许这种重载，因此必须使用不同方法名。</p>
+     *
+     * @param wrapper 用户个人副本查询条件
+     * @param now 当前服务端时间
+     */
+    private void applyActiveDueFilterForUserReviewCard(LambdaQueryWrapper<UserReviewCard> wrapper, LocalDateTime now) {
+        wrapper.and(status -> status
+                .eq(UserReviewCard::getStatus, 0)
+                .or()
+                .eq(UserReviewCard::getStatus, 1));
+        wrapper.and(due -> due
+                .isNull(UserReviewCard::getNextReviewTime)
+                .or()
+                .le(UserReviewCard::getNextReviewTime, now));
+    }
+
+    /**
+     * 应用统一的活动卡片和到期条件。
+     *
+     * @param wrapper 旧复习卡片查询条件
+     * @param now 当前服务端时间
+     */
+    private void applyActiveDueFilterForReviewCard(LambdaQueryWrapper<ReviewCard> wrapper, LocalDateTime now) {
+        wrapper.and(status -> status
+                .eq(ReviewCard::getStatus, 0)
+                .or()
+                .eq(ReviewCard::getStatus, 1));
+        wrapper.and(due -> due
+                .isNull(ReviewCard::getNextReviewTime)
+                .or()
+                .le(ReviewCard::getNextReviewTime, now));
+    }
+
+    /**
+     * 将累计复习次数转换为本次答题前的阶段索引，避免第一次答题跳过首个间隔。
+     *
+     * @param reviewCount 提交后的累计复习次数
+     * @return 本次答题前的复习次数
+     */
+    private int previousReviewCount(Integer reviewCount) {
+        return Math.max((reviewCount == null ? 0 : reviewCount) - 1, 0);
+    }
 
     private void applyUserOrWorkspaceFilter(LambdaQueryWrapper<ReviewCard> wrapper, Long userId, Long workspaceId) {
         wrapper.eq(ReviewCard::getUserId, userId);

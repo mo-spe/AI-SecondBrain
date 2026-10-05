@@ -174,7 +174,8 @@ public class UserAiConfigServiceImpl implements UserAiConfigService {
             }
             return plain.substring(0, 3) + "****" + plain.substring(plain.length() - 2);
         } catch (Exception e) {
-            return "****";
+            // 无法解密的旧密钥不能被标成“已配置”，否则客户端会阻止用户重新输入。
+            return null;
         }
     }
 }

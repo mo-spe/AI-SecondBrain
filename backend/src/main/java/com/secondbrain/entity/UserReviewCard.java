@@ -72,7 +72,9 @@ public class UserReviewCard {
     private LocalDateTime nextReviewTime;
 
     /**
-     * 状态（0=待复习，1=已掌握）
+     * 生命周期状态（0=活动，1=历史兼容的已掌握状态，2=暂停）
+     *
+     * <p>状态 1 仍可在 nextReviewTime 到期后进入复习队列，掌握度由 masteryLevel 表示。</p>
      */
     private Integer status;
 

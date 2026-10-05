@@ -45,7 +45,7 @@ public class ReportController {
         Long workspaceId = getWorkspaceId(httpRequest);
 
         String report = deerFlowReportService.generateLearningReport(userId, workspaceId, request.getTopic(), request.getDays());
-        return Result.success(report);
+        return Result.success("学习报告已生成", report);
     }
 
     /**

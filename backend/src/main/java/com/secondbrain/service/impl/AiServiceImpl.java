@@ -36,9 +36,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -120,7 +122,7 @@ public class AiServiceImpl implements AiService {
         }
 
         AiProvider provider = aiProviderMapper.selectById(config.getProviderId());
-        if (provider == null || provider.getIsEnabled() != 1) {
+        if (provider == null || !Integer.valueOf(1).equals(provider.getIsEnabled())) {
             throw new BusinessException(400, "AI服务商不可用");
         }
 
@@ -135,14 +137,14 @@ public class AiServiceImpl implements AiService {
         // 解析 API Key：场景级 → 服务商全局级
         String apiKey = null;
         if (config.getApiKey() != null && !config.getApiKey().isBlank()) {
-            apiKey = encryptionService.decrypt(config.getApiKey());
+            apiKey = decryptPersonalKey(config.getApiKey());
         } else {
             UserAiProviderKey providerKey = userAiProviderKeyMapper.selectOne(
                     new LambdaQueryWrapper<UserAiProviderKey>()
                             .eq(UserAiProviderKey::getUserId, userId)
                             .eq(UserAiProviderKey::getProviderId, provider.getId()));
             if (providerKey != null && providerKey.getApiKey() != null && !providerKey.getApiKey().isBlank()) {
-                apiKey = encryptionService.decrypt(providerKey.getApiKey());
+                apiKey = decryptPersonalKey(providerKey.getApiKey());
             }
         }
 
@@ -156,10 +158,98 @@ public class AiServiceImpl implements AiService {
         return callConfig;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public AiCallConfig resolveVisionConfig(Long userId, String scenarioCode) {
+        AiCallConfig config = resolveConfig(userId, scenarioCode);
+        if (!"openai_compatible".equals(config.getApiType())) {
+            throw new BusinessException(400, "当前视觉识别仅支持 OpenAI 兼容协议的服务商");
+        }
+        String model = config.getModelName();
+        if (model == null || !model.toLowerCase(Locale.ROOT)
+                .matches(".*(vl|vision|gpt-4o|gpt-4\\.1|gemini|glm-4v).*")) {
+            throw new BusinessException(400, "请选择支持图片输入的视觉模型");
+        }
+        if (model.toLowerCase(Locale.ROOT).startsWith("qwen")
+                && !"qwen".equals(config.getProviderCode())) {
+            throw new BusinessException(400, "Qwen 模型需选择通义千问服务商，并填写对应的 API Key");
+        }
+        if (config.getBaseUrl() == null || config.getBaseUrl().isBlank()) {
+            throw new BusinessException(400, "视觉模型服务地址未配置");
+        }
+        return config;
+    }
+
+    private String decryptPersonalKey(String encryptedKey) {
+        try {
+            return encryptionService.decrypt(encryptedKey);
+        } catch (RuntimeException exception) {
+            throw new BusinessException(400, "已保存的 API Key 无法读取，请重新输入并保存");
+        }
+    }
+
     @Override
     public String generateAnswer(Long userId, String scenarioCode, String prompt) {
         AiCallConfig config = resolveConfig(userId, scenarioCode);
         return executeCall(config, "你是一个专业的知识问答助手。", prompt);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String analyzeImages(Long userId, String scenarioCode, String prompt,
+                                List<byte[]> images, List<String> mimeTypes) {
+        if (images == null || images.isEmpty() || images.size() > 8 || mimeTypes == null
+                || images.size() != mimeTypes.size()) {
+            throw new BusinessException(400, "请选择 1 到 8 张图片");
+        }
+        AiCallConfig config = resolveVisionConfig(userId, scenarioCode);
+        String model = config.getModelName();
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("type", "text", "text", prompt));
+        for (int index = 0; index < images.size(); index++) {
+            byte[] image = images.get(index);
+            String mimeType = mimeTypes.get(index);
+            if (image == null || image.length == 0 || image.length > 10L * 1024 * 1024
+                    || !("image/jpeg".equals(mimeType) || "image/png".equals(mimeType)
+                    || "image/webp".equals(mimeType))) {
+                throw new BusinessException(400, "图片只支持不超过 10 MB 的 JPEG、PNG 或 WebP");
+            }
+            String dataUrl = "data:" + mimeType + ";base64," + Base64.getEncoder().encodeToString(image);
+            parts.add(Map.of("type", "image_url", "image_url", Map.of("url", dataUrl)));
+        }
+        String baseUrl = config.getBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new BusinessException(400, "视觉模型服务地址未配置");
+        }
+        String normalizedBase = baseUrl.replaceAll("/+$", "");
+        String endpoint = (normalizedBase.endsWith("/v1") ? normalizedBase : normalizedBase + "/v1")
+                + "/chat/completions";
+        Map<String, Object> payload = Map.of("model", model, "messages",
+                List.of(Map.of("role", "user", "content", parts)));
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(payload);
+            Request request = new Request.Builder().url(endpoint)
+                    .header("Authorization", "Bearer " + config.getApiKey())
+                    .header("Content-Type", "application/json")
+                    .post(RequestBody.create(json, MediaType.get("application/json"))).build();
+            OkHttpClient client = new OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(90, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).build();
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    log.warn("vision_call_failed userId={} status={}", userId, response.code());
+                    throw new BusinessException(502, "视觉模型请求失败，请检查模型和 API Key 后重试");
+                }
+                com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response.body().string());
+                String content = root.path("choices").path(0).path("message").path("content").asText("");
+                if (content.isBlank()) {
+                    throw new BusinessException(502, "视觉模型未返回可用内容");
+                }
+                return content;
+            }
+        } catch (IOException exception) {
+            log.warn("vision_call_io_failed userId={} type={}", userId, exception.getClass().getSimpleName());
+            throw new BusinessException(503, "视觉识别连接失败，请稍后重试");
+        }
     }
 
     @Override

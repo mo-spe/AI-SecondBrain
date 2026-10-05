@@ -14,6 +14,7 @@ import com.secondbrain.vo.ReviewCardPoolVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -87,13 +88,14 @@ public class ReviewCardPoolServiceImpl implements ReviewCardPoolService {
     }
 
     @Override
+    @Transactional
     public UserReviewCard joinPool(Long poolId, Long userId) {
         ReviewCardPool pool = poolMapper.selectById(poolId);
         if (pool == null || pool.getDeleted() == 1) {
             throw new BusinessException(404, "题目不存在");
         }
 
-        // 查是否有非归档副本 → 归档旧副本（重新加入场景）
+        // 普通加入必须幂等，避免重复点击或网络重试把同一题目拆成多份学习进度。
         LambdaQueryWrapper<UserReviewCard> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserReviewCard::getPoolId, poolId);
         wrapper.eq(UserReviewCard::getUserId, userId);
@@ -101,9 +103,8 @@ public class ReviewCardPoolServiceImpl implements ReviewCardPoolService {
         UserReviewCard existing = userReviewCardMapper.selectOne(wrapper);
 
         if (existing != null) {
-            existing.setIsArchived(1);
-            userReviewCardMapper.updateById(existing);
-            log.info("归档旧副本 urcId={} poolId={} userId={}", existing.getId(), poolId, userId);
+            log.info("重复加入复习，返回已有副本 urcId={} poolId={} userId={}", existing.getId(), poolId, userId);
+            return existing;
         }
 
         UserReviewCard urc = new UserReviewCard();
