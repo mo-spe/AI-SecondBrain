@@ -11,10 +11,13 @@ import com.secondbrain.android.data.remote.VocabularyArticle
 import com.secondbrain.android.data.remote.VocabularyArticleSummary
 import com.secondbrain.android.data.remote.VocabularyCandidate
 import com.secondbrain.android.data.remote.VocabularyGenerateRequest
+import com.secondbrain.android.data.remote.VocabularyWordMeaningRequest
 import com.secondbrain.android.data.remote.requireData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -25,6 +28,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import retrofit2.HttpException
 import javax.inject.Inject
 
@@ -34,6 +38,10 @@ data class VocabularyArticleState(
     val extracted: Boolean = false,
     val confirmed: Boolean = false,
     val article: VocabularyArticle? = null,
+    val translation: String? = null,
+    val translationBusy: Boolean = false,
+    val translationError: String? = null,
+    val wordLookup: VocabularyWordLookup? = null,
     val history: List<VocabularyArticleSummary> = emptyList(),
     val topic: String = "日常与学习",
     val difficulty: String = "中级",
@@ -44,6 +52,9 @@ data class VocabularyArticleState(
     val message: String? = null
 )
 
+data class VocabularyWordLookup(val selection: ReadingWordSelection, val meaning: String? = null,
+                                val busy: Boolean = false, val error: String? = null)
+
 /** Retains image selections and word edits so a failed model request does not erase the user's work. */
 @HiltViewModel
 class VocabularyArticleViewModel @Inject constructor(
@@ -52,6 +63,11 @@ class VocabularyArticleViewModel @Inject constructor(
 ) : ViewModel() {
     private val preferences = context.getSharedPreferences("vocabulary_draft", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(restoreDraft())
+    private val translations = mutableMapOf<Pair<Long, String>, String>()
+    private var translationJob: Job? = null
+    private var wordJob: Job? = null
+    private data class WordKey(val articleId: Long, val sourceHash: String, val start: Int, val end: Int)
+    private val wordMeanings = linkedMapOf<WordKey, String>()
     val state: StateFlow<VocabularyArticleState> = _state
 
     init { refreshHistory(); refreshVisionStatus() }
@@ -181,12 +197,13 @@ class VocabularyArticleViewModel @Inject constructor(
 
     fun generate() {
         val current = _state.value
+        if (current.busy) return
         if (!current.confirmed) {
             _state.value = current.copy(message = "请先确认词表")
             return
         }
+        _state.value = current.copy(busy = true, message = null)
         viewModelScope.launch {
-            _state.value = _state.value.copy(busy = true, message = null)
             runCatching {
                 api.generateVocabularyArticle(VocabularyGenerateRequest(current.candidates.map { it.word },
                     current.topic, current.difficulty)).requireData()
@@ -198,22 +215,35 @@ class VocabularyArticleViewModel @Inject constructor(
                     message = if (article.missingWords.isEmpty()) "全部目标词已在正文出现" else "仍有 ${article.missingWords.size} 个词未覆盖，已在文首列出")
                 clearDraftFiles()
             }.onFailure {
+                if (it is CancellationException) throw it
                 _state.value = _state.value.copy(busy = false,
-                    message = userFacingLoadError(it, "文章生成失败；确认的词表已保留，请重试"))
+                    message = if (it is IOException)
+                        "连接中断，文章可能已保存。请先刷新下方历史文章，避免重复生成；确认的词表已保留。"
+                    else userFacingLoadError(it, "文章生成失败；确认的词表已保留，请重试"))
+                if (it is IOException) refreshHistory()
             }
         }
     }
 
-    fun refreshHistory() {
+    fun refreshHistory(reportFailure: Boolean = false) {
         viewModelScope.launch {
             runCatching { api.vocabularyArticles().requireData() }
                 .onSuccess { _state.value = _state.value.copy(history = it) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    if (reportFailure) _state.value = _state.value.copy(
+                        message = userFacingLoadError(error, "历史文章刷新失败，请稍后再试"))
+                }
         }
     }
 
     fun openArticle(id: Long) {
+        if (_state.value.busy) return
+        translationJob?.cancel()
+        dismissWord()
+        _state.value = _state.value.copy(busy = true, message = null, translation = null,
+            translationBusy = false, translationError = null)
         viewModelScope.launch {
-            _state.value = _state.value.copy(busy = true, message = null)
             runCatching { api.vocabularyArticle(id).requireData() }
                 .onSuccess { _state.value = _state.value.copy(article = it, busy = false) }
                 .onFailure { _state.value = _state.value.copy(busy = false,
@@ -221,7 +251,133 @@ class VocabularyArticleViewModel @Inject constructor(
         }
     }
 
-    fun closeArticle() { _state.value = _state.value.copy(article = null, message = null) }
+    fun completeMissingWords() {
+        val current = _state.value.article ?: return
+        if (current.missingWords.isEmpty() || _state.value.busy || _state.value.translationBusy) return
+        _state.value = _state.value.copy(busy = true, message = null)
+        viewModelScope.launch {
+            runCatching { api.completeVocabularyArticle(current.id).requireData() }
+                .onSuccess { updated ->
+                    val covered = updated.words.size - updated.missingWords.size
+                    val stillReading = _state.value.article?.id == current.id
+                    if (stillReading && updated.article != current.article) dismissWord()
+                    _state.value = _state.value.copy(article = if (stillReading) updated else _state.value.article,
+                        busy = false,
+                        translation = if (stillReading && updated.article != current.article) null else _state.value.translation,
+                        translationError = null,
+                        history = _state.value.history.map { summary ->
+                            if (summary.id == updated.id) summary.copy(coveredCount = covered) else summary
+                        },
+                        message = if (!stillReading) null else if (updated.missingWords.isEmpty())
+                            "目标词已全部覆盖" else "本次补齐后仍有 ${updated.missingWords.size} 个词未覆盖，可稍后再试")
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    _state.value = _state.value.copy(busy = false,
+                        message = if (error is IOException)
+                            "连接中断，补充阅读可能已保存。请返回词表页刷新历史文章后重新打开，原文章仍可阅读。"
+                        else userFacingLoadError(error, "补充阅读生成失败，原文章仍可继续阅读"))
+                    if (error is IOException) refreshHistory()
+                }
+        }
+    }
+
+    fun loadTranslation() {
+        val current = _state.value
+        val article = current.article ?: return
+        if (current.busy || current.translationBusy) return
+        val key = article.id to article.article
+        translations[key]?.let {
+            _state.value = current.copy(translation = it, translationError = null)
+            return
+        }
+        _state.value = current.copy(translationBusy = true, translationError = null)
+        translationJob = viewModelScope.launch {
+            runCatching {
+                val result = api.translateVocabularyArticle(article.id).requireData()
+                val sourceHash = readingSourceHash(article.article)
+                check(result.articleId == article.id && result.sourceHash == sourceHash) {
+                    "文章内容已更新，请返回词表重新打开后查看翻译"
+                }
+                check(result.translation.isNotBlank()) { "全文翻译为空，请重试" }
+                result.translation
+            }.onSuccess { translated ->
+                translations[key] = translated
+                if (_state.value.article?.let { it.id to it.article } == key) {
+                    _state.value = _state.value.copy(translation = translated, translationBusy = false)
+                }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                if (_state.value.article?.let { it.id to it.article } == key) {
+                    _state.value = _state.value.copy(translationBusy = false,
+                        translationError = if (error is HttpException && error.code() == 404)
+                            "后端尚未提供全文翻译，请更新并重启后端后重试。"
+                        else userFacingLoadError(error, "全文翻译失败，请重试；英文原文仍可阅读"))
+                }
+            }
+        }
+    }
+
+    fun closeArticle() {
+        translationJob?.cancel()
+        dismissWord()
+        _state.value = _state.value.copy(article = null, message = null, translation = null,
+            translationBusy = false, translationError = null)
+    }
+
+    fun selectWord(start: Int, end: Int) {
+        val current = _state.value
+        val article = current.article ?: return
+        if (current.busy) return
+        val selection = readingWordAt(article.article, start, end) ?: return
+        if (current.wordLookup?.let { it.selection == selection && it.busy } == true) return
+        wordJob?.cancel()
+        val key = WordKey(article.id, readingSourceHash(article.article), start, end)
+        val existing = article.meanings.entries.firstOrNull { it.key.equals(selection.word, ignoreCase = true) }
+            ?.value?.takeIf(String::isNotBlank) ?: wordMeanings[key]
+        if (existing != null) {
+            _state.value = current.copy(wordLookup = VocabularyWordLookup(selection, meaning = existing))
+            return
+        }
+        _state.value = current.copy(wordLookup = VocabularyWordLookup(selection, busy = true))
+        wordJob = viewModelScope.launch {
+            runCatching {
+                val result = api.vocabularyWordMeaning(article.id,
+                    VocabularyWordMeaningRequest(key.sourceHash, start, end)).requireData()
+                check(result.articleId == article.id && result.sourceHash == key.sourceHash &&
+                    result.start == start && result.end == end && result.word == selection.word) {
+                    "文章内容已更新，请返回词表重新打开后点词"
+                }
+                check(result.meaning.isNotBlank()) { "释义为空，请重试" }
+                result
+            }.onSuccess { result ->
+                wordMeanings[key] = result.meaning
+                if (wordMeanings.size > 128) wordMeanings.remove(wordMeanings.keys.first())
+                // 切换词或关闭面板后，较早的网络结果不能覆盖当前选择。
+                if (isCurrentWord(article, selection)) {
+                    _state.value = _state.value.copy(wordLookup = VocabularyWordLookup(
+                        selection.copy(sentence = result.sentence), meaning = result.meaning))
+                }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                if (isCurrentWord(article, selection)) {
+                    _state.value = _state.value.copy(wordLookup = VocabularyWordLookup(selection,
+                        error = if (error is HttpException && error.code() == 404)
+                            "后端尚未提供任意词释义，请更新并重启后端后重试。"
+                        else userFacingLoadError(error, "释义查询失败，请重试；原文仍可阅读")))
+                }
+            }
+        }
+    }
+
+    fun dismissWord() {
+        wordJob?.cancel()
+        _state.value = _state.value.copy(wordLookup = null)
+    }
+
+    private fun isCurrentWord(article: VocabularyArticle, selection: ReadingWordSelection): Boolean =
+        _state.value.article?.let { it.id == article.id && it.article == article.article } == true &&
+            _state.value.wordLookup?.selection?.let { it.start == selection.start && it.end == selection.end } == true
 
     private fun compressToPrivateJpeg(uri: Uri): String {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

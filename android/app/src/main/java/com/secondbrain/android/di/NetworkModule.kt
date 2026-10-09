@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.secondbrain.android.capture.SecondBrainDatabase
 import com.secondbrain.android.BuildConfig
 import com.secondbrain.android.data.remote.SecondBrainApi
+import com.secondbrain.android.data.remote.VocabularyCallFactory
 import com.secondbrain.android.data.session.SessionStore
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -75,7 +76,7 @@ object NetworkModule {
     @Provides @Singleton
     fun provideApi(client: OkHttpClient): SecondBrainApi = Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
-        .client(client)
+        .callFactory(VocabularyCallFactory(client))
         .addConverterFactory(MoshiConverterFactory.create(Moshi.Builder().add(KotlinJsonAdapterFactory()).build()))
         .build()
         .create(SecondBrainApi::class.java)

@@ -33,8 +33,18 @@ internal fun ReviewSessionScreen(
     val prompt = remember(card) { parseReviewPrompt(card?.question.orEmpty()) }
     val scroll = rememberLazyListState()
     LaunchedEffect(card?.id) { scroll.scrollToItem(0) }
-    LaunchedEffect(state.result) { if (state.result != null) scroll.animateScrollToItem(if (prompt.options.size >= 2) 4 + prompt.options.size else 5) }
-    ReadingScaffold("今日复习", onBack) { padding ->
+    LaunchedEffect(state.result) { if (state.result != null) scroll.animateScrollToItem(if (prompt.options.size >= 2) 3 + prompt.options.size else 4) }
+    ReadingScaffold("今日复习", onBack, bottomBar = {
+        if (card != null && !state.loading && prompt.question.isNotBlank()) Surface(color = MaterialTheme.colorScheme.surface) {
+            Button(onClick = if (state.result == null) viewModel::submit else viewModel::next,
+                enabled = state.result != null || (state.answer.isNotBlank() && !state.submitting),
+                modifier = Modifier.imePadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth().heightIn(min = 52.dp),
+                shape = RoundedCornerShape(12.dp)) {
+                Text(if (state.result != null) { if (state.position + 1 == state.cards.size) "完成复习" else "下一题" }
+                    else if (state.submitting) "正在核对答案…" else "提交答案")
+            }
+        }
+    }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).imePadding(), state = scroll, contentPadding = PaddingValues(20.dp, 20.dp, 20.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             if (state.loading) {
                 item { LoadingContent("正在准备复习卡片…") }
@@ -72,7 +82,7 @@ internal fun ReviewSessionScreen(
                         val wrong = state.result != null && selected && !state.result!!.isCorrect
                         Surface(
                             modifier = Modifier.fillMaxWidth().selectable(selected = selected, enabled = state.result == null && !state.submitting, role = Role.RadioButton, onClick = { viewModel.updateAnswer(option.key) }),
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = when { wrong -> MaterialTheme.colorScheme.errorContainer; correct -> MaterialTheme.colorScheme.primaryContainer; selected -> MaterialTheme.colorScheme.surfaceContainerHigh; else -> MaterialTheme.colorScheme.surface },
                             border = BorderStroke(1.dp, when { wrong -> MaterialTheme.colorScheme.error; correct || selected -> MaterialTheme.colorScheme.primary; else -> MaterialTheme.colorScheme.outlineVariant })
                         ) {
@@ -96,20 +106,15 @@ internal fun ReviewSessionScreen(
                 } else item {
                     OutlinedTextField(state.answer, viewModel::updateAnswer, enabled = !state.submitting && state.result == null, label = { Text("写下你的理解") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                 }
-                item {
-                    if (state.result == null) Button(onClick = viewModel::submit, enabled = state.answer.isNotBlank() && !state.submitting && prompt.question.isNotBlank(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(16.dp)) {
-                        Text(if (state.submitting) "正在核对答案…" else "提交答案")
-                    }
-                }
                 state.result?.let { result ->
                     val correctAnswer = result.correctAnswer ?: card.answer ?: "服务未提供"
                     val explanation = result.explanation?.takeIf { it.isNotBlank() }
                         ?: prompt.explanation.ifBlank { card.answer ?: "本题暂未提供详细解析。" }
                     item {
-                        Surface(color = if (result.isCorrect) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(20.dp)) {
+                        Surface(color = if (result.isCorrect) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(20.dp)) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Outlined.CheckCircle, null, tint = if (result.isCorrect) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Outlined.CheckCircle, null, tint = if (result.isCorrect) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                                     Text(if (result.isCorrect) "回答正确" else "再巩固一下", style = MaterialTheme.typography.titleLarge)
                                 }
                                 if (!result.isCorrect) Text("你的答案：${state.answer}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
@@ -146,7 +151,6 @@ internal fun ReviewSessionScreen(
                             }
                         }
                     }
-                    item { Button(onClick = viewModel::next, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(16.dp)) { Text(if (state.position + 1 == state.cards.size) "完成复习" else "下一题") } }
                     card.nodeId?.let { nodeId -> item { TextButton(onClick = { onOpenKnowledge(nodeId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("查看原知识") } } }
                 }
                 state.message?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }

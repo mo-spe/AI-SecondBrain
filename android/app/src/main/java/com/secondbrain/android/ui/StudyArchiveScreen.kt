@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,15 +21,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -45,8 +52,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -65,7 +74,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -78,6 +87,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -131,7 +141,16 @@ internal fun StudyArchiveScreen(onBack: () -> Unit, viewModel: StudyArchiveViewM
         },
         floatingActionButton = {
             if (draft == null && wrongDetail == null && doubtDetail == null) {
-                FloatingActionButton(onClick = { typeDialog = true }) { Icon(Icons.Outlined.Add, contentDescription = "新增学习记录") }
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        if (selectedTab == 2) typeDialog = true
+                        else { pendingType = if (selectedTab == 0) "WRONG" else "DOUBT"; addDialog = true }
+                    },
+                    icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                    text = { Text(if (selectedTab == 0) "收录错题" else if (selectedTab == 1) "记录疑问" else "新增记录") },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     ) { padding ->
@@ -200,62 +219,128 @@ private fun ArchiveLists(
     onResumeDraft: (StudyArchiveDraft) -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var statusFilter by rememberSaveable(selectedTab) { mutableStateOf("ALL") }
+    val term = query.trim()
+    val baseWrong = when (selectedTab) { 0 -> state.wrongQuestions; 2 -> state.today.wrongQuestions; else -> emptyList() }
+    val baseDoubts = when (selectedTab) { 1 -> state.doubts; 2 -> state.today.doubts; else -> emptyList() }
+    val visibleDrafts = state.drafts.filter { draft ->
+        statusFilter == "ALL" &&
+            (selectedTab == 2 || (selectedTab == 0 && draft.archiveType == "WRONG") || (selectedTab == 1 && draft.archiveType == "DOUBT")) &&
+            (term.isBlank() || listOf(draft.sourceBook, draft.ocrText, draft.content, draft.chapter, draft.knowledgePoints).any { it.contains(term, ignoreCase = true) })
+    }
+    val visibleWrong = baseWrong.filter { row ->
+        (statusFilter == "ALL" || row.reviewStatus == statusFilter) &&
+            (term.isBlank() || listOfNotNull(row.subject, row.sourceBook, row.sourcePage, row.chapter, row.knowledgePoints, row.errorType, row.ocrText).any { it.contains(term, ignoreCase = true) })
+    }
+    val visibleDoubts = baseDoubts.filter { row ->
+        (statusFilter == "ALL" || row.status == statusFilter) &&
+            (term.isBlank() || listOfNotNull(row.content, row.sourceBook, row.sourcePage, row.chapter, row.doubtType).any { it.contains(term, ignoreCase = true) })
+    }
+    val filters = when (selectedTab) {
+        0 -> listOf("ALL" to "全部", "UNSCHEDULED" to "未安排", "SCHEDULED" to "已安排", "MASTERED" to "已掌握", "ARCHIVED" to "已归档")
+        1 -> listOf("ALL" to "全部", "PENDING" to "待处理", "UNDERSTOOD" to "已有理解", "VERIFYING" to "待验证", "RESOLVED" to "已解决")
+        else -> emptyList()
+    }
     Column(Modifier.fillMaxSize().padding(padding)) {
-        TabRow(selectedTabIndex = selectedTab) {
+        TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.background) {
             listOf("错题本", "疑问箱", "今日待处理").forEachIndexed { index, title ->
                 Tab(selected = selectedTab == index, onClick = { onSelectTab(index) }, text = { Text(title) })
             }
         }
-        if (state.loading) {
-            LoadingContent("正在读取学习记录…")
-            return@Column
-        }
-        state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
-        OutlinedTextField(query, { query = it }, label = { Text("搜索书名、题目、章节或知识点") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp))
-        val term = query.trim()
-        val visibleDrafts = state.drafts.filter { draft ->
-            (selectedTab == 2 || (selectedTab == 0 && draft.archiveType == "WRONG") || (selectedTab == 1 && draft.archiveType == "DOUBT")) &&
-                (term.isBlank() || listOf(draft.sourceBook, draft.ocrText, draft.content, draft.chapter, draft.knowledgePoints).any { it.contains(term, ignoreCase = true) })
-        }
-        val baseWrong = if (selectedTab == 0) state.wrongQuestions else if (selectedTab == 2) state.today.wrongQuestions else emptyList()
-        val visibleWrong = baseWrong.filter { row -> term.isBlank() || listOfNotNull(row.subject, row.sourceBook, row.sourcePage, row.chapter, row.knowledgePoints, row.errorType, row.ocrText).any { it.contains(term, ignoreCase = true) } }
-        val baseDoubts = if (selectedTab == 1) state.doubts else if (selectedTab == 2) state.today.doubts else emptyList()
-        val visibleDoubts = baseDoubts.filter { row -> term.isBlank() || listOfNotNull(row.content, row.sourceBook, row.sourcePage, row.chapter, row.doubtType).any { it.contains(term, ignoreCase = true) } }
-        if (state.drafts.isNotEmpty()) {
-            Text("本机草稿 · ${visibleDrafts.size}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp))
-        }
-        LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(visibleDrafts, key = { "draft-${it.id}" }) { draft ->
-                ArchiveRowCard(
-                    title = if (draft.archiveType == "WRONG") "待保存错题" else "待保存疑问",
-                    subtitle = draft.sourceBook.ifBlank { draft.ocrText.ifBlank { draft.content.ifBlank { "本机草稿" } } },
-                    metadata = "保存在本机",
-                    onClick = { onResumeDraft(draft) }
-                )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(when (selectedTab) { 0 -> "把错题，变成收获"; 1 -> "给每个疑问一个去处"; else -> "今天，回看一点" },
+                        style = MaterialTheme.typography.titleLarge)
+                    Text(when (selectedTab) { 0 -> "留住原题与思路，按自己的节奏复盘。"; 1 -> "记录卡住的地方，让理解慢慢清晰。"; else -> "只展示你主动安排到期的错题与疑问。" },
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!state.loading) {
+                        Surface(color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                                ArchiveMetric("${baseWrong.size + baseDoubts.size}", if (selectedTab == 2) "今日待处理" else "已收录")
+                                ArchiveMetric(
+                                    "${if (selectedTab == 0) baseWrong.count { it.reviewStatus == "SCHEDULED" } else if (selectedTab == 1) baseDoubts.count { it.status == "RESOLVED" } else baseWrong.size}",
+                                    if (selectedTab == 0) "已安排复习" else if (selectedTab == 1) "已解决" else "错题复盘"
+                                )
+                            }
+                        }
+                    }
+                }
             }
-            items(visibleWrong, key = { "wrong-${it.id}" }) { row ->
-                ArchiveRowCard(
-                    title = row.sourceBook?.takeIf(String::isNotBlank) ?: row.subject?.takeIf(String::isNotBlank) ?: "考研错题",
-                    subtitle = row.ocrText?.takeIf(String::isNotBlank) ?: row.errorType.orEmpty(),
-                    metadata = listOfNotNull(row.sourcePage?.let { "第 $it 页" }, row.chapter, wrongStatus(row.reviewStatus)).joinToString(" · "),
-                    onClick = { onOpenWrong(row.id) }
-                )
+            item {
+                OutlinedTextField(query, { query = it }, label = { Text("搜索学习记录") }, placeholder = { Text("题目、书名或知识点") },
+                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Outlined.Close, "清空搜索") } },
+                    shape = RoundedCornerShape(16.dp), singleLine = true, modifier = Modifier.fillMaxWidth())
             }
-            items(visibleDoubts, key = { "doubt-${it.id}" }) { row ->
-                ArchiveRowCard(
-                    title = row.content,
-                    subtitle = row.sourceBook?.let { "$it ${row.sourcePage.orEmpty()}" }.orEmpty(),
-                    metadata = "${row.doubtType.orEmpty()} · ${doubtStatus(row.status)}",
-                    onClick = { onOpenDoubt(row.id) }
-                )
+            if (filters.isNotEmpty()) item {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    filters.forEach { (value, label) ->
+                        FilterChip(selected = statusFilter == value, onClick = { statusFilter = value }, label = { Text(label) }, modifier = Modifier.heightIn(min = 48.dp))
+                    }
+                }
             }
-            if (visibleWrong.isEmpty() && visibleDoubts.isEmpty() && visibleDrafts.isEmpty()) item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                        Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text(if (term.isNotBlank()) "没有匹配的记录" else if (selectedTab == 2) "今天没有安排好的复盘" else "这里还没有学习记录", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
-                        Text(if (term.isNotBlank()) "试试书名、题目文字或知识点的其他关键词。" else if (selectedTab == 2) "未安排时间的错题和疑问会留在档案中，不会自动进入今日任务。" else "拍下错题或记录暂时解不开的问题，它们会保存在你的个人档案里。", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                        TextButton(onClick = onRefresh, modifier = Modifier.padding(top = 8.dp)) { Text("重新读取") }
+            state.message?.let { message -> item {
+                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(message, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium)
+                        TextButton(onClick = onRefresh) { Text("重新读取") }
+                    }
+                }
+            } }
+            if (state.loading) item {
+                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            } else {
+                if (visibleDrafts.isNotEmpty()) item { ArchiveListHeading("继续整理", "${visibleDrafts.size} 份本机草稿") }
+                items(visibleDrafts, key = { "draft-${it.id}" }) { draft ->
+                    ArchiveRowCard(
+                        title = if (draft.archiveType == "WRONG") "待保存错题" else "待保存疑问",
+                        subtitle = draft.ocrText.ifBlank { draft.content.ifBlank { "补充来源和笔记，完成这份记录。" } },
+                        metadata = draft.sourceBook.ifBlank { "本机草稿 · 尚未上传" }, badge = "草稿", isDoubt = draft.archiveType == "DOUBT",
+                        onClick = { onResumeDraft(draft) }
+                    )
+                }
+                if (visibleWrong.isNotEmpty() || visibleDoubts.isNotEmpty()) item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${visibleWrong.size + visibleDoubts.size} 条记录", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "刷新学习记录", tint = MaterialTheme.colorScheme.primary) }
+                    }
+                }
+                items(visibleWrong, key = { "wrong-${it.id}" }) { row ->
+                    ArchiveRowCard(
+                        title = row.sourceBook?.takeIf(String::isNotBlank) ?: row.subject?.takeIf(String::isNotBlank) ?: "错题记录",
+                        subtitle = row.ocrText?.takeIf(String::isNotBlank) ?: "查看原题照片，回忆当时的解题思路。",
+                        metadata = listOfNotNull(row.sourcePage?.takeIf(String::isNotBlank)?.let { "第 $it 页" }, row.chapter?.takeIf(String::isNotBlank), row.errorType?.takeIf(String::isNotBlank)).joinToString(" · "),
+                        badge = wrongStatus(row.reviewStatus), isDoubt = false,
+                        footer = row.nextReviewTime?.let { "复习安排 · ${it.replace('T', ' ').take(16)}" },
+                        onClick = { onOpenWrong(row.id) }
+                    )
+                }
+                items(visibleDoubts, key = { "doubt-${it.id}" }) { row ->
+                    ArchiveRowCard(
+                        title = row.content,
+                        subtitle = listOfNotNull(row.sourceBook?.takeIf(String::isNotBlank), row.sourcePage?.takeIf(String::isNotBlank)?.let { "第 $it 页" }, row.chapter?.takeIf(String::isNotBlank)).joinToString(" · "),
+                        metadata = row.doubtType.orEmpty(), badge = doubtStatus(row.status), isDoubt = true,
+                        footer = row.nextProcessTime?.let { "处理安排 · ${it.replace('T', ' ').take(16)}" },
+                        onClick = { onOpenDoubt(row.id) }
+                    )
+                }
+                if (visibleWrong.isEmpty() && visibleDoubts.isEmpty() && visibleDrafts.isEmpty()) item {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(if (selectedTab == 1) Icons.Outlined.HelpOutline else Icons.Outlined.Description, null,
+                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                            Text(if (state.message != null) "记录暂时未能加载" else if (term.isNotBlank() || statusFilter != "ALL") "没有匹配的记录" else if (selectedTab == 2) "今天暂时没有安排" else if (selectedTab == 0) "从一道错题开始" else "先记下来，之后再解开",
+                                style = MaterialTheme.typography.titleLarge)
+                            Text(if (state.message != null) "请重试读取；这不代表你的档案为空。" else if (term.isNotBlank() || statusFilter != "ALL") "试试其他关键词，或切换到全部记录。" else if (selectedTab == 2) "错题和疑问仍在档案里。只有你设置了时间，才会进入今日待处理。" else if (selectedTab == 0) "点击下方「收录错题」，拍下原题并记录出处。保存后不会自动安排复习。" else "点击下方「记录疑问」，留下问题与资料出处，之后持续补充自己的理解。",
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (term.isNotBlank() || statusFilter != "ALL") TextButton(onClick = { query = ""; statusFilter = "ALL" }) { Text("查看全部记录") }
+                            else TextButton(onClick = onRefresh) { Text("重新读取") }
+                        }
                     }
                 }
             }
@@ -264,13 +349,56 @@ private fun ArchiveLists(
 }
 
 @Composable
-private fun ArchiveRowCard(title: String, subtitle: String, metadata: String, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(metadata, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+private fun ArchiveMetric(value: String, label: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ArchiveListHeading(title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ArchiveBadge(label: String) {
+    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+    }
+}
+
+@Composable
+private fun ArchiveRowCard(
+    title: String, subtitle: String, metadata: String, badge: String, isDoubt: Boolean,
+    footer: String? = null, onClick: () -> Unit
+) {
+    Column {
+        Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+            Row(Modifier.padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(if (isDoubt) Icons.Outlined.HelpOutline else Icons.Outlined.Description, null,
+                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(if (isDoubt) "疑问记录" else "错题档案", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                        ArchiveBadge(badge)
+                    }
+                    Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (metadata.isNotBlank()) Text(metadata, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (footer != null) Text(footer, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
+            }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -314,19 +442,25 @@ private fun ArchiveEditor(
                 Icon(Icons.Outlined.AutoAwesome, null); Text(if (saving) "正在整理…" else "AI 给我整理建议")
             }
             suggestion?.let { Text("AI 建议已填入表单，请核对后保存。置信度：${it.confidence?.let { value -> "%.0f%%".format(value * 100) } ?: "未提供"}", color = MaterialTheme.colorScheme.primary) }
+            ArchiveListHeading("来源与分类", "留下资料出处，之后更容易找到原题。")
             Field(draft.subject, "科目") { onEdit { old -> old.copy(subject = it) } }
             Field(draft.sourceBook, "书名或资料名") { onEdit { old -> old.copy(sourceBook = it) } }
             Field(draft.sourcePage, "页码（可留空）") { onEdit { old -> old.copy(sourcePage = it) } }
             Field(draft.chapter, "章节") { onEdit { old -> old.copy(chapter = it) } }
             Field(draft.knowledgePoints, "知识点，用顿号分隔") { onEdit { old -> old.copy(knowledgePoints = it) } }
-            Field(draft.errorType, "错误类型：概念不清、公式记错、计算错误、审题错误、方法不会、粗心、不确定") { onEdit { old -> old.copy(errorType = it) } }
+            ArchiveChoiceField(draft.errorType, "错误类型", listOf("概念不清", "公式记错", "计算错误", "审题错误", "方法不会", "粗心", "不确定")) {
+                onEdit { old -> old.copy(errorType = it) }
+            }
             OutlinedTextField(draft.userNote, { onEdit { old -> old.copy(userNote = it) } }, label = { Text("我的备注") }, minLines = 2, modifier = Modifier.fillMaxWidth())
         } else {
             OutlinedTextField(draft.content, { onEdit { old -> old.copy(content = it) } }, label = { Text("我现在卡在哪里？") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+            ArchiveListHeading("资料出处", "记下书名、页码，让之后的跟进有迹可循。")
             Field(draft.sourceBook, "书名或讲义名称") { onEdit { old -> old.copy(sourceBook = it) } }
             Field(draft.sourcePage, "页码（可留空）") { onEdit { old -> old.copy(sourcePage = it) } }
             Field(draft.chapter, "章节") { onEdit { old -> old.copy(chapter = it) } }
-            Field(draft.doubtType, "疑问类型：概念理解、公式推导、解题步骤、例题看不懂、知识点关系、资料说法不一致") { onEdit { old -> old.copy(doubtType = it) } }
+            ArchiveChoiceField(draft.doubtType, "疑问类型", listOf("概念理解", "公式推导", "解题步骤", "例题看不懂", "知识点关系", "资料说法不一致")) {
+                onEdit { old -> old.copy(doubtType = it) }
+            }
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = onSave, enabled = !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (saving) "正在保存…" else "保存到个人档案") }
@@ -335,8 +469,20 @@ private fun ArchiveEditor(
 }
 
 @Composable
+private fun ArchiveChoiceField(value: String, label: String, choices: List<String>, onValue: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Field(value, label, onValue)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            choices.forEach { choice ->
+                FilterChip(selected = value == choice, onClick = { onValue(choice) }, label = { Text(choice) }, modifier = Modifier.heightIn(min = 48.dp))
+            }
+        }
+    }
+}
+
+@Composable
 private fun Field(value: String, label: String, onValue: (String) -> Unit) {
-    OutlinedTextField(value, onValue, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(value, onValue, label = { Text(label) }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(), singleLine = true)
 }
 
 @Composable
@@ -367,14 +513,15 @@ private fun WrongQuestionDetailScreen(
     var editAnswer by rememberSaveable(record.id) { mutableStateOf(record.userAnswer.orEmpty()) }
     var editCorrectAnswer by rememberSaveable(record.id) { mutableStateOf(record.correctAnswer.orEmpty()) }
     var editExplanation by rememberSaveable(record.id) { mutableStateOf(record.explanation.orEmpty()) }
+    var customScheduleOpen by rememberSaveable(record.id) { mutableStateOf(false) }
     var scheduleError by rememberSaveable(record.id) { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), shape = RoundedCornerShape(24.dp)) {
+    Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), shape = RoundedCornerShape(16.dp)) {
             Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(record.sourceBook ?: record.subject ?: "考研错题", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 val location = listOfNotNull(record.sourcePage?.let { "第 $it 页" }, record.chapter, record.errorType).filter(String::isNotBlank).joinToString(" · ")
                 if (location.isNotBlank()) Text(location, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                Text(if (record.reviewStatus == "SCHEDULED") "已安排复习" else "尚未安排复习", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                ArchiveBadge(wrongStatus(record.reviewStatus))
             }
         }
         StudyArchiveImagePanel(
@@ -431,13 +578,18 @@ private fun WrongQuestionDetailScreen(
                 OutlinedButton(onClick = { onSchedule(3) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("3 天后") }
                 OutlinedButton(onClick = { onSchedule(7) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("下周") }
             }
-            OutlinedTextField(scheduleText, { scheduleText = it }, label = { Text("自定义时间（yyyy-MM-ddTHH:mm）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedButton(onClick = {
-                runCatching { LocalDateTime.parse(scheduleText).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) }
-                    .onSuccess { scheduleError = false; onScheduleAt(it) }
-                    .onFailure { scheduleError = true }
-            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("按自定义时间安排") }
-            if (scheduleError) Text("时间格式请使用 yyyy-MM-ddTHH:mm，例如 2026-10-02T09:00", color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = { customScheduleOpen = !customScheduleOpen }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (customScheduleOpen) "收起自定义时间" else "选择其他时间")
+            }
+            if (customScheduleOpen) {
+                OutlinedTextField(scheduleText, { scheduleText = it }, label = { Text("自定义时间（yyyy-MM-ddTHH:mm）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(onClick = {
+                    runCatching { LocalDateTime.parse(scheduleText).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) }
+                        .onSuccess { scheduleError = false; onScheduleAt(it) }
+                        .onFailure { scheduleError = true }
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("按自定义时间安排") }
+                if (scheduleError) Text("时间格式请使用 yyyy-MM-ddTHH:mm，例如 2026-10-02T09:00", color = MaterialTheme.colorScheme.error)
+            }
             if (record.reviewStatus == "SCHEDULED") {
                 OutlinedButton(onClick = { onSchedule(null) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.Outlined.Schedule, contentDescription = null)
@@ -467,11 +619,10 @@ private fun WrongQuestionDetailScreen(
 
 @Composable
 private fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            content()
-        }
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        content()
+        HorizontalDivider(Modifier.padding(top = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -484,11 +635,11 @@ private fun StudyArchiveImagePanel(
     title: String = "原题照片"
 ) {
     var decoding by remember(bytes) { mutableStateOf(bytes != null) }
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, bytes) {
-        value = bytes?.let { imageBytes ->
-            withContext(Dispatchers.IO) {
-                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)?.asImageBitmap()
-            }
+    var bitmap by remember(bytes) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(bytes) {
+        // 解码留在 IO 线程；图片变化时清空旧预览，避免切换档案后短暂显示上一题。
+        bitmap = withContext(Dispatchers.IO) {
+            bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
         }
         decoding = false
     }
@@ -605,6 +756,7 @@ private fun DoubtDetailScreen(
     var understanding by rememberSaveable(record.id) { mutableStateOf("") }
     var understandingStatus by rememberSaveable(record.id) { mutableStateOf("INITIAL") }
     var scheduleText by rememberSaveable(record.id) { mutableStateOf(LocalDateTime.now().plusDays(1).withHour(9).withMinute(0).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"))) }
+    var customScheduleOpen by rememberSaveable(record.id) { mutableStateOf(false) }
     var scheduleError by rememberSaveable(record.id) { mutableStateOf(false) }
     var editing by rememberSaveable(record.id) { mutableStateOf(false) }
     var editContent by rememberSaveable(record.id) { mutableStateOf(record.content) }
@@ -612,59 +764,102 @@ private fun DoubtDetailScreen(
     var editPage by rememberSaveable(record.id) { mutableStateOf(record.sourcePage.orEmpty()) }
     var editChapter by rememberSaveable(record.id) { mutableStateOf(record.chapter.orEmpty()) }
     var editType by rememberSaveable(record.id) { mutableStateOf(record.doubtType.orEmpty()) }
-    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(record.content, style = MaterialTheme.typography.headlineSmall)
-        Text(listOfNotNull(record.sourceBook, record.sourcePage?.let { "第 $it 页" }, record.chapter, record.doubtType).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = { editing = !editing }) { Text(if (editing) "收起编辑" else "编辑问题和资料出处") }
+    Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ArchiveBadge(doubtStatus(record.status))
+                Text(record.content, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                val source = listOfNotNull(record.sourceBook, record.sourcePage?.let { "第 $it 页" }, record.chapter, record.doubtType)
+                    .filter(String::isNotBlank).joinToString(" · ")
+                if (source.isNotBlank()) Text(source, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { editing = !editing }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (editing) "收起编辑" else "编辑问题和资料出处")
+                }
+            }
+        }
         if (editing) {
-            OutlinedTextField(editContent, { editContent = it }, label = { Text("疑问内容") }, minLines = 2, modifier = Modifier.fillMaxWidth())
-            Field(editBook, "书名或讲义名称") { editBook = it }
-            Field(editPage, "页码") { editPage = it }
-            Field(editChapter, "章节") { editChapter = it }
-            Field(editType, "疑问类型") { editType = it }
-            OutlinedButton(onClick = {
-                onUpdate(UpdateDoubtRequest(content = editContent, sourceBook = editBook, sourcePage = editPage, chapter = editChapter, doubtType = editType))
-                editing = false
-            }, modifier = Modifier.fillMaxWidth()) { Text("保存疑问信息") }
+            DetailSection("问题与出处") {
+                OutlinedTextField(editContent, { editContent = it }, label = { Text("疑问内容") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                Field(editBook, "书名或讲义名称") { editBook = it }
+                Field(editPage, "页码") { editPage = it }
+                Field(editChapter, "章节") { editChapter = it }
+                Field(editType, "疑问类型") { editType = it }
+                OutlinedButton(onClick = {
+                    onUpdate(UpdateDoubtRequest(content = editContent, sourceBook = editBook, sourcePage = editPage, chapter = editChapter, doubtType = editType))
+                    editing = false
+                }, modifier = Modifier.fillMaxWidth()) { Text("保存疑问信息") }
+            }
         }
         if (!record.imagePath.isNullOrBlank()) {
             StudyArchiveImagePanel(imageBytes, imageLoading, imageMessage, onRetryImage, title = "资料图片")
         }
-        Text("当前状态：${doubtStatus(record.status)}", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onSchedule(1) }) { Text("明天处理") }
-            OutlinedButton(onClick = { onSchedule(7) }) { Text("下周处理") }
-            OutlinedButton(onClick = { onSchedule(null) }) { Text("取消") }
+        DetailSection("留给之后的自己") {
+            Text(record.nextProcessTime?.let { "下次处理 · ${it.replace('T', ' ').take(16)}" } ?: "还未安排时间，疑问会一直保留在档案中。",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { onSchedule(1) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("明天处理") }
+                OutlinedButton(onClick = { onSchedule(7) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("下周处理") }
+            }
+            if (record.nextProcessTime != null) {
+                TextButton(onClick = { onSchedule(null) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("取消处理安排") }
+                Text("仅清除处理时间，问题和理解历史会保留。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = { customScheduleOpen = !customScheduleOpen }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (customScheduleOpen) "收起自定义时间" else "选择其他时间")
+            }
+            if (customScheduleOpen) {
+                OutlinedTextField(scheduleText, { scheduleText = it }, label = { Text("自定义处理时间（yyyy-MM-ddTHH:mm）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(onClick = {
+                    runCatching { LocalDateTime.parse(scheduleText).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) }
+                        .onSuccess { scheduleError = false; onScheduleAt(it) }
+                        .onFailure { scheduleError = true }
+                }, modifier = Modifier.fillMaxWidth()) { Text("按自定义时间安排") }
+                if (scheduleError) Text("时间格式请使用 yyyy-MM-ddTHH:mm，例如 2026-10-02T09:00", color = MaterialTheme.colorScheme.error)
+            }
         }
-        OutlinedTextField(scheduleText, { scheduleText = it }, label = { Text("自定义处理时间（yyyy-MM-ddTHH:mm）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedButton(onClick = {
-            runCatching { LocalDateTime.parse(scheduleText).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) }
-                .onSuccess { scheduleError = false; onScheduleAt(it) }
-                .onFailure { scheduleError = true }
-        }, modifier = Modifier.fillMaxWidth()) { Text("按自定义时间安排") }
-        if (scheduleError) Text("时间格式请使用 yyyy-MM-ddTHH:mm，例如 2026-10-02T09:00", color = MaterialTheme.colorScheme.error)
-        OutlinedButton(onClick = onExplain, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.AutoAwesome, null); Text(if (saving) "正在整理…" else "获取 AI 参考解释") }
-        aiExplanation?.let { explanation ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("AI 参考，不会自动标记已解决\n$explanation")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { onAiFeedback("HELPFUL") }, enabled = !saving) { Text(if (record.aiExplanationFeedback == "HELPFUL") "✓ 有帮助" else "有帮助") }
-                        OutlinedButton(onClick = { onAiFeedback("NOT_HELPFUL") }, enabled = !saving) { Text(if (record.aiExplanationFeedback == "NOT_HELPFUL") "✓ 没帮助" else "没帮助") }
+        DetailSection("换一个角度理解") {
+            Text("AI 解释仅供参考，是否解决由你确认。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick = onExplain, enabled = !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Icon(Icons.Outlined.AutoAwesome, null); Text(if (saving) "正在整理…" else "获取 AI 参考解释") }
+            aiExplanation?.let { explanation ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("AI 参考 · 由你判断是否解决", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        ReadingBody(explanation)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { onAiFeedback("HELPFUL") }, enabled = !saving) { Text(if (record.aiExplanationFeedback == "HELPFUL") "✓ 有帮助" else "有帮助") }
+                            OutlinedButton(onClick = { onAiFeedback("NOT_HELPFUL") }, enabled = !saving) { Text(if (record.aiExplanationFeedback == "NOT_HELPFUL") "✓ 没帮助" else "没帮助") }
+                        }
                     }
                 }
             }
         }
-        Text("我的理解", style = MaterialTheme.typography.titleLarge)
-        understandings.forEach { item -> Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) { Text(item, modifier = Modifier.padding(16.dp)) } }
-        OutlinedTextField(understanding, { understanding = it }, label = { Text("追加一条新的理解") }, minLines = 3, modifier = Modifier.fillMaxWidth())
-        listOf("INITIAL" to "初步理解", "VERIFYING" to "待验证", "CONFIRMED" to "已确认").forEach { (status, label) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = understandingStatus == status, onClick = { understandingStatus = status })
-                Text(label)
+        DetailSection("理解的足迹 · ${understandings.size}") {
+            if (understandings.isEmpty()) Text("还没有理解记录。先写下你现在的想法，之后再回来修订。",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            understandings.forEach { item ->
+                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(16.dp)) {
+                    val displayText = when {
+                        item.startsWith("INITIAL ·") -> item.replaceFirst("INITIAL", "初步理解")
+                        item.startsWith("VERIFYING ·") -> item.replaceFirst("VERIFYING", "待验证")
+                        item.startsWith("CONFIRMED ·") -> item.replaceFirst("CONFIRMED", "已确认")
+                        else -> item
+                    }
+                    Text(displayText,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp), style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
-        Button(onClick = { if (understanding.isNotBlank()) { onUnderstanding(understanding, understandingStatus); understanding = "" } }, enabled = !saving && understanding.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("保存理解历史") }
+        DetailSection("追加我的理解") {
+            OutlinedTextField(understanding, { understanding = it }, label = { Text("追加一条新的理解") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+            listOf("INITIAL" to "初步理解", "VERIFYING" to "待验证", "CONFIRMED" to "已确认").forEach { (status, label) ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .selectable(selected = understandingStatus == status, role = Role.RadioButton, onClick = { understandingStatus = status }).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = understandingStatus == status, onClick = null)
+                    Text(label, modifier = Modifier.padding(start = 12.dp))
+                }
+            }
+            Button(onClick = { if (understanding.isNotBlank()) { onUnderstanding(understanding, understandingStatus); understanding = "" } }, enabled = !saving && understanding.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("保存理解历史") }
+        }
         if (record.status == "RESOLVED") {
             OutlinedButton(onClick = onReopen, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("重新打开，继续跟进") }
         } else {

@@ -34,7 +34,7 @@ internal fun KnowledgeScreen(padding: PaddingValues, onOpen: (Long) -> Unit, vie
             trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { query = ""; viewModel.load(null) }) { Icon(Icons.Outlined.Close, "清除搜索") } },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { viewModel.load(query); keyboard?.hide() }),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
         )
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Text("${listing.total} 个知识点", style = MaterialTheme.typography.titleMedium)
@@ -54,66 +54,26 @@ internal fun KnowledgeScreen(padding: PaddingValues, onOpen: (Long) -> Unit, vie
 }
 
 @Composable
-private fun KnowledgeLibraryRow(
-    node: com.secondbrain.android.data.remote.KnowledgeNode,
-    onClick: () -> Unit
-) {
+internal fun KnowledgeLibraryRow(node: com.secondbrain.android.data.remote.KnowledgeNode, onClick: () -> Unit) {
     val summary = node.summary?.takeIf { it.isNotBlank() }
-        ?: node.contentMd?.takeIf { it.isNotBlank() }
-        ?: "打开阅读完整内容。"
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
-                Surface(
-                    modifier = Modifier.size(44.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        ?: node.contentMd?.takeIf { it.isNotBlank() } ?: "打开阅读完整内容。"
+    Column {
+        Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+            Row(Modifier.padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp).size(24.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(node.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (node.needReview == 1) "待复习" else "知识笔记", style = MaterialTheme.typography.labelSmall,
+                            color = if (node.needReview == 1) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary)
+                        node.importance?.let { Text("重要度 $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-                Column(Modifier.weight(1f)) {
-                    Text(node.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(top = 12.dp))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp)) {
-                    Text(
-                        if (node.needReview == 1) "待复习" else "知识笔记",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-                node.importance?.let { importance ->
-                    Text("重要度 $importance", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Description, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                Text(
-                    if (node.needReview == 1) "回顾这条知识，巩固记忆" else "已收录到当前知识库",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }

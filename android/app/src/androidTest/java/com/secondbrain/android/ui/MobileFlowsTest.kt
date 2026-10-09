@@ -45,13 +45,13 @@ class MobileFlowsTest {
         compose.onNodeWithText("答案解析").assertDoesNotExist()
         compose.onNodeWithText("经验证的构件更稳定。").assertDoesNotExist()
         snapshot("review-question")
-        compose.onNodeWithText("提交答案").performScrollTo().performClick()
+        compose.onNodeWithText("提交答案").performClick()
         compose.onNodeWithText("回答正确").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("经验证的构件更稳定。").performScrollTo().assertIsDisplayed()
         assertEquals(1, submissions)
         assertEquals(0, vm.state.value.position)
         snapshot("review-feedback")
-        compose.onNodeWithText("下一题").performScrollTo().performClick()
+        compose.onNodeWithText("下一题").performClick()
         compose.onNodeWithText("请说明复用的价值。").assertIsDisplayed()
         assertEquals("", vm.state.value.answer)
     }
@@ -66,10 +66,14 @@ class MobileFlowsTest {
         val vm = ReviewViewModel(api)
         compose.setContent { SecondBrainTheme { ReviewSessionScreen({}, vm) } }
         compose.onNodeWithText("写下你的理解").performTextInput("我的回答")
-        compose.onNodeWithText("提交答案").performScrollTo().performClick()
+        // 先收起系统输入法，避免其动画期间的坐标变化影响固定底栏的点击回归。
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.onNodeWithText("提交答案").performClick()
+        compose.waitUntil(5_000) { vm.state.value.message == "网络中断，请重试" }
         compose.onNodeWithText("网络中断，请重试").performScrollTo().assertIsDisplayed()
         assertEquals("我的回答", vm.state.value.answer)
-        compose.onNodeWithText("提交答案").performScrollTo().performClick()
+        compose.onNodeWithText("提交答案").performClick()
+        compose.waitUntil(5_000) { vm.state.value.result != null }
         compose.onNodeWithText("再巩固一下").performScrollTo().assertIsDisplayed()
         assertEquals(2, attempts)
     }

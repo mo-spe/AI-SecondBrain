@@ -1,6 +1,13 @@
 package com.secondbrain.android.ui
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -145,31 +152,44 @@ private fun com.secondbrain.android.data.remote.ApiResult<*>.requireDataOrSucces
 @Composable
 internal fun VisionSettingsScreen(onBack: () -> Unit, viewModel: VisionSettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
-    Scaffold(topBar = { TopAppBar(title = { Text("视觉识别设置") }, navigationIcon = {
-        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回") }
-    }) }) { padding: PaddingValues ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-            .padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    var providerMenu by remember { mutableStateOf(false) }
+    Scaffold(containerColor = MaterialTheme.colorScheme.background,
+        topBar = { TopAppBar(title = { Text("视觉识别设置", style = MaterialTheme.typography.titleMedium) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "返回") } },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) },
+        bottomBar = {
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Button(onClick = viewModel::save, enabled = !state.busy && state.provider != null,
+                    modifier = Modifier.imePadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth().heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(12.dp)) { Text(if (state.busy) "正在保存…" else "保存视觉模型配置") }
+            }
+        }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text("自己的模型，按需调用", style = MaterialTheme.typography.headlineSmall)
             Text("错题默认仍用本机 OCR。只有你主动选择精准识别，或提交单词截图时，图片才会由后端发送给这里配置的服务商。费用由你的服务商账户结算。",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("选择视觉模型服务商", style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.providers.forEach { provider ->
-                    FilterChip(selected = state.provider?.id == provider.id,
-                        onClick = { viewModel.selectProvider(provider) }, label = { Text(provider.name) })
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("视觉模型服务商", style = MaterialTheme.typography.labelLarge)
+                ExposedDropdownMenuBox(expanded = providerMenu, onExpandedChange = { if (!state.busy) providerMenu = it }) {
+                    OutlinedTextField(value = state.provider?.name ?: "选择服务商", onValueChange = {}, readOnly = true,
+                        enabled = !state.busy, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(providerMenu) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(12.dp))
+                    ExposedDropdownMenu(expanded = providerMenu, onDismissRequest = { providerMenu = false }) {
+                        state.providers.forEach { provider ->
+                            DropdownMenuItem(text = { Text(provider.name) }, onClick = { viewModel.selectProvider(provider); providerMenu = false })
+                        }
+                    }
                 }
             }
-            OutlinedTextField(state.model, viewModel::setModel, label = { Text("视觉模型名称") },
-                supportingText = { Text("例如 qwen3-vl-flash；需支持图片输入与 OpenAI 兼容协议") },
-                modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(state.keyInput, viewModel::setKey, label = { Text("个人 API Key") },
-                placeholder = { Text(if (state.hasKey) "已配置；留空则保留原 Key" else "输入后仅保存到服务器") },
-                visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-            state.message?.let { Text(it, color = if (state.ready == false) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.primary) }
-            Button(onClick = viewModel::save, enabled = !state.busy && state.provider != null,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (state.busy) "正在保存…" else "保存视觉模型配置") }
+            OutlinedTextField(state.model, viewModel::setModel, enabled = !state.busy, label = { Text("视觉模型名称") },
+                supportingText = { Text("需支持图片输入与 OpenAI 兼容协议") }, singleLine = true,
+                shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(state.keyInput, viewModel::setKey, enabled = !state.busy, label = { Text("个人 API Key") },
+                placeholder = { Text(if (state.hasKey) "已配置；留空保留原 Key" else "输入个人 API Key") },
+                visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+            state.message?.let { Text(it, color = if (state.ready == false) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary) }
         }
     }
 }

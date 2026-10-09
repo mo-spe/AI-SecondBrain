@@ -115,6 +115,16 @@ interface SecondBrainApi {
     @GET("vocabulary/articles/{id}")
     suspend fun vocabularyArticle(@Path("id") id: Long): ApiResult<VocabularyArticle>
 
+    @POST("vocabulary/articles/{id}/complete")
+    suspend fun completeVocabularyArticle(@Path("id") id: Long): ApiResult<VocabularyArticle>
+
+    @POST("vocabulary/articles/{id}/translation")
+    suspend fun translateVocabularyArticle(@Path("id") id: Long): ApiResult<VocabularyArticleTranslation>
+
+    @POST("vocabulary/articles/{id}/word-meaning")
+    suspend fun vocabularyWordMeaning(@Path("id") id: Long,
+        @Body request: VocabularyWordMeaningRequest): ApiResult<VocabularyWordMeaning>
+
     @GET("study/wrong-questions")
     suspend fun wrongQuestions(@Query("status") status: String? = null, @Query("keyword") keyword: String? = null): ApiResult<List<WrongQuestionRecord>>
 

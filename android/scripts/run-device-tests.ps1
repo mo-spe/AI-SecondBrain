@@ -1,15 +1,18 @@
 param(
     [Parameter(Mandatory = $true)][string]$Serial,
-    [string]$Adb = "$env:LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe"
+    [string]$Adb = "$env:LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe",
+    [string]$TestClass = 'com.secondbrain.android.ui.MobileFlowsTest',
+    [int]$ExpectedTests = 8,
+    [string]$ArtifactDirectory = (Join-Path $PSScriptRoot '../artifacts/ux-review')
 )
 
 $ErrorActionPreference = 'Stop'
-$artifactDirectory = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../artifacts/ux-review'))
+$artifactDirectory = [IO.Path]::GetFullPath($ArtifactDirectory)
 New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
 $outputPath = Join-Path $artifactDirectory 'device-tests.txt'
 $errorPath = Join-Path $artifactDirectory 'device-tests-stderr.txt'
 $arguments = @('-s', ('"' + $Serial + '"'), 'shell', 'am', 'instrument', '-w', '-e', 'class',
-    'com.secondbrain.android.ui.MobileFlowsTest', 'com.secondbrain.android.test/androidx.test.runner.AndroidJUnitRunner')
+    $TestClass, 'com.secondbrain.android.test/androidx.test.runner.AndroidJUnitRunner')
 $runner = Start-Process -FilePath $Adb -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $outputPath -RedirectStandardError $errorPath
 $deadline = [DateTime]::UtcNow.AddMinutes(5)
 try {
@@ -29,7 +32,7 @@ try {
     }
     $result = Get-Content -LiteralPath $outputPath -Raw
     Write-Output $result
-    if ($result -notmatch 'OK \(8 tests\)') { throw "设备测试未全部通过，查看 $outputPath" }
+    if ($runner.ExitCode -ne 0 -or $result -notmatch ('OK \(' + $ExpectedTests + ' tests\)')) { throw "设备测试未全部通过，查看 $outputPath" }
 } finally {
     if (-not $runner.HasExited) { Stop-Process -Id $runner.Id }
 }

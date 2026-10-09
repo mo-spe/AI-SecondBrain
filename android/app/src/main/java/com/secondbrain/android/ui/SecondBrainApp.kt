@@ -95,6 +95,9 @@ private sealed interface FullScreenDestination {
     data object Rag : FullScreenDestination
     data object Review : FullScreenDestination
     data object StudyArchive : FullScreenDestination
+    data object Reminders : FullScreenDestination
+    data object Drafts : FullScreenDestination
+    data object Vision : FullScreenDestination
     data object Vocabulary : FullScreenDestination
     data class Knowledge(val id: Long) : FullScreenDestination
     data class Post(val post: com.secondbrain.android.data.remote.SquarePost) : FullScreenDestination
@@ -133,6 +136,9 @@ private fun AppShell() {
             FullScreenDestination.Rag -> listOf("rag")
             FullScreenDestination.Review -> listOf("review")
             FullScreenDestination.StudyArchive -> listOf("study-archive")
+            FullScreenDestination.Reminders -> listOf("reminders")
+            FullScreenDestination.Drafts -> listOf("drafts")
+            FullScreenDestination.Vision -> listOf("vision")
             FullScreenDestination.Vocabulary -> listOf("vocabulary")
             is FullScreenDestination.Knowledge -> listOf("knowledge", destination.id.toString())
             is FullScreenDestination.Post -> listOf("post", destination.post.postId.toString())
@@ -144,6 +150,9 @@ private fun AppShell() {
             "rag" -> FullScreenDestination.Rag
             "review" -> FullScreenDestination.Review
             "study-archive" -> FullScreenDestination.StudyArchive
+            "reminders" -> FullScreenDestination.Reminders
+            "drafts" -> FullScreenDestination.Drafts
+            "vision" -> FullScreenDestination.Vision
             "vocabulary" -> FullScreenDestination.Vocabulary
             "knowledge" -> FullScreenDestination.Knowledge(route[1].toLong())
             "post" -> FullScreenDestination.Post(com.secondbrain.android.data.remote.SquarePost(route[1].toLong()))
@@ -154,6 +163,18 @@ private fun AppShell() {
     var fullScreen by rememberSaveable(stateSaver = destinationSaver) { androidx.compose.runtime.mutableStateOf<FullScreenDestination?>(null) }
     BackHandler(enabled = fullScreen != null) { fullScreen = null }
     when (val destination = fullScreen) {
+        FullScreenDestination.Reminders -> {
+            ReminderSettingsScreen(onBack = { fullScreen = null })
+            return
+        }
+        FullScreenDestination.Drafts -> {
+            DraftRecoveryScreen(onBack = { fullScreen = null }, onOpenCapture = { fullScreen = FullScreenDestination.Capture })
+            return
+        }
+        FullScreenDestination.Vision -> {
+            VisionSettingsScreen(onBack = { fullScreen = null })
+            return
+        }
         FullScreenDestination.Capture -> {
             CaptureScreen(onBack = { fullScreen = null })
             return
@@ -217,7 +238,7 @@ private fun AppShell() {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = Color.Transparent
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     )
                 }
@@ -240,7 +261,8 @@ private fun AppShell() {
                 onOpenPost = { fullScreen = FullScreenDestination.Post(it) },
                 onOpenQuestion = { fullScreen = FullScreenDestination.Question(it) }
             )
-            else -> ProfileScreen(padding, onOpenCapture = { fullScreen = FullScreenDestination.Capture })
+            else -> ProfileScreen(padding, onReminders = { fullScreen = FullScreenDestination.Reminders },
+                onDrafts = { fullScreen = FullScreenDestination.Drafts }, onVisionSettings = { fullScreen = FullScreenDestination.Vision })
         }
         }
     }
@@ -265,34 +287,49 @@ private fun CaptureScreen(onBack: () -> Unit, viewModel: com.secondbrain.android
         return
     }
     val draft = state.draft
-    Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(20.dp)) {
-        TopAppBar(title = { Text("采集知识") }, navigationIcon = { BackNavigation(onBack) })
-        if (draft == null) {
-            Text("拍照或从相册导入后，文字将在本机识别。确认前不会上传图片或创建知识点。", modifier = Modifier.padding(top = 24.dp))
-            Button(onClick = { picker.launch("image/*") }, enabled = !state.recognizing, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
-                Text(if (state.recognizing) "正在识别…" else "从相册选择图片")
+    Scaffold(containerColor = MaterialTheme.colorScheme.background,
+        topBar = { TopAppBar(title = { Text("采集知识", style = MaterialTheme.typography.titleMedium) },
+            navigationIcon = { BackNavigation(onBack) },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) },
+        bottomBar = {
+            if (draft != null) Surface(color = MaterialTheme.colorScheme.surface) {
+                Button(onClick = viewModel::saveConfirmed,
+                    enabled = state.ready && !state.saving && draft.workspaceId == state.workspaceId && draft.title.isNotBlank() && draft.content.isNotBlank(),
+                    modifier = Modifier.imePadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth().heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(12.dp)) { Text(if (state.saving) "正在保存…" else "确认保存到知识库") }
             }
-            Button(onClick = {
-                cameraError = null
-                cameraOpen = true
-            }, enabled = !state.recognizing, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Text("打开相机拍摄")
+        }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (draft == null) {
+                Text("留住刚刚遇见的知识", style = MaterialTheme.typography.headlineSmall)
+                Text("拍照或从相册导入后，文字将在本机识别。确认前不会上传图片或创建知识点。",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = { picker.launch("image/*") }, enabled = !state.recognizing,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(12.dp)) {
+                    Text(if (state.recognizing) "正在识别…" else "从相册选择图片")
+                }
+                OutlinedButton(onClick = { cameraError = null; cameraOpen = true }, enabled = !state.recognizing,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(12.dp)) { Text("打开相机拍摄") }
+                OutlinedButton(onClick = viewModel::createManual, enabled = state.ready && !state.recognizing,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(12.dp)) { Text("手动输入知识") }
+                cameraError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            } else {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(if (state.localSaved) "草稿已保存到本机" else if (state.message != null) "草稿尚未保存" else "正在保存草稿…",
+                            style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("核对标题和正文，确认后再收录。", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                if (!state.localSaved && state.message != null) TextButton(onClick = { viewModel.update(draft.title, draft.content) }, enabled = !state.saving) { Text("重试保存草稿") }
+                if (draft.workspaceId != state.workspaceId) Text("请切回草稿所属空间后保存", color = MaterialTheme.colorScheme.error)
+                OutlinedTextField(draft.title, { viewModel.update(it, draft.content) }, enabled = !state.saving,
+                    label = { Text("知识标题") }, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(draft.content, { viewModel.update(draft.title, it) }, enabled = !state.saving,
+                    label = { Text("正文，可编辑") }, minLines = 10, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
             }
-            OutlinedButton(onClick = viewModel::createManual, enabled = state.ready && !state.recognizing, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("手动输入知识") }
-            state.message?.let { Text(it, color = if (it.startsWith("已保存") || it.startsWith("知识已保存")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
-            cameraError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
-        } else {
-            val title = draft.title
-            val content = draft.content
-            Text(if (state.localSaved) "草稿已保存到本机" else if (state.message != null) "草稿尚未保存" else "正在保存草稿…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (!state.localSaved && state.message != null) TextButton(onClick = { viewModel.update(title, content) }, enabled = !state.saving) { Text("重试保存草稿") }
-            if (draft.workspaceId != state.workspaceId) Text("请切回草稿所属空间后保存", color = MaterialTheme.colorScheme.error)
-            OutlinedTextField(title, { viewModel.update(it, content) }, enabled = !state.saving, label = { Text("知识标题") }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
-            OutlinedTextField(content, { viewModel.update(title, it) }, enabled = !state.saving, label = { Text("识别正文，可编辑") }, modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 12.dp))
-            Button(onClick = viewModel::saveConfirmed, enabled = state.ready && !state.saving && draft.workspaceId == state.workspaceId && title.isNotBlank() && content.isNotBlank(), modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                Text(if (state.saving) "正在保存…" else "确认保存到知识库")
-            }
-            state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
+            state.message?.let { Text(it, color = if (it.startsWith("已保存") || it.startsWith("知识已保存")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -413,153 +450,6 @@ private fun FeaturePlaceholder(title: String, padding: PaddingValues) {
     }
 }
 
-@Composable
-private fun TodayScreen(
-    padding: PaddingValues,
-    onOpenRag: () -> Unit,
-    onOpenCapture: () -> Unit,
-    onOpenStudyArchive: () -> Unit,
-    onOpenVocabulary: () -> Unit,
-    onOpenReview: (Long?) -> Unit,
-    viewModel: TodayViewModel = hiltViewModel()
-) {
-    val state by viewModel.state.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.load() }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(start = 20.dp, top = 28.dp, end = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                Column(Modifier.weight(1f)) {
-                    Text("今日", style = MaterialTheme.typography.displaySmall)
-                    Text("从一次回顾开始", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-                    Text("积累，", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("让选择更从容。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("—", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.outline)
-                }
-            }
-        }
-        when (val viewState = state) {
-            LoadState.Loading -> {
-                item { LearningHero(0, null, onReview = {}, reviewEnabled = false) }
-                item { LoadingContent("正在更新今日学习计划…") }
-            }
-            is LoadState.Empty -> {
-                item { LearningHero(0, null, onReview = {}, reviewEnabled = false) }
-                item { EmptyState(viewState.message, viewModel::load) }
-                item { TodayExploreHeader() }
-                item { TodayExploreRow("问问知识库", "基于已有资料获得回答", Icons.Outlined.ChatBubbleOutline, onOpenRag) }
-                item { TodayExploreRow("采集新知识", "图片、链接或手动记录", Icons.Outlined.Add, onOpenCapture, MaterialTheme.colorScheme.tertiaryContainer) }
-                item { TodayExploreRow("错题本与疑问箱", "归档原题，自己决定何时复盘", Icons.Outlined.Description, onOpenStudyArchive) }
-                item { TodayExploreRow("词表文章", "上传背词截图，在语境里重逢这些词", Icons.Outlined.MenuBook, onOpenVocabulary) }
-            }
-            is LoadState.Failure -> item { EmptyState(viewState.message, viewModel::load) }
-            is LoadState.Content -> {
-                item { LearningHero(viewState.value.size, viewState.value.firstOrNull(), onReview = { onOpenReview(null) }, reviewEnabled = true) }
-                item { TodayExploreHeader() }
-                item { TodayExploreRow("问问知识库", "基于已有资料获得回答", Icons.Outlined.ChatBubbleOutline, onOpenRag) }
-                item { TodayExploreRow("采集新知识", "图片、链接或手动记录", Icons.Outlined.Add, onOpenCapture, MaterialTheme.colorScheme.tertiaryContainer) }
-                item { TodayExploreRow("错题本与疑问箱", "归档原题，自己决定何时复盘", Icons.Outlined.Description, onOpenStudyArchive) }
-                item { TodayExploreRow("词表文章", "上传背词截图，在语境里重逢这些词", Icons.Outlined.MenuBook, onOpenVocabulary) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LearningHero(
-    count: Int,
-    nextCard: com.secondbrain.android.data.remote.ReviewCard?,
-    onReview: () -> Unit,
-    reviewEnabled: Boolean
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Box {
-            Image(
-                painter = painterResource(com.secondbrain.android.R.drawable.today_review_scene),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize()
-            )
-            Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.58f), modifier = Modifier.matchParentSize()) {}
-        Column(Modifier.padding(24.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("今日待复习", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(if (reviewEnabled) "准备开始" else "暂无到期", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
-                Text(count.toString(), style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onSurface)
-                Text(" 张待复习", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
-            }
-            LinearProgressIndicator(
-                progress = { if (reviewEnabled) 0.6f else 0f },
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(6.dp),
-                color = MaterialTheme.colorScheme.tertiary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            )
-            Text(if (reviewEnabled) "本周学习节奏正在累积" else "去问问你的知识库，继续探索。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
-            HorizontalDivider(Modifier.padding(top = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            Text(if (nextCard != null) "下一张 · 1 / $count" else "暂时没有到期内容", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 18.dp))
-            Text(nextCard?.nodeTitle ?: "从一次回顾开始", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 6.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(nextCard?.let { com.secondbrain.android.review.parseReviewPrompt(it.question).question }?.ifBlank { "进入复习，回顾这个知识点" } ?: "去整理新的知识，下一次复习会在这里出现。", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Button(
-                onClick = onReview,
-                enabled = reviewEnabled,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().padding(top = 20.dp).height(52.dp)
-            ) { Text("开始复习") }
-        }
-        }
-    }
-}
-
-@Composable
-private fun TodayExploreHeader() {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("继续探索", style = MaterialTheme.typography.titleLarge)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("让好奇心带来更多可能", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
-        }
-    }
-}
-
-@Composable
-private fun TodayExploreRow(title: String, body: String, icon: ImageVector, onClick: () -> Unit, accent: Color = Color.Unspecified) {
-    val tileColor = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primaryContainer else accent
-    val iconColor = if (accent == Color.Unspecified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 84.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Surface(color = tileColor, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(52.dp)) {
-                Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = iconColor) }
-            }
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp))
-            }
-            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.rag.RagViewModel = hiltViewModel()) {
@@ -574,8 +464,8 @@ internal fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.ra
             )
         },
         bottomBar = {
-            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
-                Column(Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                Column(Modifier.imePadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
                     Text("回答基于你的知识库", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
@@ -609,7 +499,7 @@ internal fun RagScreen(onBack: () -> Unit, viewModel: com.secondbrain.android.ra
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                Text("基于个人空间 · 从已有资料中得到可追溯的回答", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("基于当前空间 · 从已有资料中得到可追溯的回答", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             state.question.takeIf { it.isNotBlank() && (state.asking || state.answer.isNotBlank()) }?.let { question ->
                 item {
@@ -675,11 +565,10 @@ internal fun CommunityContent(
     var questionMode by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val showingQuestions = questionMode
     val tabs: @Composable () -> Unit = {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(4.dp)) {
-                CommunityTab("知识广场", !showingQuestions, Modifier.weight(1f)) { questionMode = false }
-                CommunityTab("问答社区", showingQuestions, Modifier.weight(1f)) { questionMode = true }
-            }
+        androidx.compose.material3.TabRow(selectedTabIndex = if (showingQuestions) 1 else 0,
+            containerColor = MaterialTheme.colorScheme.background) {
+            androidx.compose.material3.Tab(selected = !showingQuestions, onClick = { questionMode = false }, text = { Text("知识广场") })
+            androidx.compose.material3.Tab(selected = showingQuestions, onClick = { questionMode = true }, text = { Text("问答社区") })
         }
     }
     androidx.compose.runtime.key(showingQuestions) {
@@ -844,29 +733,9 @@ private fun CommunityTab(label: String, selected: Boolean, modifier: Modifier, o
 }
 
 @Composable
-private fun ProfileScreen(
-    padding: PaddingValues,
-    onOpenCapture: () -> Unit,
-    viewModel: WorkspaceViewModel = hiltViewModel()
-) {
-    var remindersOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var draftsOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var visionOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
-    BackHandler(enabled = remindersOpen || draftsOpen || visionOpen) { remindersOpen = false; draftsOpen = false; visionOpen = false }
-    if (remindersOpen) {
-        ReminderSettingsScreen(onBack = { remindersOpen = false })
-        return
-    }
-    if (draftsOpen) {
-        DraftRecoveryScreen(onBack = { draftsOpen = false }, onOpenCapture = onOpenCapture)
-        return
-    }
-    if (visionOpen) {
-        VisionSettingsScreen(onBack = { visionOpen = false })
-        return
-    }
-    WorkspaceProfile(padding, viewModel, onReminders = { remindersOpen = true },
-        onDrafts = { draftsOpen = true }, onVisionSettings = { visionOpen = true })
+private fun ProfileScreen(padding: PaddingValues, onReminders: () -> Unit, onDrafts: () -> Unit,
+                          onVisionSettings: () -> Unit, viewModel: WorkspaceViewModel = hiltViewModel()) {
+    WorkspaceProfile(padding, viewModel, onReminders, onDrafts, onVisionSettings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -877,6 +746,13 @@ private fun DraftRecoveryScreen(
     viewModel: com.secondbrain.android.capture.CaptureViewModel = hiltViewModel()
 ) {
     val drafts by viewModel.savedDrafts.collectAsState(initial = emptyList())
+    var discardId by remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+    discardId?.let { id ->
+        androidx.compose.material3.AlertDialog(onDismissRequest = { discardId = null },
+            title = { Text("删除这份草稿？") }, text = { Text("删除后无法恢复，已收录的知识不会受影响。") },
+            confirmButton = { TextButton(onClick = { viewModel.discard(id); discardId = null }) { Text("删除草稿", color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = { discardId = null }) { Text("保留草稿") } })
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -898,10 +774,10 @@ private fun DraftRecoveryScreen(
                         onClick = { viewModel.restore(draft); onOpenCapture() },
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                     ) { Text("继续编辑") }
-                    Button(
-                        onClick = { viewModel.discard(draft.id) },
+                    TextButton(
+                        onClick = { discardId = draft.id },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                    ) { Text("删除草稿") }
+                    ) { Text("删除草稿", color = MaterialTheme.colorScheme.error) }
                 }
             }
         }
@@ -926,12 +802,15 @@ private fun ReminderSettingsScreen(onBack: () -> Unit, viewModel: com.secondbrai
             item { Text("尚未设置指定提醒。") }
         }
         items(state.reminders, key = { it.nodeId }) { reminder ->
-            Card {
-                Column(Modifier.padding(20.dp)) {
-                    Text("知识点 #" + reminder.nodeId, style = MaterialTheme.typography.titleMedium)
-                    Text("计划时间：" + reminder.scheduledAt.replace('T', ' ').take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
-                    Button(onClick = { viewModel.cancel(context, reminder.nodeId) }, modifier = Modifier.padding(top = 12.dp)) { Text("取消提醒") }
+            Column {
+                Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(reminder.scheduledAt.replace('T', ' ').take(16), style = MaterialTheme.typography.titleMedium)
+                        Text("知识点 #${reminder.nodeId}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = { viewModel.cancel(context, reminder.nodeId) }) { Text("取消提醒") }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
@@ -949,7 +828,7 @@ internal fun <T> ContentScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
-        contentPadding = PaddingValues(start = 20.dp, top = 28.dp, end = 20.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -1031,8 +910,7 @@ internal fun KnowledgeRow(title: String, body: String, marker: String, suffix: S
 
 @Composable
 internal fun SettingsRow(title: String, body: String, icon: ImageVector, selected: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    Surface(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(18.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
+    Surface(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(12.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Surface(color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.size(40.dp)) {
                 Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp)) }

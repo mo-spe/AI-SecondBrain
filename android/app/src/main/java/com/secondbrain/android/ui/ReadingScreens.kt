@@ -25,17 +25,17 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ReadingScaffold(title: String, onBack: () -> Unit, content: @Composable (PaddingValues) -> Unit) {
+internal fun ReadingScaffold(title: String, onBack: () -> Unit, bottomBar: @Composable () -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
     var largeText by rememberSaveable { mutableStateOf(false) }
     val base = MaterialTheme.typography
     val readingType = if (largeText) base.copy(bodyLarge = base.bodyLarge.copy(fontSize = base.bodyLarge.fontSize * 1.2f, lineHeight = base.bodyLarge.lineHeight * 1.2f)) else base
     MaterialTheme(typography = readingType) {
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
+    Scaffold(modifier = Modifier.imePadding(), containerColor = MaterialTheme.colorScheme.background, topBar = {
         TopAppBar(title = { Text(title, style = MaterialTheme.typography.titleMedium) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "返回") } },
             actions = { TextButton(onClick = { largeText = !largeText }, modifier = Modifier.semantics { contentDescription = "切换阅读字号" }) { Text(if (largeText) "标准字号" else "大字阅读", style = MaterialTheme.typography.labelSmall) } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
-    }, content = content)
+    }, bottomBar = bottomBar, content = content)
     }
 }
 
@@ -51,7 +51,17 @@ internal fun KnowledgeDetailScreen(id: Long, onBack: () -> Unit, loadDetail: sus
         catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) { state = LoadState.Failure(error.message ?: "知识详情加载失败") }
     }
-    ReadingScaffold("知识详情", onBack) { padding ->
+    ReadingScaffold("知识详情", onBack, bottomBar = {
+        (state as? LoadState.Content)?.value?.let { node ->
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                OutlinedButton(onClick = { reminderNode = node },
+                    modifier = Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth().heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Outlined.Notifications, null); Spacer(Modifier.width(8.dp)); Text("安排复习提醒")
+                }
+            }
+        }
+    }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp, 12.dp, 20.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             when (val value = state) {
                 LoadState.Loading -> item { LoadingContent("正在打开知识…") }
@@ -64,7 +74,6 @@ internal fun KnowledgeDetailScreen(id: Long, onBack: () -> Unit, loadDetail: sus
                     value.value.summary?.takeIf { it.isNotBlank() }?.let { summary -> item { Text(summary, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                     item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
                     item { ReadingBody(value.value.contentMd?.takeIf { it.isNotBlank() } ?: "这条知识暂未添加正文。") }
-                    item { OutlinedButton(onClick = { reminderNode = value.value }) { Icon(Icons.Outlined.Notifications, null); Spacer(Modifier.width(8.dp)); Text("安排复习提醒") } }
                 }
                 is LoadState.Empty -> item { Text(value.message) }
             }
@@ -163,19 +172,19 @@ internal fun SquarePostScreen(post: SquarePost, onBack: () -> Unit, onLike: susp
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewModel,
                               onReminders: () -> Unit, onDrafts: () -> Unit,
-                              onVisionSettings: () -> Unit) {
+                              onVisionSettings: () -> Unit = {}) {
     val state by viewModel.state.collectAsState()
     val selection by viewModel.selection.collectAsState()
     var switcherOpen by remember { mutableStateOf(false) }
     val workspaces = (state as? LoadState.Content)?.value.orEmpty()
     val spaceName = if (selection.activeId == null) "个人空间" else workspaces.find { it.id == selection.activeId }?.name ?: "协作工作区"
-    LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp, 28.dp, 20.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp, 12.dp, 20.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text("我的", style = MaterialTheme.typography.headlineMedium)
             Text("学习节奏和空间都在这里", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
         }
         item {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(24.dp), border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp), modifier = Modifier.size(56.dp)) {
                         Box(contentAlignment = Alignment.Center) { Text(if (selection.activeId == null) "SB" else "协", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary) }
@@ -232,30 +241,8 @@ internal fun WorkspaceProfile(padding: PaddingValues, viewModel: WorkspaceViewMo
         item { SettingsRow("视觉识别设置", "为精准识别和词表文章配置个人 API Key", Icons.Outlined.AutoAwesome,
             onClick = onVisionSettings) }
     }
-    if (switcherOpen) {
-        ModalBottomSheet(onDismissRequest = { switcherOpen = false }) {
-            LazyColumn(contentPadding = PaddingValues(20.dp, 4.dp, 20.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item {
-                    Text("切换工作区", style = MaterialTheme.typography.titleLarge)
-                    Text("知识与复习计划随当前空间更新", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                item {
-                    SettingsRow("个人空间", "只显示属于自己的知识与复习", Icons.Outlined.Person, selected = selection.activeId == null, enabled = selection.ready && !selection.switching) {
-                        viewModel.selectPersonal()
-                        switcherOpen = false
-                    }
-                }
-                items(workspaces, key = { "switch-${it.id}" }) { workspace ->
-                    SettingsRow(workspace.name, workspace.description ?: "协作知识库", Icons.Outlined.Groups, selected = selection.activeId == workspace.id, enabled = selection.ready && !selection.switching) {
-                        viewModel.select(workspace.id)
-                        switcherOpen = false
-                    }
-                }
-                if (state is LoadState.Loading || selection.switching) item { LoadingContent("正在读取空间…") }
-                (state as? LoadState.Failure)?.let { item { RetryContent(it.message, viewModel::load) } }
-            }
-        }
-    }
+    if (switcherOpen) WorkspaceSwitcher(viewModel) { switcherOpen = false }
+
 }
 
 @Composable
@@ -325,24 +312,22 @@ internal fun RagReferences(json: String) {
                 .adapter<List<RagReference>>(type).fromJson(json).orEmpty()
         }.getOrDefault(emptyList())
     }
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("引用的知识", style = MaterialTheme.typography.titleMedium)
-                Text("共 ${references.size} 条", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (references.isEmpty()) Text("本次未提供可展示的知识引用", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            references.forEach { reference ->
-                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.size(36.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("引用的知识", style = MaterialTheme.typography.titleMedium)
+            Text("共 ${references.size} 条", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (references.isEmpty()) Text("本次未提供可展示的知识引用", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        references.forEach { reference ->
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp)) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(reference.title ?: "知识来源", style = MaterialTheme.typography.labelLarge)
+                        (reference.matchedContent ?: reference.summary)?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(reference.title ?: "知识来源", style = MaterialTheme.typography.labelLarge)
-                            (reference.matchedContent ?: reference.summary)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
-                        }
-                        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
                     }
                 }
             }

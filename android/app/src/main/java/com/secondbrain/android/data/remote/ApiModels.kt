@@ -146,6 +146,16 @@ data class VocabularyArticleSummary(val id: Long, val topic: String, val difficu
                                     val wordCount: Int, val coveredCount: Int, val createTime: String = "")
 
 @JsonClass(generateAdapter = true)
+data class VocabularyArticleTranslation(val articleId: Long, val sourceHash: String, val translation: String)
+
+@JsonClass(generateAdapter = true)
+data class VocabularyWordMeaningRequest(val sourceHash: String, val start: Int, val end: Int)
+
+@JsonClass(generateAdapter = true)
+data class VocabularyWordMeaning(val articleId: Long, val sourceHash: String, val start: Int, val end: Int,
+                                 val word: String, val meaning: String, val sentence: String)
+
+@JsonClass(generateAdapter = true)
 data class CreateWrongQuestionRequest(
     val imagePath: String,
     val ocrText: String? = null,
