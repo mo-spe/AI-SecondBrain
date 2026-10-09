@@ -92,6 +92,46 @@ public class VocabularyArticleController {
         return Result.success(service.get(id, userId(request)));
     }
 
+    /**
+     * 用户主动补齐已保存文章的遗漏词，原文章与已有释义保持可读。
+     *
+     * @param id 文章标识
+     * @param request 登录请求上下文
+     * @return 补齐后重新核验的文章
+     */
+    @PostMapping("/{id}/complete")
+    public Result<VocabularyArticleDtos.ArticleView> completeMissing(@PathVariable Long id,
+                                                                      HttpServletRequest request) {
+        return Result.success(service.completeMissing(id, userId(request)));
+    }
+
+    /**
+     * 用户点击查看完整翻译时才调用模型，命中缓存时直接返回译文。
+     *
+     * @param id 文章标识
+     * @param request 登录请求上下文
+     * @return 完整中文译文
+     */
+    @PostMapping("/{id}/translation")
+    public Result<VocabularyArticleDtos.ArticleTranslation> translate(@PathVariable Long id,
+                                                                     HttpServletRequest request) {
+        return Result.success(service.translate(id, userId(request)));
+    }
+
+    /**
+     * 为用户主动点击的词返回该次出现的语境释义。
+     *
+     * @param id 文章标识
+     * @param body 正文版本与点击位置
+     * @param request 登录请求上下文
+     * @return 对应词与原句的中文释义
+     */
+    @PostMapping("/{id}/word-meaning")
+    public Result<VocabularyArticleDtos.WordMeaning> wordMeaning(@PathVariable Long id,
+            @RequestBody VocabularyArticleDtos.WordMeaningRequest body, HttpServletRequest request) {
+        return Result.success(service.wordMeaning(id, body, userId(request)));
+    }
+
     private Long userId(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) throw new BusinessException(401, "请先登录");

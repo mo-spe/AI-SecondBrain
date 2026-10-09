@@ -1,6 +1,7 @@
 package com.secondbrain.exception;
 
 import com.secondbrain.common.Result;
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.validation.BindException;
@@ -17,6 +18,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * 客户端断开后结束异常处理，避免再次向已关闭的连接写入错误响应。
+     *
+     * @param e 客户端连接中断异常
+     */
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbortException(ClientAbortException e) {
+        log.debug("客户端已断开连接，停止写入响应：{}", e.getMessage());
+    }
 
     /**
      * 处理业务异常.

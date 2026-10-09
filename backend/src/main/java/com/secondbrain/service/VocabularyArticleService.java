@@ -49,4 +49,33 @@ public interface VocabularyArticleService {
      * @return 文章内容
      */
     VocabularyArticleDtos.ArticleView get(Long id, Long userId);
+
+    /**
+     * 为当前用户已保存的文章补写尚未覆盖的目标词，并重新核验覆盖。
+     *
+     * @param id 文章标识
+     * @param userId 当前用户
+     * @return 更新后的文章与覆盖结果
+     */
+    VocabularyArticleDtos.ArticleView completeMissing(Long id, Long userId);
+
+    /**
+     * 按需翻译当前用户的完整文章，并复用相同正文的缓存译文。
+     *
+     * @param id 文章标识
+     * @param userId 当前用户
+     * @return 与当前正文绑定的中文译文
+     */
+    VocabularyArticleDtos.ArticleTranslation translate(Long id, Long userId);
+
+    /**
+     * 按需解释原文中用户点击的英文词，复用已有释义与该次出现的缓存。
+     *
+     * @param id 文章标识
+     * @param request 原文版本及单词位置
+     * @param userId 当前用户
+     * @return 当前原句中的中文释义
+     */
+    VocabularyArticleDtos.WordMeaning wordMeaning(Long id, VocabularyArticleDtos.WordMeaningRequest request,
+                                                 Long userId);
 }
