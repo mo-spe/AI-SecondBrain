@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Mic2, Play, RotateCcw, Send, Square, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../lib/api.js';
 import { convertToWav } from '../lib/audio.js';
 import PageLoading from '../components/PageLoading.jsx';
@@ -10,6 +11,7 @@ const createAttemptId = () => globalThis.crypto?.randomUUID?.()
 const MAX_RECORDING_SECONDS = 60;
 
 export default function FeynmanPage() {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -32,11 +34,12 @@ export default function FeynmanPage() {
     cachedRequest('knowledge', '/knowledge')
       .then(({ items: nextItems }) => {
         setItems(nextItems);
-        if (nextItems[0]) setSelectedId(nextItems[0].id);
+        const requestedId = searchParams.get('knowledgeId');
+        if (nextItems[0]) setSelectedId(nextItems.some((item) => item.id === requestedId) ? requestedId : nextItems[0].id);
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoadingItems(false));
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => () => {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -184,7 +187,7 @@ export default function FeynmanPage() {
         body: JSON.stringify({ knowledgeId: selectedId, transcript, clientAttemptId: attemptIdRef.current, ...evaluation })
       });
       setSaved(true);
-      invalidateApiCache('knowledge', 'knowledge-graph');
+      invalidateApiCache('knowledge', 'knowledge-graph', `knowledge-detail:${selectedId}`, `feynman-attempts:${selectedId}`);
       setError('复述记录已保存，知识点掌握度已更新。');
     } catch (requestError) {
       setError(requestError.message);

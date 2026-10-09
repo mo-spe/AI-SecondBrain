@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, ClipboardCheck, RotateCcw, Sparkles, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../lib/api.js';
 import PageLoading from '../components/PageLoading.jsx';
 import { cachedRequest } from '../lib/dataCache.js';
@@ -13,6 +14,7 @@ const difficultyOptions = [
 const optionLetters = ['A', 'B', 'C', 'D'];
 
 export default function QuizPage() {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
@@ -27,11 +29,12 @@ export default function QuizPage() {
     cachedRequest('knowledge', '/knowledge')
       .then(({ items: nextItems }) => {
         setItems(nextItems);
-        if (nextItems[0]) setSelectedId(nextItems[0].id);
+        const requestedId = searchParams.get('knowledgeId');
+        if (nextItems[0]) setSelectedId(nextItems.some((item) => item.id === requestedId) ? requestedId : nextItems[0].id);
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoadingItems(false));
-  }, []);
+  }, [searchParams]);
 
   const generateQuiz = async () => {
     if (!selectedId) return;

@@ -8,6 +8,7 @@ import { routeImports } from './lib/routes.js';
 const LoginPage = lazy(routeImports.login);
 const DashboardPage = lazy(routeImports.dashboard);
 const KnowledgePage = lazy(routeImports.knowledge);
+const KnowledgeDetailPage = lazy(routeImports.knowledgeDetail);
 const FeynmanPage = lazy(routeImports.feynman);
 const RagPage = lazy(routeImports.rag);
 const GraphPage = lazy(routeImports.graph);
@@ -34,6 +35,7 @@ export default function App() {
     >
       <Route index element={<DashboardPage />} />
       <Route path="knowledge" element={<KnowledgePage />} />
+      <Route path="knowledge/:id" element={<KnowledgeDetailPage />} />
       <Route path="feynman" element={<FeynmanPage />} />
       <Route path="quiz" element={<QuizPage />} />
       <Route path="rag" element={<RagPage />} />

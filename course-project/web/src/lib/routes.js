@@ -2,6 +2,7 @@ export const routeImports = {
   login: () => import('../pages/LoginPage.jsx'),
   dashboard: () => import('../pages/DashboardPage.jsx'),
   knowledge: () => import('../pages/KnowledgePage.jsx'),
+  knowledgeDetail: () => import('../pages/KnowledgeDetailPage.jsx'),
   feynman: () => import('../pages/FeynmanPage.jsx'),
   quiz: () => import('../pages/QuizPage.jsx'),
   rag: () => import('../pages/RagPage.jsx'),
