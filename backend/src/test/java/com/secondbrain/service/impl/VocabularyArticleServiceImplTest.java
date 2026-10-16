@@ -42,6 +42,8 @@ class VocabularyArticleServiceImplTest {
 
     @Test
     void doesNotCountSubstringAsTargetWord() {
+        when(aiService.generateJsonAnswer(eq(7L), eq("vision"), any()))
+                .thenReturn("{\"article\":\"The cart rolled away.\",\"meanings\":{\"art\":\"艺术\"}}");
         when(aiService.generateAnswer(eq(7L), eq("vision"), any()))
                 .thenReturn("{\"article\":\"The cart rolled away.\",\"meanings\":{\"art\":\"艺术\"}}");
 
@@ -50,7 +52,8 @@ class VocabularyArticleServiceImplTest {
 
         assertThat(result.missingWords()).containsExactly("art");
         assertThat(result.words()).containsExactly("art", "cart");
-        verify(aiService, org.mockito.Mockito.times(3)).generateAnswer(eq(7L), eq("vision"), any());
+        verify(aiService).generateJsonAnswer(eq(7L), eq("vision"), any());
+        verify(aiService, times(2)).generateAnswer(eq(7L), eq("vision"), any());
     }
 
     @Test
@@ -80,8 +83,10 @@ class VocabularyArticleServiceImplTest {
 
     @Test
     void keepsReadableDraftWhenRepairAndSupplementHaveInvalidFormat() {
+        when(aiService.generateJsonAnswer(eq(7L), eq("vision"), any()))
+                .thenReturn("{\"article\":\"A quiet room.\",\"meanings\":{}}");
         when(aiService.generateAnswer(eq(7L), eq("vision"), any()))
-                .thenReturn("{\"article\":\"A quiet room.\",\"meanings\":{}}", "not-json", "not-json");
+                .thenReturn("not-json", "not-json");
 
         VocabularyArticleDtos.ArticleView result = service.generate(
                 new VocabularyArticleDtos.GenerateRequest(List.of("art"), "学习", "中级"), 7L);
@@ -97,7 +102,37 @@ class VocabularyArticleServiceImplTest {
                 new VocabularyArticleDtos.GenerateRequest(List.of("cart", "hello world"), "学习", "中级"), 7L))
                 .isInstanceOf(BusinessException.class);
 
+        verifyNoInteractions(aiService);
+    }
+
+    @Test
+    void savesCompleteStructuredDraftWithoutExtraModelCalls() {
+        when(aiService.generateJsonAnswer(eq(7L), eq("vision"), anyString()))
+                .thenReturn("{\"article\":\"Art helps people learn.\",\"meanings\":{\"art\":\"艺术\"}}");
+
+        var result = service.generate(new VocabularyArticleDtos.GenerateRequest(
+                List.of("art"), "学习", "中级"), 7L);
+
+        assertThat(result.article()).isEqualTo("Art helps people learn.");
+        assertThat(result.meanings()).containsEntry("art", "艺术");
+        assertThat(result.missingWords()).isEmpty();
+        verify(aiService).generateJsonAnswer(eq(7L), eq("vision"), anyString());
         verify(aiService, never()).generateAnswer(any(), any(), any());
+        verify(mapper).insert(any(VocabularyArticle.class));
+    }
+
+    @Test
+    void doesNotSaveOrRetryTruncatedInitialDraft() {
+        when(aiService.generateJsonAnswer(eq(7L), eq("vision"), anyString()))
+                .thenThrow(new BusinessException(502, "模型生成达到输出长度上限，文章被截断"));
+
+        assertThatThrownBy(() -> service.generate(new VocabularyArticleDtos.GenerateRequest(
+                List.of("art"), "学习", "中级"), 7L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("截断");
+
+        verify(aiService).generateJsonAnswer(eq(7L), eq("vision"), anyString());
+        verify(aiService, never()).generateAnswer(any(), any(), any());
+        verifyNoInteractions(mapper);
     }
 
     @Test

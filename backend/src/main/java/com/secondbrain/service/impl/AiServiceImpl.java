@@ -2,6 +2,7 @@ package com.secondbrain.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondbrain.client.AnthropicClient;
 import com.secondbrain.client.GeminiClient;
@@ -19,7 +20,9 @@ import com.secondbrain.service.ApiKeyEncryptionService;
 import com.unfbx.chatgpt.OpenAiClient;
 import com.unfbx.chatgpt.entity.chat.ChatCompletion;
 import com.unfbx.chatgpt.entity.chat.ChatCompletionResponse;
+import com.unfbx.chatgpt.entity.chat.ChatChoice;
 import com.unfbx.chatgpt.entity.chat.Message;
+import com.unfbx.chatgpt.entity.chat.ResponseFormat;
 import okhttp3.OkHttpClient;
 import okhttp3.MediaType;
 import okhttp3.Request;
@@ -35,6 +38,9 @@ import org.springframework.web.client.RestTemplate;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -54,6 +60,8 @@ import java.util.function.Consumer;
 public class AiServiceImpl implements AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiServiceImpl.class);
+    private static final int QWEN_VL_JSON_OUTPUT_TOKENS = 8192;
+    private static final int COMPATIBLE_JSON_OUTPUT_TOKENS = 4096;
 
     // ========== 旧配置（仅用于 @Deprecated 方法，Phase 5 迁移完成后移除） ==========
     @Value("${ai.provider:qwen}")
@@ -196,6 +204,23 @@ public class AiServiceImpl implements AiService {
 
     /** {@inheritDoc} */
     @Override
+    public String generateJsonAnswer(Long userId, String scenarioCode, String prompt) {
+        AiCallConfig config = resolveConfig(userId, scenarioCode);
+        String systemPrompt = "请完成用户的结构化任务，只返回 JSON 对象，不输出代码围栏或解释。";
+        if (!"openai_compatible".equals(config.getApiType())) {
+            return executeCall(config, systemPrompt, prompt);
+        }
+        // 只向官方明确支持 JSON Object 的 Qwen3-VL 系列发送格式参数，避免其他配置因参数不兼容失败。
+        boolean jsonObject = "qwen".equals(config.getProviderCode())
+                && config.getModelName() != null
+                && config.getModelName().toLowerCase(Locale.ROOT).matches("qwen3-vl-(flash|plus)(?:-.*)?");
+        int maxOutputTokens = jsonObject ? QWEN_VL_JSON_OUTPUT_TOKENS : COMPATIBLE_JSON_OUTPUT_TOKENS;
+        return callOpenAiCompatible(config, systemPrompt,
+                List.of(Map.of("role", "user", "content", prompt)), maxOutputTokens, jsonObject);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public String analyzeImages(Long userId, String scenarioCode, String prompt,
                                 List<byte[]> images, List<String> mimeTypes) {
         if (images == null || images.isEmpty() || images.size() > 8 || mimeTypes == null
@@ -236,8 +261,19 @@ public class AiServiceImpl implements AiService {
                     .readTimeout(90, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).build();
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
-                    log.warn("vision_call_failed userId={} status={}", userId, response.code());
-                    throw new BusinessException(502, "视觉模型请求失败，请检查模型和 API Key 后重试");
+                    String errorCode = response.body() == null ? "unknown"
+                            : readVisionErrorCode(response.body().string());
+                    log.warn("vision_call_failed userId={} provider={} model={} host={} status={} errorCode={}",
+                            userId, config.getProviderCode(), model, request.url().host(), response.code(), errorCode);
+                    if (response.code() == 404) {
+                        String message = "ModelNotFound".equalsIgnoreCase(errorCode)
+                                || "model_not_found".equalsIgnoreCase(errorCode)
+                                ? "视觉模型不存在或当前 Key 无权访问（HTTP 404），请核对模型名称、开通状态和 Key 所属地域"
+                                : "视觉模型接口或模型不可用（HTTP 404），请核对服务地址、模型名称和账号访问权限";
+                        throw new BusinessException(502, message);
+                    }
+                    throw new BusinessException(502,
+                            "视觉模型请求失败（HTTP " + response.code() + "），请检查模型和 API Key 后重试");
                 }
                 com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response.body().string());
                 String content = root.path("choices").path(0).path("message").path("content").asText("");
@@ -247,8 +283,39 @@ public class AiServiceImpl implements AiService {
                 return content;
             }
         } catch (IOException exception) {
-            log.warn("vision_call_io_failed userId={} type={}", userId, exception.getClass().getSimpleName());
+            // 异常消息可能携带服务地址或响应正文，只记录主机和类型以定位故障且不泄露请求内容。
+            log.warn("vision_call_io_failed userId={} provider={} host={} type={}",
+                    userId, config.getProviderCode(), URI.create(endpoint).getHost(),
+                    exception.getClass().getSimpleName());
+            if (exception instanceof UnknownHostException) {
+                throw new BusinessException(503,
+                        "电脑后端无法解析视觉模型服务域名，请检查电脑网络、DNS 和模型服务地址后重试");
+            }
+            if (exception instanceof SocketTimeoutException) {
+                throw new BusinessException(503, "电脑后端连接视觉模型超时，请检查电脑网络后重试");
+            }
+            if (exception instanceof JsonProcessingException) {
+                throw new BusinessException(502, "视觉模型返回的响应格式无效，请稍后重试");
+            }
             throw new BusinessException(503, "视觉识别连接失败，请稍后重试");
+        }
+    }
+
+    private String readVisionErrorCode(String response) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response);
+            if (root == null) {
+                return "unknown";
+            }
+            String code = root.path("error").path("code").asText("");
+            if (code.isBlank()) {
+                code = root.path("code").asText("");
+            }
+            // 服务商错误正文可能回显图片或凭证，仅允许短错误标识进入日志。
+            return code.matches("[A-Za-z0-9_.-]{1,80}") ? code : "unknown";
+        } catch (JsonProcessingException exception) {
+            // 网关可能返回 HTML，保留原 HTTP 状态，不能将错误页误报为连接失败。
+            return "unknown";
         }
     }
 
@@ -377,6 +444,12 @@ public class AiServiceImpl implements AiService {
      */
     private String callOpenAiCompatible(AiCallConfig config, String systemPrompt,
                                         List<Map<String, String>> messages) {
+        return callOpenAiCompatible(config, systemPrompt, messages, null, false);
+    }
+
+    private String callOpenAiCompatible(AiCallConfig config, String systemPrompt,
+                                        List<Map<String, String>> messages,
+                                        Integer maxOutputTokens, boolean jsonObject) {
         String baseUrl = config.getBaseUrl();
         if (baseUrl != null && !baseUrl.endsWith("/")) {
             baseUrl = baseUrl + "/";
@@ -406,9 +479,37 @@ public class AiServiceImpl implements AiService {
                 .model(config.getModelName())
                 .messages(apiMessages)
                 .build();
+        if (maxOutputTokens != null) {
+            // 初稿正文与整份释义共用预算，不能沿用 SDK 为普通问答默认设置的 2048 token。
+            chatCompletion.setMaxTokens(maxOutputTokens);
+        }
+        if (jsonObject) {
+            chatCompletion.setResponseFormat(ResponseFormat.builder().type("json_object").build());
+        }
 
         ChatCompletionResponse response = client.chatCompletion(chatCompletion);
-        return response.getChoices().get(0).getMessage().getContent();
+        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
+            throw new BusinessException(502, "模型未返回可用内容，请重试");
+        }
+        ChatChoice choice = response.getChoices().get(0);
+        if (choice == null) {
+            throw new BusinessException(502, "模型未返回可用内容，请重试");
+        }
+        if (maxOutputTokens != null) {
+            int contentLength = choice.getMessage() == null || choice.getMessage().getContent() == null
+                    ? 0 : choice.getMessage().getContent().length();
+            log.info("ai_json_response provider={} model={} maxOutputTokens={} jsonObject={} finishReason={} contentLength={}",
+                    config.getProviderCode(), config.getModelName(), maxOutputTokens,
+                    jsonObject, choice.getFinishReason(), contentLength);
+            if ("length".equals(choice.getFinishReason())) {
+                throw new BusinessException(502, "模型生成达到输出长度上限，文章被截断；词表和已填写内容已保留，请减少词数后重试");
+            }
+        }
+        if (choice.getMessage() == null || choice.getMessage().getContent() == null
+                || choice.getMessage().getContent().isBlank()) {
+            throw new BusinessException(502, "模型未返回可用内容，请重试");
+        }
+        return choice.getMessage().getContent();
     }
 
     /**

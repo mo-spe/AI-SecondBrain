@@ -3,6 +3,7 @@ package com.secondbrain.android.ui
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
+import android.os.SystemClock
 import androidx.compose.material3.Surface
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
@@ -18,6 +19,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.lang.reflect.Proxy
+import java.io.File
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.coroutines.resume
@@ -133,6 +135,83 @@ class VocabularyWordMeaningTest {
         assertNull(vm.state.value.wordLookup)
     }
 
+    @Test fun openingHistoryShowsReadProgressWithoutWritingOrModelCall() {
+        lateinit var pending: Continuation<Any?>
+        var writes = 0
+        val api = Proxy.newProxyInstance(SecondBrainApi::class.java.classLoader,
+            arrayOf(SecondBrainApi::class.java)) { _, method, args -> when (method.name) {
+            "vocabularyArticles" -> ApiResult(200, "ok",
+                listOf(VocabularyArticleSummary(12, "旧文示例", "中级", 1, 1)))
+            "vocabularyVisionReady" -> ApiResult(200, "ok", VisionReadiness(true, "ready"))
+            "vocabularyArticle" -> {
+                @Suppress("UNCHECKED_CAST")
+                val continuation = args.last() as Continuation<Any?>
+                pending = continuation
+                COROUTINE_SUSPENDED
+            }
+            "generateVocabularyArticle" -> { writes++; error("读取不能触发写作") }
+            else -> error(method.name)
+        } } as SecondBrainApi
+        lateinit var vm: VocabularyArticleViewModel
+        instrumentation.runOnMainSync {
+            vm = VocabularyArticleViewModel(api, context).also { owners.put("history", it) }
+            vm.addWord(); vm.editWord(0, "habit"); vm.confirm()
+        }
+        compose.setContent { SecondBrainTheme { Surface { VocabularyArticleScreen({}, vm) } } }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("旧文示例"))
+        compose.onNodeWithText("旧文示例").performClick()
+        compose.onNodeWithText("正在打开文章…").assertIsDisplayed()
+        compose.onNodeWithText("正在写作和核验…").assertDoesNotExist()
+        assertFalse(vm.state.value.busy)
+        assertFalse(vm.state.value.generating)
+        assertEquals(12L, vm.state.value.articleLoadingId)
+        assertEquals(0, writes)
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("生成一篇文章"))
+        compose.onNodeWithText("生成一篇文章").assertIsDisplayed().assertIsNotEnabled()
+        instrumentation.runOnMainSync { pending.resume(ApiResult(200, "ok", original)) }
+        compose.waitUntil(5_000) { vm.state.value.article != null }
+        compose.onNodeWithText(original.article).assertIsDisplayed()
+    }
+
+    @Test fun accessibleParagraphCanChooseAnyWordWithoutPerWordLayouts() {
+        show(original) { request, _ -> ApiResult(200, "ok", answer(original, request, "学习")) }
+        val paragraph = compose.onNodeWithTag("vocabulary-paragraph-0")
+        assertTrue(paragraph.fetchSemanticsNode().children.isEmpty())
+        paragraph.performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.onNodeWithText("选择单词").assertIsDisplayed()
+        compose.onNodeWithText("4. learning").performClick()
+        compose.onNodeWithText("学习").assertIsDisplayed()
+    }
+
+    @Test fun longReadingScrollsWithoutAccidentalLookupAndTargetMeaningIsImmediate() {
+        val paragraph = List(10) { "A habit makes learning easier and keeps daily progress steady." }.joinToString(" ")
+        val article = original.copy(article = List(40) { paragraph }.joinToString("\n\n"))
+        var calls = 0
+        val vm = show(article) { _, _ -> calls++; error("目标词不应调用网络") }
+        val durations = mutableListOf<Long>()
+        val first = article.article.indexOf("habit")
+        val last = article.article.lastIndexOf("habit")
+        instrumentation.runOnMainSync {
+            repeat(100) { index ->
+                val start = if (index % 2 == 0) first else last
+                val before = SystemClock.elapsedRealtimeNanos()
+                vm.selectWord(start, start + 5)
+                durations.add(SystemClock.elapsedRealtimeNanos() - before)
+                assertEquals("习惯", vm.state.value.wordLookup?.meaning)
+                assertFalse(vm.state.value.wordLookup!!.busy)
+                vm.dismissWord()
+            }
+        }
+        repeat(4) { compose.onNodeWithTag("vocabulary-reader").performTouchInput { swipeUp(durationMillis = 300) } }
+        compose.onNodeWithText("当前语境").assertDoesNotExist()
+        assertEquals(0, calls)
+        val sorted = durations.sorted()
+        File(context.getExternalFilesDir(null), "reading-performance.txt").writeText(
+            "fixtureWords=4000\nlocalTargetLookups=100\nmodelCalls=$calls\n" +
+                "p95LookupMicros=${sorted[94] / 1000}\nmaxLookupMicros=${sorted.last() / 1000}\n" +
+                "scope=ViewModel synchronous local lookup, excludes sheet animation and real network\n")
+    }
+
     private fun tapWord(word: String, occurrence: Int = 0) {
         val node = compose.onNodeWithTag("vocabulary-paragraph-0")
         val layouts = mutableListOf<TextLayoutResult>()
@@ -164,6 +243,7 @@ class VocabularyWordMeaningTest {
             vm.openArticle(article.id)
         }
         compose.setContent { SecondBrainTheme { Surface { VocabularyArticleScreen({}, vm) } } }
+        compose.waitUntil(5_000) { vm.state.value.article != null }
         return vm
     }
 

@@ -46,6 +46,17 @@ public interface AiService {
     String generateAnswer(Long userId, String scenarioCode, String prompt);
 
     /**
+     * 为文章等较长的结构化结果预留输出预算，并在已确认支持的模型上约束 JSON 格式。
+     *
+     * @param userId 当前用户标识
+     * @param scenarioCode 使用用户已配置模型的场景
+     * @param prompt 包含所需 JSON 结构的任务要求
+     * @return 待业务层校验结构的模型内容
+     * @throws com.secondbrain.exception.BusinessException 兼容协议明确报告输出截断或返回空内容
+     */
+    String generateJsonAnswer(Long userId, String scenarioCode, String prompt);
+
+    /**
      * 使用当前用户自行配置的视觉模型分析图片，不能回退到系统密钥。
      *
      * @param userId 当前用户标识

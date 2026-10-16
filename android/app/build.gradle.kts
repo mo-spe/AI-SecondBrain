@@ -10,11 +10,11 @@ android {
     namespace = "com.secondbrain.android"
     compileSdk = 35
 
-    // 真机联调时地址随网络环境变化，允许 Android Studio 的 Gradle 属性或环境变量覆盖，
-    // 避免把已经失效的虚拟网卡地址写进 APK 后只能通过重新改源码修复连接问题。
+    // Debug 默认使用 Tailscale 地址，避免电脑切换 Wi-Fi 后局域网 IP 改变导致手机断连。
+    // 保留构建参数覆盖，以便 USB 联调或其他开发环境使用各自可达的后端地址。
     val debugApiBaseUrl = providers.gradleProperty("secondBrainApiBaseUrl")
         .orElse(providers.environmentVariable("SECOND_BRAIN_API_BASE_URL"))
-        .orElse("http://10.161.179.104:8080/api/")
+        .orElse("http://100.113.193.63:8080/api/")
         .get()
 
     defaultConfig {
@@ -28,7 +28,7 @@ android {
 
     buildTypes {
         debug {
-            // 设备必须与后端主机互通；USB 调试也可以传入 http://127.0.0.1:8080/api/ 并配合 adb reverse。
+            // Tailscale 地址需要手机加入同一私有网络；USB 联调可覆盖地址并配合 adb reverse。
             buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
         }
         release {

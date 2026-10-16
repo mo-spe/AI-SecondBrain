@@ -43,4 +43,25 @@ class VocabularyReadingTextTest {
         assertTrue(context.length <= 804)
         assertNotEquals(readingSourceHash(source), readingSourceHash(source + "changed"))
     }
+
+    @Test fun indexedDocumentKeepsClickBoundariesAndSentenceNearEndOfLongArticle() {
+        val source = ("A bank lends money.\n\n".repeat(200)) + "We sat on the bank."
+        val document = VocabularyReadingDocument(source)
+        val last = source.lastIndexOf("bank")
+        repeat(100) {
+            assertEquals("We sat on the bank.", document.wordAt(last, last + 4)?.sentence)
+        }
+        assertNull(document.wordAt(last + 1, last + 4))
+        assertNull(document.wordAt(last, last + 3))
+        assertEquals(readingSourceHash(source), document.sourceHash)
+    }
+
+    @Test fun paragraphHitIndexRejectsSpacesAndPunctuation() {
+        val source = "A bank, then a cart."
+        val section = VocabularyReadingDocument(source).paragraphs.single()
+        assertEquals("bank", section.wordAtOffset(source.indexOf("bank") + 2)?.word)
+        assertNull(section.wordAtOffset(source.indexOf(',')))
+        assertNull(section.wordAtOffset(1))
+        assertNull(section.wordAtOffset(source.length))
+    }
 }

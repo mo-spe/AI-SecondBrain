@@ -38,6 +38,9 @@ data class VocabularyArticleState(
     val extracted: Boolean = false,
     val confirmed: Boolean = false,
     val article: VocabularyArticle? = null,
+    val readingDocument: VocabularyReadingDocument? = null,
+    val articleLoadingId: Long? = null,
+    val generating: Boolean = false,
     val translation: String? = null,
     val translationBusy: Boolean = false,
     val translationError: String? = null,
@@ -66,6 +69,8 @@ class VocabularyArticleViewModel @Inject constructor(
     private val translations = mutableMapOf<Pair<Long, String>, String>()
     private var translationJob: Job? = null
     private var wordJob: Job? = null
+    private var articleJob: Job? = null
+    private var targetMeanings: Map<String, String> = emptyMap()
     private data class WordKey(val articleId: Long, val sourceHash: String, val start: Int, val end: Int)
     private val wordMeanings = linkedMapOf<WordKey, String>()
     val state: StateFlow<VocabularyArticleState> = _state
@@ -197,18 +202,20 @@ class VocabularyArticleViewModel @Inject constructor(
 
     fun generate() {
         val current = _state.value
-        if (current.busy) return
+        if (current.busy || current.articleLoadingId != null) return
         if (!current.confirmed) {
             _state.value = current.copy(message = "请先确认词表")
             return
         }
-        _state.value = current.copy(busy = true, message = null)
+        _state.value = current.copy(busy = true, generating = true, message = null)
         viewModelScope.launch {
             runCatching {
                 api.generateVocabularyArticle(VocabularyGenerateRequest(current.candidates.map { it.word },
                     current.topic, current.difficulty)).requireData()
             }.onSuccess { article ->
-                _state.value = _state.value.copy(busy = false, article = article,
+                val document = prepareReading(article)
+                _state.value = _state.value.copy(busy = false, generating = false, article = article,
+                    readingDocument = document,
                     history = listOf(VocabularyArticleSummary(article.id, article.topic, article.difficulty,
                         article.words.size, article.words.size - article.missingWords.size, article.createTime)) +
                         _state.value.history.filter { it.id != article.id },
@@ -216,7 +223,7 @@ class VocabularyArticleViewModel @Inject constructor(
                 clearDraftFiles()
             }.onFailure {
                 if (it is CancellationException) throw it
-                _state.value = _state.value.copy(busy = false,
+                _state.value = _state.value.copy(busy = false, generating = false,
                     message = if (it is IOException)
                         "连接中断，文章可能已保存。请先刷新下方历史文章，避免重复生成；确认的词表已保留。"
                     else userFacingLoadError(it, "文章生成失败；确认的词表已保留，请重试"))
@@ -239,15 +246,24 @@ class VocabularyArticleViewModel @Inject constructor(
 
     fun openArticle(id: Long) {
         if (_state.value.busy) return
+        if (_state.value.articleLoadingId == id) return
+        articleJob?.cancel()
         translationJob?.cancel()
         dismissWord()
-        _state.value = _state.value.copy(busy = true, message = null, translation = null,
+        _state.value = _state.value.copy(articleLoadingId = id, message = null, translation = null,
             translationBusy = false, translationError = null)
-        viewModelScope.launch {
-            runCatching { api.vocabularyArticle(id).requireData() }
-                .onSuccess { _state.value = _state.value.copy(article = it, busy = false) }
-                .onFailure { _state.value = _state.value.copy(busy = false,
-                    message = userFacingLoadError(it, "文章读取失败")) }
+        articleJob = viewModelScope.launch {
+            runCatching {
+                val article = api.vocabularyArticle(id).requireData()
+                article to prepareReading(article)
+            }.onSuccess { (article, document) ->
+                if (_state.value.articleLoadingId == id) _state.value = _state.value.copy(
+                    article = article, readingDocument = document, articleLoadingId = null)
+            }.onFailure {
+                if (it is CancellationException) throw it
+                if (_state.value.articleLoadingId == id) _state.value = _state.value.copy(articleLoadingId = null,
+                    message = userFacingLoadError(it, "文章读取失败"))
+            }
         }
     }
 
@@ -258,10 +274,12 @@ class VocabularyArticleViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { api.completeVocabularyArticle(current.id).requireData() }
                 .onSuccess { updated ->
+                    val document = prepareReading(updated)
                     val covered = updated.words.size - updated.missingWords.size
                     val stillReading = _state.value.article?.id == current.id
                     if (stillReading && updated.article != current.article) dismissWord()
                     _state.value = _state.value.copy(article = if (stillReading) updated else _state.value.article,
+                        readingDocument = if (stillReading) document else _state.value.readingDocument,
                         busy = false,
                         translation = if (stillReading && updated.article != current.article) null else _state.value.translation,
                         translationError = null,
@@ -295,7 +313,7 @@ class VocabularyArticleViewModel @Inject constructor(
         translationJob = viewModelScope.launch {
             runCatching {
                 val result = api.translateVocabularyArticle(article.id).requireData()
-                val sourceHash = readingSourceHash(article.article)
+                val sourceHash = current.readingDocument?.sourceHash ?: readingSourceHash(article.article)
                 check(result.articleId == article.id && result.sourceHash == sourceHash) {
                     "文章内容已更新，请返回词表重新打开后查看翻译"
                 }
@@ -319,9 +337,11 @@ class VocabularyArticleViewModel @Inject constructor(
     }
 
     fun closeArticle() {
+        articleJob?.cancel()
         translationJob?.cancel()
         dismissWord()
-        _state.value = _state.value.copy(article = null, message = null, translation = null,
+        _state.value = _state.value.copy(article = null, readingDocument = null, articleLoadingId = null,
+            message = null, translation = null,
             translationBusy = false, translationError = null)
     }
 
@@ -329,12 +349,12 @@ class VocabularyArticleViewModel @Inject constructor(
         val current = _state.value
         val article = current.article ?: return
         if (current.busy) return
-        val selection = readingWordAt(article.article, start, end) ?: return
+        val document = current.readingDocument ?: return
+        val selection = document.wordAt(start, end) ?: return
         if (current.wordLookup?.let { it.selection == selection && it.busy } == true) return
         wordJob?.cancel()
-        val key = WordKey(article.id, readingSourceHash(article.article), start, end)
-        val existing = article.meanings.entries.firstOrNull { it.key.equals(selection.word, ignoreCase = true) }
-            ?.value?.takeIf(String::isNotBlank) ?: wordMeanings[key]
+        val key = WordKey(article.id, document.sourceHash, start, end)
+        val existing = targetMeanings[selection.word.lowercase(java.util.Locale.ROOT)] ?: wordMeanings[key]
         if (existing != null) {
             _state.value = current.copy(wordLookup = VocabularyWordLookup(selection, meaning = existing))
             return
@@ -378,6 +398,14 @@ class VocabularyArticleViewModel @Inject constructor(
     private fun isCurrentWord(article: VocabularyArticle, selection: ReadingWordSelection): Boolean =
         _state.value.article?.let { it.id == article.id && it.article == article.article } == true &&
             _state.value.wordLookup?.selection?.let { it.start == selection.start && it.end == selection.end } == true
+
+    private suspend fun prepareReading(article: VocabularyArticle): VocabularyReadingDocument {
+        val document = _state.value.readingDocument?.takeIf { it.source == article.article }
+            ?: withContext(Dispatchers.Default) { VocabularyReadingDocument(article.article) }
+        targetMeanings = article.meanings.filterValues(String::isNotBlank)
+            .mapKeys { it.key.lowercase(java.util.Locale.ROOT) }
+        return document
+    }
 
     private fun compressToPrivateJpeg(uri: Uri): String {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

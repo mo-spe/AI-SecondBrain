@@ -161,7 +161,7 @@ public class VocabularyArticleServiceImpl implements VocabularyArticleService {
                 + "。为每个目标词提供符合正文语境的简短中文释义。只返回 JSON："
                 + "{\"article\":\"完整英文文章，段落之间用\\n\\n分隔\","
                 + "\"meanings\":{\"word\":\"中文语境释义\"}}。目标词：" + String.join(", ", words);
-        JsonNode result = parseObject(aiService.generateAnswer(userId, "vision", prompt), "article_draft");
+        JsonNode result = parseObject(aiService.generateJsonAnswer(userId, "vision", prompt), "article_draft");
         List<String> paragraphs = readParagraphs(result);
         String article = joinParagraphs(paragraphs);
         if (article.isBlank()) {

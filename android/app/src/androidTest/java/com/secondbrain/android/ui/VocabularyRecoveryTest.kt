@@ -15,6 +15,9 @@ import java.lang.reflect.Proxy
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.first
 
 class VocabularyRecoveryTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -97,7 +100,7 @@ class VocabularyRecoveryTest {
             } }, context).also { owners.put("completion", it) }
             vm.openArticle(12)
         }
-        instrumentation.waitForIdleSync()
+        awaitArticle(vm)
         instrumentation.runOnMainSync { vm.completeMissingWords(); vm.completeMissingWords() }
         instrumentation.waitForIdleSync()
         assertEquals(1, writes)
@@ -107,8 +110,12 @@ class VocabularyRecoveryTest {
         assertFalse(vm.state.value.busy)
         assertTrue(vm.state.value.message!!.contains("可能已保存"))
         instrumentation.runOnMainSync { vm.closeArticle(); vm.openArticle(12) }
-        instrumentation.waitForIdleSync()
+        awaitArticle(vm)
         assertEquals(updated, vm.state.value.article)
+    }
+
+    private fun awaitArticle(vm: VocabularyArticleViewModel) = runBlocking {
+        withTimeout(5_000) { vm.state.first { it.article != null && it.articleLoadingId == null } }
     }
 
     private fun api(reply: (String, Array<out Any?>) -> Any?): SecondBrainApi = Proxy.newProxyInstance(

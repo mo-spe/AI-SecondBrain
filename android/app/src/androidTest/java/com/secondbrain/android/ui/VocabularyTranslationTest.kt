@@ -118,6 +118,7 @@ class VocabularyTranslationTest {
             vm.openArticle(12)
         }
         compose.setContent { SecondBrainTheme { Surface { VocabularyArticleScreen({}, vm) } } }
+        compose.waitUntil(5_000) { vm.state.value.article != null }
     }
 
     private fun common(name: String, article: VocabularyArticle): Any = when (name) {

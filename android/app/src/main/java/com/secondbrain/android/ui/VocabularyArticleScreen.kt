@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +61,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,12 +71,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -137,6 +141,7 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
     val tone = ReaderTone.entries.firstOrNull { it.name == toneName } ?: defaultTone
     val palette = readerPalette(tone)
     val article = state.article
+    val draftBusy = state.busy || state.articleLoadingId != null
     var translationOpen by remember(article?.id, article?.article) { mutableStateOf(false) }
     val darkReader = tone == ReaderTone.NIGHT ||
         (tone == ReaderTone.CLEAR && isSystemInDarkTheme())
@@ -179,7 +184,8 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
                 fontSize, spacious, focusMode,
                 onComplete = viewModel::completeMissingWords, onClose = viewModel::closeArticle,
                 onTranslate = { viewModel.dismissWord(); translationOpen = true; viewModel.loadTranslation() },
-                wordLookup = state.wordLookup, onWord = viewModel::selectWord, onDismissWord = viewModel::dismissWord)
+                wordLookup = state.wordLookup, onWord = viewModel::selectWord, onDismissWord = viewModel::dismissWord,
+                document = checkNotNull(state.readingDocument))
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp, 12.dp, 20.dp, 32.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -224,7 +230,7 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
                             else MaterialTheme.colorScheme.onSurfaceVariant)
                 } }
                 item {
-                    OutlinedButton(onClick = { picker.launch("image/*") }, enabled = !state.busy,
+                    OutlinedButton(onClick = { picker.launch("image/*") }, enabled = !draftBusy,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Icon(Icons.Outlined.Add, contentDescription = null)
                         Text("选择截图 · ${state.images.size}/8")
@@ -250,7 +256,7 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
                     }
                 }
                 if (state.images.isNotEmpty()) item {
-                    Button(onClick = viewModel::extract, enabled = !state.busy,
+                    Button(onClick = viewModel::extract, enabled = !draftBusy,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text(if (state.busy) "正在识别…" else "视觉 AI 提取候选词")
                     }
@@ -278,7 +284,7 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
                     }
                     item { TextButton(onClick = viewModel::addWord) { Text("补录遗漏单词") } }
                     item {
-                        OutlinedButton(onClick = viewModel::confirm, enabled = !state.busy,
+                        OutlinedButton(onClick = viewModel::confirm, enabled = !draftBusy,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("确认词表") }
                     }
                 }
@@ -287,9 +293,9 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
                         modifier = Modifier.fillMaxWidth()) }
                     item { OutlinedTextField(state.difficulty, viewModel::setDifficulty,
                         label = { Text("阅读难度") }, modifier = Modifier.fillMaxWidth()) }
-                    item { Button(onClick = viewModel::generate, enabled = !state.busy,
+                    item { Button(onClick = viewModel::generate, enabled = !draftBusy,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                        Text(if (state.busy) "正在写作和核验…" else "生成一篇文章")
+                        Text(if (state.generating) "正在写作和核验…" else "生成一篇文章")
                     } }
                 }
                 state.message?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.primary) } }
@@ -310,6 +316,10 @@ internal fun VocabularyArticleScreen(onBack: () -> Unit,
                                 Text(saved.topic, style = MaterialTheme.typography.titleMedium)
                                 Text("${saved.coveredCount}/${saved.wordCount} 词 · ${saved.createTime.take(16).replace('T', ' ')}",
                                     style = MaterialTheme.typography.bodySmall)
+                                if (state.articleLoadingId == saved.id) {
+                                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                                    Text("正在打开文章…", style = MaterialTheme.typography.bodySmall)
+                                }
                             }
                         }
                     }
@@ -445,14 +455,12 @@ private fun VocabularyReader(padding: PaddingValues, article: VocabularyArticle,
                              spacious: Boolean, focusMode: Boolean,
                              onComplete: () -> Unit, onClose: () -> Unit, onTranslate: () -> Unit,
                              wordLookup: VocabularyWordLookup?, onWord: (Int, Int) -> Unit,
-                             onDismissWord: () -> Unit) {
+                             onDismissWord: () -> Unit, document: VocabularyReadingDocument) {
     val targetWords = remember(article.words) { article.words.associateBy { it.lowercase(Locale.ROOT) } }
-    val targetWordColor = palette.accent
-    val paragraphs = remember(article.article) {
-        readingParagraphs(article.article)
-    }
+    val paragraphs = document.paragraphs
+    var wordPicker by remember(article.id, document) { mutableStateOf<ReadingParagraph?>(null) }
     val covered = article.words.size - article.missingWords.size
-    LazyColumn(Modifier.fillMaxSize().padding(padding),
+    LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("vocabulary-reader"),
         contentPadding = PaddingValues(24.dp, 16.dp, 24.dp, 96.dp),
         verticalArrangement = Arrangement.spacedBy(if (spacious) 24.dp else 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -500,33 +508,8 @@ private fun VocabularyReader(padding: PaddingValues, article: VocabularyArticle,
                     fontWeight = FontWeight.Bold, color = palette.accent,
                     modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth().padding(top = 12.dp))
             } else {
-                val annotated = remember(article.article, section, palette, targetWords, onWord) {
-                    buildAnnotatedString {
-                        append(paragraph)
-                        readingWordPattern.findAll(paragraph).forEach { match ->
-                            val start = match.range.first
-                            val end = match.range.last + 1
-                            val key = match.value.lowercase(Locale.ROOT)
-                            val target = targetWords.containsKey(key)
-                            addLink(LinkAnnotation.Clickable(
-                                tag = "word-${section.start + start}",
-                                styles = TextLinkStyles(
-                                    style = SpanStyle(color = if (target) targetWordColor else palette.ink,
-                                        fontWeight = if (target) FontWeight.SemiBold else FontWeight.Normal,
-                                        textDecoration = TextDecoration.None),
-                                    focusedStyle = SpanStyle(textDecoration = TextDecoration.Underline),
-                                    pressedStyle = SpanStyle(background = palette.softAccent)),
-                                linkInteractionListener = { onWord(section.start + start, section.start + end) }
-                            ), start, end)
-                        }
-                    }
-                }
-                Text(text = annotated,
-                    modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth()
-                        .testTag("vocabulary-paragraph-$paragraphIndex"),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp,
-                        lineHeight = (fontSize * if (spacious) 1.8f else 1.55f).sp,
-                        color = palette.ink))
+                VocabularyParagraph(section, paragraphIndex, targetWords.keys, palette, fontSize, spacious,
+                    onWord, onChooseWord = { wordPicker = section })
             }
         }
         if (article.missingWords.isNotEmpty()) item {
@@ -560,6 +543,21 @@ private fun VocabularyReader(padding: PaddingValues, article: VocabularyArticle,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = palette.accent)) {
             Text("返回词表")
         } }
+    }
+    wordPicker?.let { section ->
+        AlertDialog(onDismissRequest = { wordPicker = null },
+            title = { Text("选择单词") },
+            text = {
+                LazyColumn {
+                    itemsIndexed(section.words) { index, token ->
+                        TextButton(onClick = { wordPicker = null; onWord(token.start, token.end) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text("${index + 1}. ${token.word}")
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { wordPicker = null }) { Text("取消") } })
     }
     wordLookup?.let { lookup ->
         ModalBottomSheet(onDismissRequest = onDismissWord,
@@ -595,4 +593,39 @@ private fun VocabularyReader(padding: PaddingValues, article: VocabularyArticle,
             }
         }
     }
+}
+
+@Composable
+private fun VocabularyParagraph(section: ReadingParagraph, index: Int, targets: Set<String>,
+                                palette: ReaderPalette, fontSize: Int, spacious: Boolean,
+                                onWord: (Int, Int) -> Unit, onChooseWord: () -> Unit) {
+    val currentOnWord by rememberUpdatedState(onWord)
+    val layout = remember(section) { arrayOfNulls<TextLayoutResult>(1) }
+    val annotated = remember(section, targets, palette.accent) {
+        buildAnnotatedString {
+            append(section.text)
+            section.words.forEach { token ->
+                if (token.word.lowercase(Locale.ROOT) in targets) addStyle(
+                    SpanStyle(color = palette.accent, fontWeight = FontWeight.SemiBold),
+                    token.start - section.start, token.end - section.start)
+            }
+        }
+    }
+    // 每段只保留一个文本布局和手势入口，避免长文为每个词创建独立链接布局。
+    Text(annotated, modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth()
+        .testTag("vocabulary-paragraph-$index")
+        .semantics { onClick(label = "选择本段单词查看释义") { onChooseWord(); true } }
+        .pointerInput(section) {
+            detectTapGestures { position ->
+                val textLayout = layout[0] ?: return@detectTapGestures
+                val offset = textLayout.getOffsetForPosition(position)
+                val hit = listOf(offset, offset - 1).firstOrNull {
+                    it in section.text.indices && textLayout.getBoundingBox(it).contains(position)
+                } ?: return@detectTapGestures
+                section.wordAtOffset(section.start + hit)?.let { currentOnWord(it.start, it.end) }
+            }
+        },
+        onTextLayout = { layout[0] = it },
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp,
+            lineHeight = (fontSize * if (spacious) 1.8f else 1.55f).sp, color = palette.ink))
 }
