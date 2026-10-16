@@ -261,19 +261,8 @@ public class AiServiceImpl implements AiService {
                     .readTimeout(90, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).build();
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
-                    String errorCode = response.body() == null ? "unknown"
-                            : readVisionErrorCode(response.body().string());
-                    log.warn("vision_call_failed userId={} provider={} model={} host={} status={} errorCode={}",
-                            userId, config.getProviderCode(), model, request.url().host(), response.code(), errorCode);
-                    if (response.code() == 404) {
-                        String message = "ModelNotFound".equalsIgnoreCase(errorCode)
-                                || "model_not_found".equalsIgnoreCase(errorCode)
-                                ? "视觉模型不存在或当前 Key 无权访问（HTTP 404），请核对模型名称、开通状态和 Key 所属地域"
-                                : "视觉模型接口或模型不可用（HTTP 404），请核对服务地址、模型名称和账号访问权限";
-                        throw new BusinessException(502, message);
-                    }
-                    throw new BusinessException(502,
-                            "视觉模型请求失败（HTTP " + response.code() + "），请检查模型和 API Key 后重试");
+                    log.warn("vision_call_failed userId={} status={}", userId, response.code());
+                    throw new BusinessException(502, "视觉模型请求失败，请检查模型和 API Key 后重试");
                 }
                 com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response.body().string());
                 String content = root.path("choices").path(0).path("message").path("content").asText("");
@@ -298,24 +287,6 @@ public class AiServiceImpl implements AiService {
                 throw new BusinessException(502, "视觉模型返回的响应格式无效，请稍后重试");
             }
             throw new BusinessException(503, "视觉识别连接失败，请稍后重试");
-        }
-    }
-
-    private String readVisionErrorCode(String response) {
-        try {
-            com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response);
-            if (root == null) {
-                return "unknown";
-            }
-            String code = root.path("error").path("code").asText("");
-            if (code.isBlank()) {
-                code = root.path("code").asText("");
-            }
-            // 服务商错误正文可能回显图片或凭证，仅允许短错误标识进入日志。
-            return code.matches("[A-Za-z0-9_.-]{1,80}") ? code : "unknown";
-        } catch (JsonProcessingException exception) {
-            // 网关可能返回 HTML，保留原 HTTP 状态，不能将错误页误报为连接失败。
-            return "unknown";
         }
     }
 
