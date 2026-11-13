@@ -1,7 +1,9 @@
 import { BookOpen, BrainCircuit, ClipboardCheck, Globe, Globe2, LayoutDashboard, LogOut, MessageCircle, Mic2, Network, Settings2 } from 'lucide-react';
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { preloadRoute } from '../lib/routes.js';
+import PageLoading from './PageLoading.jsx';
 
 const navItems = [
   { to: '/', label: '学习概览', icon: LayoutDashboard },
@@ -76,7 +78,7 @@ export default function AppShell() {
           </div>
           <span className="mobile-user-mark" aria-label={`当前用户 ${user?.username}`}>{user?.username?.slice(0, 1).toUpperCase()}</span>
         </header>
-        <main className="main-content" id="main-content" tabIndex="-1"><Outlet /></main>
+        <main className="main-content" id="main-content" tabIndex="-1"><Suspense fallback={<PageLoading label="正在打开学习模块…" />}><Outlet /></Suspense></main>
         <nav className="mobile-nav" aria-label="主要导航">
           {primaryNavItems.map((item) => <NavigationItem item={item} key={item.to} />)}
         </nav>

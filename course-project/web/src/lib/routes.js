@@ -1,3 +1,5 @@
+import { cachedRequest } from './dataCache.js';
+
 export const routeImports = {
   login: () => import('../pages/LoginPage.jsx'),
   dashboard: () => import('../pages/DashboardPage.jsx'),
@@ -23,6 +25,12 @@ const routeKeys = {
 };
 
 export const preloadRoute = (path) => {
-  const routeKey = routeKeys[path];
-  return routeKey ? routeImports[routeKey]() : Promise.resolve();
+  const pathname = path.split('?')[0];
+  const routeKey = routeKeys[pathname];
+  if (!routeKey) return Promise.resolve();
+  const requests = [routeImports[routeKey]()];
+  // 意图明确时让数据请求与页面代码并行，复用缓存去重；预加载失败由正式页面继续处理。
+  if (['dashboard', 'knowledge', 'feynman', 'quiz'].includes(routeKey)) requests.push(cachedRequest('knowledge', '/knowledge'));
+  else if (['graph', 'universe', 'earth'].includes(routeKey)) requests.push(cachedRequest('knowledge-graph', '/graph/knowledge-map'));
+  return Promise.allSettled(requests);
 };

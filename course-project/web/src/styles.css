@@ -311,6 +311,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .learning-status.mastered { background: var(--md-primary-container); color: var(--md-on-primary-container); }
 .learning-status.learning { border-style: dashed; }
 .feynman-hint { font-size: 13px; line-height: 1.7; color: var(--muted); }
+.quiz-short-answer { display: grid; gap: 10px; margin: 24px 0; }
+.quiz-short-answer small { color: var(--muted); text-align: right; }
+.quiz-question-card { min-width: 0; }
+.quiz-question .markdown-content { font-size: 20px; font-weight: 600; }
 .feedback-card .transcript-label { margin-top: 18px; }
 .attempt-texts summary { padding: 12px 0; min-height: 44px; cursor: pointer; }
 .attempt-texts p { white-space: pre-wrap; overflow-wrap: anywhere; }

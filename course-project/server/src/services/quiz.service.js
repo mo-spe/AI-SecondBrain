@@ -1,4 +1,6 @@
-import { generateQuizWithAi, isAiConfigured } from './ai.service.js';
+import { generateQuizWithAi, generateShortAnswerWithAi, gradeShortAnswerWithAi, isAiConfigured } from './ai.service.js';
+import { Knowledge } from '../models/Knowledge.js';
+import { QuizAttempt } from '../models/QuizAttempt.js';
 
 export const DIFFICULTY_CONFIG = {
   easy: {
@@ -48,9 +50,80 @@ export const buildQuizQuestion = (knowledge, difficulty) => {
   };
 };
 
-export const generateQuizQuestion = async (knowledge, difficulty) => {
+export const isSupportedQuestionType = (type) => ['multiple-choice', 'short-answer'].includes(type);
+
+export const generateQuizQuestion = async (knowledge, difficulty, questionType = 'multiple-choice') => {
   const difficultyLabel = DIFFICULTY_CONFIG[difficulty].label;
-  return isAiConfigured()
+  if (questionType === 'short-answer') {
+    if (!isAiConfigured()) throw Object.assign(new Error('解答题需要配置真实 AI Provider 后才能生成和评分'), { statusCode: 503 });
+    return generateShortAnswerWithAi(knowledge, difficulty, difficultyLabel);
+  }
+  const result = await (isAiConfigured()
     ? generateQuizWithAi(knowledge, difficulty, difficultyLabel)
-    : buildQuizQuestion(knowledge, difficulty);
+    : buildQuizQuestion(knowledge, difficulty));
+  return { ...result, questionType: 'multiple-choice' };
+};
+
+const normalizeAnswer = (quiz, userAnswer) => {
+  if (quiz.questionType === 'short-answer') {
+    if (typeof userAnswer !== 'string' || !userAnswer.trim() || userAnswer.trim().length > 5000) throw Object.assign(new Error('请输入1至5000字符的解答'), { statusCode: 400 });
+    return userAnswer.trim();
+  }
+  if (!Number.isInteger(userAnswer) || userAnswer < 0 || userAnswer > 3) throw Object.assign(new Error('请选择一个有效答案'), { statusCode: 400 });
+  return userAnswer;
+};
+
+export const gradeQuizAnswer = async (quiz, userAnswer) => {
+  const answer = normalizeAnswer(quiz, userAnswer);
+  if (quiz.questionType === 'short-answer') {
+    if (!isAiConfigured()) throw Object.assign(new Error('解答题评分需要配置真实 AI Provider'), { statusCode: 503 });
+    const grade = await gradeShortAnswerWithAi(quiz, answer);
+    return { ...grade, questionType: 'short-answer', userAnswer: answer, correctAnswer: quiz.referenceAnswer, explanation: quiz.explanation, keyPoints: quiz.keyPoints };
+  }
+  const isCorrect = quiz.correctIndex === answer;
+  return { questionType: 'multiple-choice', isCorrect, score: isCorrect ? 100 : 0, userAnswer: answer, correctIndex: quiz.correctIndex, correctAnswer: quiz.options[quiz.correctIndex], explanation: quiz.explanation, provider: quiz.provider };
+};
+
+export const gradeAndSaveQuiz = async ({ userId, quiz, userAnswer }) => {
+  const answer = normalizeAnswer(quiz, userAnswer);
+  const shortAnswer = quiz.questionType === 'short-answer';
+  const attemptQuery = { _id: quiz.id, user: userId };
+  let attempt = await QuizAttempt.findOne(attemptQuery);
+  if (!attempt) {
+    const grade = await gradeQuizAnswer(quiz, answer);
+    try {
+      // 两个集合可复用同一ObjectId；借助已有主键唯一约束，使同一题的网络重试只保存一份记录。
+      attempt = await QuizAttempt.create({
+        _id: quiz.id, user: userId, knowledge: quiz.knowledge, difficulty: quiz.difficulty,
+        questionType: grade.questionType,
+        questionSnapshot: {
+          question: quiz.question, options: quiz.options, correctIndex: quiz.correctIndex,
+          referenceAnswer: quiz.referenceAnswer, keyPoints: quiz.keyPoints
+        },
+        ...(shortAnswer ? { userTextAnswer: grade.userAnswer } : { userAnswer: grade.userAnswer }),
+        score: grade.score, feedback: grade.feedback, isCorrect: grade.isCorrect, provider: grade.provider
+      });
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+      attempt = await QuizAttempt.findOne(attemptQuery);
+      if (!attempt) throw error;
+    }
+  }
+  const storedAnswer = shortAnswer ? attempt.userTextAnswer : attempt.userAnswer;
+  if (String(attempt.knowledge) !== String(quiz.knowledge) || storedAnswer !== answer) {
+    throw Object.assign(new Error('本题已提交其他答案，请重新生成题目'), { statusCode: 409 });
+  }
+  // 与费曼评价共用复习时间：重试可补写失败的状态，旧记录不会覆盖更新的测验或复述成绩。
+  await Knowledge.updateOne({
+    _id: quiz.knowledge, owner: userId,
+    $or: [{ lastReviewedAt: null }, { lastReviewedAt: { $lte: attempt.createdAt } }]
+  }, { $set: { reviewScore: attempt.score, lastReviewedAt: attempt.createdAt } });
+  const result = {
+    questionType: attempt.questionType, isCorrect: attempt.isCorrect, score: attempt.score,
+    userAnswer: storedAnswer, explanation: quiz.explanation, provider: attempt.provider || quiz.provider,
+    ...(shortAnswer
+      ? { correctAnswer: attempt.questionSnapshot.referenceAnswer, feedback: attempt.feedback, keyPoints: attempt.questionSnapshot.keyPoints }
+      : { correctIndex: attempt.questionSnapshot.correctIndex, correctAnswer: attempt.questionSnapshot.options[attempt.questionSnapshot.correctIndex] })
+  };
+  return { result, attempt };
 };

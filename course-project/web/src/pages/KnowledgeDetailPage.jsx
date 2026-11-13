@@ -29,6 +29,8 @@ export default function KnowledgeDetailPage() {
   const [knowledge, setKnowledge] = useState(null);
   const [feynmanAttempts, setFeynmanAttempts] = useState([]);
   const [quizAttempts, setQuizAttempts] = useState([]);
+  const [feynmanHistory, setFeynmanHistory] = useState({ loading: true, error: '' });
+  const [quizHistory, setQuizHistory] = useState({ loading: true, error: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,22 +39,27 @@ export default function KnowledgeDetailPage() {
     setLoading(true);
     setError('');
     setSavedMessage('');
-    Promise.allSettled([
-      cachedRequest(`knowledge-detail:${id}`, `/knowledge/${id}`),
-      cachedRequest(`feynman-attempts:${id}`, `/feynman/attempts/${id}`),
-      cachedRequest(`quiz-attempts:${id}`, `/quiz/attempts/${id}`)
-    ]).then(([knowledgeResult, feynmanResult, quizResult]) => {
-      if (!active) return;
-      if (knowledgeResult.status === 'rejected') {
-        setError(knowledgeResult.reason?.message || '知识点加载失败，请稍后重试。');
-        return;
-      }
-      setKnowledge(knowledgeResult.value.item);
-      setFeynmanAttempts(feynmanResult.status === 'fulfilled' ? feynmanResult.value.attempts : []);
-      setQuizAttempts(quizResult.status === 'fulfilled' ? quizResult.value.attempts : []);
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
+    setKnowledge(null);
+    setFeynmanAttempts([]);
+    setQuizAttempts([]);
+    setFeynmanHistory({ loading: true, error: '' });
+    setQuizHistory({ loading: true, error: '' });
+    // 正文可读性不依赖历史查询，避免最慢的一条云端请求阻塞整个详情页。
+    cachedRequest(`knowledge-detail:${id}`, `/knowledge/${id}`)
+      .then(({ item }) => { if (active) setKnowledge(item); })
+      .catch((requestError) => { if (active) setError(requestError.message || '知识点加载失败，请稍后重试。'); })
+      .finally(() => { if (active) setLoading(false); });
+    const loadHistory = (key, path, setAttempts, setHistory) => {
+      cachedRequest(key, path).then(({ attempts }) => {
+        if (!active) return;
+        setAttempts(attempts);
+        setHistory({ loading: false, error: '' });
+      }).catch(() => {
+        if (active) setHistory({ loading: false, error: '历史记录加载失败，请刷新页面重试。' });
+      });
+    };
+    loadHistory(`feynman-attempts:${id}`, `/feynman/attempts/${id}`, setFeynmanAttempts, setFeynmanHistory);
+    loadHistory(`quiz-attempts:${id}`, `/quiz/attempts/${id}`, setQuizAttempts, setQuizHistory);
     return () => { active = false; };
   }, [id]);
 
@@ -86,14 +93,14 @@ export default function KnowledgeDetailPage() {
           </article>
 
           <section className="detail-record-panel">
-            <div className="detail-panel-heading"><div><span>费曼复述</span><small>{feynmanAttempts.length} 次记录</small></div><Mic2 size={19} /></div>
-            {feynmanAttempts.length === 0 ? <RecordEmpty><p>还没有复述记录。</p><Link to={`/feynman?knowledgeId=${knowledge.id}`}>现在讲给自己听</Link></RecordEmpty> : <div className="detail-record-list">{feynmanAttempts.map((attempt) => <article className="detail-record-item" key={attempt.id}><div className="record-item-top"><div><strong>掌握度 {attempt.score}<small>/ 100</small></strong><time>{formatDate(attempt.createdAt)}</time></div><CheckCircle2 size={18} /></div><p>{attempt.evaluation}</p><details className="attempt-texts"><summary>查看复述原文与润色结果</summary><h3>复述原文</h3><p>{attempt.transcript}</p><h3>润色后的复述</h3><p>{attempt.polishedText}</p></details><div className="record-split"><div><span>做得好的地方</span>{attempt.strengths.slice(0, 2).map((item) => <p key={item}>+ {item}</p>)}</div><div><span>下一次试试</span>{attempt.weaknesses.slice(0, 2).map((item) => <p key={item}>→ {item}</p>)}</div></div></article>)}</div>}
+            <div className="detail-panel-heading"><div><span>费曼复述</span><small>{feynmanHistory.loading ? '加载中…' : feynmanHistory.error ? '读取失败' : `${feynmanAttempts.length} 次记录`}</small></div><Mic2 size={19} /></div>
+            {feynmanHistory.loading ? <PageLoading label="正在读取复述历史…" /> : feynmanHistory.error ? <RecordEmpty><p role="alert">{feynmanHistory.error}</p></RecordEmpty> : feynmanAttempts.length === 0 ? <RecordEmpty><p>还没有复述记录。</p><Link to={`/feynman?knowledgeId=${knowledge.id}`}>现在讲给自己听</Link></RecordEmpty> : <div className="detail-record-list">{feynmanAttempts.map((attempt) => <article className="detail-record-item" key={attempt.id}><div className="record-item-top"><div><strong>掌握度 {attempt.score}<small>/ 100</small></strong><time>{formatDate(attempt.createdAt)}</time></div><CheckCircle2 size={18} /></div><p>{attempt.evaluation}</p><details className="attempt-texts"><summary>查看复述原文与润色结果</summary><h3>复述原文</h3><p>{attempt.transcript}</p><h3>润色后的复述</h3><p>{attempt.polishedText}</p></details><div className="record-split"><div><span>做得好的地方</span>{attempt.strengths.slice(0, 2).map((item) => <p key={item}>+ {item}</p>)}</div><div><span>下一次试试</span>{attempt.weaknesses.slice(0, 2).map((item) => <p key={item}>→ {item}</p>)}</div></div></article>)}</div>}
           </section>
         </main>
 
         <aside className="detail-side-column">
-          <section className="detail-score-panel"><span className="detail-label">最近掌握度</span><div className="detail-score-large">{typeof knowledge.reviewScore === 'number' ? knowledge.reviewScore : '未评估'}<small>{typeof knowledge.reviewScore === 'number' ? '/ 100' : ''}</small></div><p>{knowledge.lastReviewedAt ? `最近复习于 ${formatDate(knowledge.lastReviewedAt)}` : '完成一次费曼复述后，这里会出现掌握度。'}</p></section>
-          <section className="detail-record-panel compact-record-panel"><div className="detail-panel-heading"><div><span>测验历史</span><small>{quizAttempts.length} 次记录</small></div><ClipboardCheck size={19} /></div>{quizAttempts.length === 0 ? <RecordEmpty><p>还没有测验记录。</p><Link to={`/quiz?knowledgeId=${knowledge.id}`}>开始第一题</Link></RecordEmpty> : <div className="quiz-history-list">{quizAttempts.slice(0, 6).map((attempt) => <article className={`quiz-history-item ${attempt.isCorrect ? 'correct' : 'incorrect'}`} key={attempt.id}><div><strong>{attempt.isCorrect ? '答对' : '待复习'}</strong><time>{formatDate(attempt.createdAt)}</time></div>{attempt.isCorrect ? <CheckCircle2 size={17} /> : <XCircle size={17} />}</article>)}</div>}</section>
+          <section className="detail-score-panel"><span className="detail-label">最近掌握度</span><div className="detail-score-large">{typeof knowledge.reviewScore === 'number' ? knowledge.reviewScore : '未评估'}<small>{typeof knowledge.reviewScore === 'number' ? '/ 100' : ''}</small></div><p>{knowledge.lastReviewedAt ? `最近复习于 ${formatDate(knowledge.lastReviewedAt)}` : '完成一次费曼复述或智能测验后，这里会出现掌握度。'}</p></section>
+          <section className="detail-record-panel compact-record-panel"><div className="detail-panel-heading"><div><span>测验历史</span><small>{quizHistory.loading ? '加载中…' : quizHistory.error ? '读取失败' : `${quizAttempts.length} 次记录`}</small></div><ClipboardCheck size={19} /></div>{quizHistory.loading ? <PageLoading label="正在读取测验历史…" /> : quizHistory.error ? <RecordEmpty><p role="alert">{quizHistory.error}</p></RecordEmpty> : quizAttempts.length === 0 ? <RecordEmpty><p>还没有测验记录。</p><Link to={`/quiz?knowledgeId=${knowledge.id}`}>开始第一题</Link></RecordEmpty> : <div className="quiz-history-list">{quizAttempts.slice(0, 6).map((attempt) => <article className={`quiz-history-item ${attempt.isCorrect ? 'correct' : 'incorrect'}`} key={attempt.id}><div><strong>{attempt.isCorrect ? '答对' : '待复习'}</strong><time>{formatDate(attempt.createdAt)}</time></div>{attempt.isCorrect ? <CheckCircle2 size={17} /> : <XCircle size={17} />}</article>)}</div>}</section>
         </aside>
       </div>
     </div>

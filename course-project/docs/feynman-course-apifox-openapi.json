@@ -96,11 +96,12 @@
       },
       "Quiz": {
         "type": "object",
-        "required": ["quizId", "question", "options", "difficulty", "difficultyLabel", "knowledgeId", "knowledgeTitle", "provider"],
+        "required": ["quizId", "questionType", "question", "options", "difficulty", "difficultyLabel", "knowledgeId", "knowledgeTitle", "provider"],
         "properties": {
           "quizId": { "type": "string", "example": "66d123456789012345678903" },
+          "questionType": { "type": "string", "enum": ["multiple-choice", "short-answer"], "description": "选择题或解答题；生成结果不包含正确答案、参考答案和评分要点" },
           "question": { "type": "string", "example": "如果要向同学解释“向量数据库”，下面哪种说法最符合知识库记录？" },
-          "options": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "string" } },
+          "options": { "type": "array", "maxItems": 4, "items": { "type": "string" }, "description": "选择题恰好4项；解答题为空数组" },
           "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "example": "medium" },
           "difficultyLabel": { "type": "string", "example": "进阶" },
           "knowledgeId": { "type": "string" },
@@ -110,14 +111,18 @@
       },
       "QuizResult": {
         "type": "object",
-        "required": ["isCorrect", "score", "userAnswer", "correctIndex", "correctAnswer", "explanation"],
+        "required": ["questionType", "isCorrect", "score", "userAnswer", "correctAnswer", "explanation", "provider"],
         "properties": {
+          "questionType": { "type": "string", "enum": ["multiple-choice", "short-answer"] },
           "isCorrect": { "type": "boolean", "example": true },
-          "score": { "type": "integer", "enum": [0, 100], "example": 100 },
-          "userAnswer": { "type": "integer", "minimum": 0, "maximum": 3, "example": 1 },
-          "correctIndex": { "type": "integer", "minimum": 0, "maximum": 3, "example": 1 },
-          "correctAnswer": { "type": "string" },
-          "explanation": { "type": "string" }
+          "score": { "type": "integer", "minimum": 0, "maximum": 100, "description": "选择题0或100；解答题AI评分，60分及以上达标", "example": 80 },
+          "userAnswer": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 3 }, { "type": "string", "minLength": 1, "maxLength": 5000 }], "description": "选择题选项下标或解答题文本" },
+          "correctIndex": { "type": "integer", "minimum": 0, "maximum": 3, "description": "仅选择题返回", "example": 1 },
+          "correctAnswer": { "type": "string", "description": "选择题正确选项文本或解答题参考答案" },
+          "explanation": { "type": "string" },
+          "feedback": { "type": "string", "description": "解答题AI评价" },
+          "keyPoints": { "type": "array", "items": { "type": "string" }, "description": "解答题评分要点" },
+          "provider": { "type": "string" }
         }
       }
     }
@@ -279,11 +284,13 @@
         "summary": "生成一道智能测验题",
         "operationId": "generateQuiz",
         "security": [{ "bearerAuth": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "default": "medium", "example": "medium" } } } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "default": "medium", "example": "medium" }, "questionType": { "type": "string", "enum": ["multiple-choice", "short-answer"], "default": "multiple-choice", "description": "解答题需要配置真实AI Provider" } } } } } },
         "responses": {
           "200": { "description": "题目生成成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "quiz": { "$ref": "#/components/schemas/Quiz" }, "provider": { "type": "string" } } } } } },
-          "400": { "description": "题目难度不支持", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": { "description": "题目难度或类型不支持", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "502": { "description": "AI出题失败或返回格式无效", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "解答题未配置真实AI Provider", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -293,12 +300,15 @@
         "summary": "提交测验答案",
         "operationId": "gradeQuiz",
         "security": [{ "bearerAuth": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quizId", "userAnswer"], "properties": { "quizId": { "type": "string", "example": "66d123456789012345678903" }, "userAnswer": { "type": "integer", "minimum": 0, "maximum": 3, "description": "选项下标，从 0 开始", "example": 1 } } } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quizId", "userAnswer"], "properties": { "quizId": { "type": "string", "example": "66d123456789012345678903" }, "userAnswer": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 3 }, { "type": "string", "minLength": 1, "maxLength": 5000 }], "description": "选择题传0至3整数；解答题传1至5000字符非空文本。题型由服务端已保存题目确定", "example": 1 } } } } } },
         "responses": {
-          "200": { "description": "判题成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "result": { "$ref": "#/components/schemas/QuizResult" }, "attempt": { "type": "object" }, "provider": { "type": "string" } } } } } },
+          "200": { "description": "判题、记录保存及知识点状态同步成功；同题同答案重试复用记录，旧记录不会覆盖更新的掌握度", "content": { "application/json": { "schema": { "type": "object", "properties": { "result": { "$ref": "#/components/schemas/QuizResult" }, "attempt": { "type": "object" }, "provider": { "type": "string" }, "item": { "$ref": "#/components/schemas/Knowledge" }, "saved": { "type": "boolean", "enum": [true], "description": "记录保存及状态同步已完成，60分及以上为掌握" } } } } } },
           "400": { "description": "答案或题目编号无效", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "404": { "description": "题目不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "410": { "description": "题目已过期", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "409": { "description": "本题已提交不同答案，请重新生成题目", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "410": { "description": "题目已过期", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "502": { "description": "AI评分失败或返回格式无效，可重试", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "解答题评分未配置真实AI Provider", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
