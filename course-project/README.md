@@ -19,8 +19,8 @@ course-project/
 - 已完成仪表盘基础数据展示。
 - 已完成费曼复述第一版：浏览器录音、音频上传、Mock 转录、结构化评价和复述记录保存。
 - 已完成课程版独立 RAG 第一版：知识内容分块、本地向量化、相似度检索、来源展示和无相关内容兜底。
-- 已完成智能测验第一版：按知识点和难度生成单选题、提交判分、展示正确答案与解析，并将答题记录保存到 MongoDB Atlas。
-- 已接入可配置的真实 AI Provider：兼容 OpenAI Chat Completions 协议，可用于费曼评价、智能出题和有来源 RAG 回答；未配置密钥时自动保持 Mock 演示模式。
+- 已完成智能测验：按知识点、难度和题型生成选择题或解答题。选择题自动判分；解答题由真实 AI 评分，提交后展示反馈、参考答案和评分要点，答题记录保存到 MongoDB Atlas，并同步知识点状态：60分及以上为已学习且已掌握，低于60分为已学习但未掌握。详见 [智能测验题型设计与验证](docs/quiz-question-types.md)。
+- 已接入可配置的真实 AI Provider：兼容 OpenAI Chat Completions 协议，可用于费曼评价、智能出题和有来源 RAG 回答；选择题保留未配置时的 Mock 演示模式，解答题必须配置真实 AI。
 - 已增加单容器云部署方案：Node API 同源托管 React 构建产物，提供根目录 Dockerfile 和 Render Blueprint。
 - 已使用真实 DeepSeek Provider 完成本地进程和 Docker 容器双路径联调；单容器首页、Atlas 连接、真实出题接口均验证通过。
 - 已完成二维知识图谱第一版：按共享标签生成节点和关系，支持节点选择、详情查看和缩放。
@@ -61,8 +61,8 @@ npm run dev
 - `POST /api/feynman/evaluate`：对复述文本进行结构化评价。
 - `POST /api/feynman/attempts`：保存复述记录并更新知识点掌握度。
 - `POST /api/rag/ask`：检索课程版知识库并返回回答与来源。
-- `POST /api/quiz/generate`：按知识点和难度生成单选题（当前为 Mock Provider，不返回正确答案索引）。
-- `POST /api/quiz/grade`：提交答案、返回判分与解析，并保存答题记录。
+- `POST /api/quiz/generate`：按知识点、难度和 `questionType` 生成选择题或解答题，生成时不返回答案和评分要点。
+- `POST /api/quiz/grade`：选择题提交选项下标，解答题提交文本；返回判分、答案与解析，并保存答题记录。
 - `GET /api/quiz/attempts/:knowledgeId`：查询当前用户某个知识点最近的答题记录。
 - `GET /api/health`：返回服务状态及 AI Provider 是否已配置，不返回密钥。
 - `GET /api/graph/knowledge-map`：返回当前用户的知识节点、共享标签关系和统计信息。
