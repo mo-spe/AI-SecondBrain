@@ -60,6 +60,52 @@ class AiServiceVisionConfigTest {
     }
 
     @Test
+    void acceptsOfficialDeepSeekFlashImageModel() {
+        givenConfiguration("deepseek", "deepseek-flash");
+        assertThat(service.resolveVisionConfig(7L, "vision").getModelName()).isEqualTo("deepseek-flash");
+    }
+
+    @Test
+    void rejectsDeepSeekTextOnlyModelForImages() {
+        givenConfiguration("deepseek", "deepseek-v4-pro");
+        assertThatThrownBy(() -> service.resolveVisionConfig(7L, "vision"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("仅支持文本");
+    }
+
+    @Test
+    void doesNotAcceptDeepSeekFlashOnAnotherProvider() {
+        givenConfiguration("qwen", "deepseek-flash");
+        assertThatThrownBy(() -> service.resolveVisionConfig(7L, "vision"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("视觉模型");
+    }
+
+    @Test
+    void sendsDeepSeekVisionAndTextWithScopedNonThinkingAndStructuredBudget() throws IOException {
+        AtomicReference<JsonNode> request = new AtomicReference<>();
+        HttpServer server = completionServer("stop", "{}", request);
+        try {
+            givenConfiguration("deepseek", "deepseek-flash", endpoint(server));
+            assertThat(service.analyzeImages(7L, "vision", "提取截图中的词",
+                    List.of(new byte[]{1}), List.of("image/png"))).isEqualTo("{}");
+            assertThat(request.get().path("model").asText()).isEqualTo("deepseek-flash");
+            assertThat(request.get().path("thinking").path("type").asText()).isEqualTo("disabled");
+            assertThat(request.get().path("messages").path(0).path("content").path(1)
+                    .path("image_url").path("url").asText()).isEqualTo("data:image/png;base64,AQ==");
+
+            service.generateAnswer(7L, "vision", "给出中文释义");
+            assertThat(request.get().path("thinking").path("type").asText()).isEqualTo("disabled");
+            assertThat(request.get().path("max_tokens").asInt()).isEqualTo(2048);
+
+            service.generateJsonAnswer(7L, "vision", "只返回 JSON 对象");
+            assertThat(request.get().path("thinking").path("type").asText()).isEqualTo("disabled");
+            assertThat(request.get().path("response_format").path("type").asText()).isEqualTo("json_object");
+            assertThat(request.get().path("max_tokens").asInt()).isEqualTo(8192);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void promptsToReplaceUnreadableSavedKey() {
         givenConfiguration("qwen", "qwen3-vl-flash");
         when(encryptionService.decrypt("encrypted-key")).thenThrow(new IllegalStateException("decrypt failed"));

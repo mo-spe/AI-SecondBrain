@@ -1,0 +1,32 @@
+# 词表文章不使用消息队列、搜索索引及复习调度；默认全量配置保持原有行为。
+spring:
+  kafka:
+    enabled: false
+    listener:
+      auto-startup: false
+    admin:
+      auto-create: false
+  elasticsearch:
+    enabled: false
+  data:
+    elasticsearch:
+      repositories:
+        enabled: false
+  quartz:
+    auto-startup: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration
+app:
+  scheduling:
+    enabled: false
+deerflow:
+  local:
+    enabled: false
+management:
+  health:
+    elasticsearch:
+      enabled: false

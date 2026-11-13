@@ -8,9 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /** Kafka消费者服务. <p>监听聊天采集队列并处理知识提取</p> */
 @Service
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class KafkaConsumerService {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumerService.class);

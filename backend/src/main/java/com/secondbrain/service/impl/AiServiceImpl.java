@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import okio.Buffer;
 import com.secondbrain.client.AnthropicClient;
 import com.secondbrain.client.GeminiClient;
 import com.secondbrain.dto.AiCallConfig;
@@ -60,7 +62,7 @@ import java.util.function.Consumer;
 public class AiServiceImpl implements AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiServiceImpl.class);
-    private static final int QWEN_VL_JSON_OUTPUT_TOKENS = 8192;
+    private static final int STRUCTURED_JSON_OUTPUT_TOKENS = 8192;
     private static final int COMPATIBLE_JSON_OUTPUT_TOKENS = 4096;
 
     // ========== 旧配置（仅用于 @Deprecated 方法，Phase 5 迁移完成后移除） ==========
@@ -174,8 +176,11 @@ public class AiServiceImpl implements AiService {
             throw new BusinessException(400, "当前视觉识别仅支持 OpenAI 兼容协议的服务商");
         }
         String model = config.getModelName();
-        if (model == null || !model.toLowerCase(Locale.ROOT)
-                .matches(".*(vl|vision|gpt-4o|gpt-4\\.1|gemini|glm-4v).*")) {
+        if ("deepseek".equals(config.getProviderCode()) && !isDeepSeekVision(config)) {
+            throw new BusinessException(400, "DeepSeek 图片识别请使用 deepseek-flash；deepseek-v4-pro 仅支持文本");
+        }
+        if (!isDeepSeekVision(config) && (model == null || !model.toLowerCase(Locale.ROOT)
+                .matches(".*(vl|vision|gpt-4o|gpt-4\\.1|gemini|glm-4v).*"))) {
             throw new BusinessException(400, "请选择支持图片输入的视觉模型");
         }
         if (model.toLowerCase(Locale.ROOT).startsWith("qwen")
@@ -210,11 +215,11 @@ public class AiServiceImpl implements AiService {
         if (!"openai_compatible".equals(config.getApiType())) {
             return executeCall(config, systemPrompt, prompt);
         }
-        // 只向官方明确支持 JSON Object 的 Qwen3-VL 系列发送格式参数，避免其他配置因参数不兼容失败。
-        boolean jsonObject = "qwen".equals(config.getProviderCode())
+        // 只向已核对支持 JSON Object 的型号发送格式约束，避免其他提供商因参数不兼容失败。
+        boolean jsonObject = isDeepSeekVision(config) || ("qwen".equals(config.getProviderCode())
                 && config.getModelName() != null
-                && config.getModelName().toLowerCase(Locale.ROOT).matches("qwen3-vl-(flash|plus)(?:-.*)?");
-        int maxOutputTokens = jsonObject ? QWEN_VL_JSON_OUTPUT_TOKENS : COMPATIBLE_JSON_OUTPUT_TOKENS;
+                && config.getModelName().toLowerCase(Locale.ROOT).matches("qwen3-vl-(flash|plus)(?:-.*)?"));
+        int maxOutputTokens = jsonObject ? STRUCTURED_JSON_OUTPUT_TOKENS : COMPATIBLE_JSON_OUTPUT_TOKENS;
         return callOpenAiCompatible(config, systemPrompt,
                 List.of(Map.of("role", "user", "content", prompt)), maxOutputTokens, jsonObject);
     }
@@ -249,8 +254,13 @@ public class AiServiceImpl implements AiService {
         String normalizedBase = baseUrl.replaceAll("/+$", "");
         String endpoint = (normalizedBase.endsWith("/v1") ? normalizedBase : normalizedBase + "/v1")
                 + "/chat/completions";
-        Map<String, Object> payload = Map.of("model", model, "messages",
-                List.of(Map.of("role", "user", "content", parts)));
+        Map<String, Object> payload = new LinkedHashMap<>(Map.of("model", model, "messages",
+                List.of(Map.of("role", "user", "content", parts))));
+        if (isDeepSeekVision(config)) {
+            // 截图提词不使用思考内容，显式关闭默认思考以减少延迟和输出预算消耗。
+            payload.put("thinking", Map.of("type", "disabled"));
+            payload.put("max_tokens", STRUCTURED_JSON_OUTPUT_TOKENS);
+        }
         try {
             String json = OBJECT_MAPPER.writeValueAsString(payload);
             Request request = new Request.Builder().url(endpoint)
@@ -261,8 +271,19 @@ public class AiServiceImpl implements AiService {
                     .readTimeout(90, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).build();
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
-                    log.warn("vision_call_failed userId={} status={}", userId, response.code());
-                    throw new BusinessException(502, "视觉模型请求失败，请检查模型和 API Key 后重试");
+                    String errorCode = response.body() == null ? "unknown"
+                            : readVisionErrorCode(response.body().string());
+                    log.warn("vision_call_failed userId={} provider={} model={} host={} status={} errorCode={}",
+                            userId, config.getProviderCode(), model, request.url().host(), response.code(), errorCode);
+                    if (response.code() == 404) {
+                        String message = "ModelNotFound".equalsIgnoreCase(errorCode)
+                                || "model_not_found".equalsIgnoreCase(errorCode)
+                                ? "视觉模型不存在或当前 Key 无权访问（HTTP 404），请核对模型名称、开通状态和 Key 所属地域"
+                                : "视觉模型接口或模型不可用（HTTP 404），请核对服务地址、模型名称和账号访问权限";
+                        throw new BusinessException(502, message);
+                    }
+                    throw new BusinessException(502,
+                            "视觉模型请求失败（HTTP " + response.code() + "），请检查模型和 API Key 后重试");
                 }
                 com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response.body().string());
                 String content = root.path("choices").path(0).path("message").path("content").asText("");
@@ -426,14 +447,30 @@ public class AiServiceImpl implements AiService {
             baseUrl = baseUrl + "/";
         }
 
+        OkHttpClient.Builder transport = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS);
+        if (isDeepSeekVision(config)) {
+            // 现有 SDK 没有 thinking 字段，在发送前补充官方扩展参数，继续复用同一客户端链路。
+            transport.addInterceptor(chain -> {
+                Request original = chain.request();
+                if (original.body() == null) {
+                    return chain.proceed(original);
+                }
+                Buffer buffer = new Buffer();
+                original.body().writeTo(buffer);
+                ObjectNode payload = (ObjectNode) OBJECT_MAPPER.readTree(buffer.readUtf8());
+                payload.putObject("thinking").put("type", "disabled");
+                RequestBody body = RequestBody.create(OBJECT_MAPPER.writeValueAsString(payload),
+                        MediaType.get("application/json"));
+                return chain.proceed(original.newBuilder().method(original.method(), body).build());
+            });
+        }
         OpenAiClient client = OpenAiClient.builder()
                 .apiKey(java.util.Collections.singletonList(config.getApiKey()))
                 .apiHost(baseUrl)
-                .okHttpClient(new OkHttpClient.Builder()
-                        .connectTimeout(30, TimeUnit.SECONDS)
-                        .readTimeout(120, TimeUnit.SECONDS)
-                        .writeTimeout(30, TimeUnit.SECONDS)
-                        .build())
+                .okHttpClient(transport.build())
                 .build();
 
         List<Message> apiMessages = new ArrayList<>();
@@ -481,6 +518,28 @@ public class AiServiceImpl implements AiService {
             throw new BusinessException(502, "模型未返回可用内容，请重试");
         }
         return choice.getMessage().getContent();
+    }
+
+    private boolean isDeepSeekVision(AiCallConfig config) {
+        return "deepseek".equals(config.getProviderCode()) && "deepseek-flash".equals(config.getModelName());
+    }
+
+    private String readVisionErrorCode(String response) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = OBJECT_MAPPER.readTree(response);
+            if (root == null) {
+                return "unknown";
+            }
+            String code = root.path("error").path("code").asText("");
+            if (code.isBlank()) {
+                code = root.path("code").asText("");
+            }
+            // 服务商可能回显原请求，仅允许短错误标识进入日志，不保留错误正文。
+            return code.matches("[A-Za-z0-9_.-]{1,80}") ? code : "unknown";
+        } catch (JsonProcessingException exception) {
+            // 网关错误页可能是 HTML，保留 HTTP 状态，不应将其误报为网络连接失败。
+            return "unknown";
+        }
     }
 
     /**
