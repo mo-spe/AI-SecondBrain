@@ -5,6 +5,7 @@ import { apiRequest } from '../lib/api.js';
 import { convertToWav } from '../lib/audio.js';
 import PageLoading from '../components/PageLoading.jsx';
 import { cachedRequest, invalidateApiCache } from '../lib/dataCache.js';
+import LearningStatusBadge from '../components/LearningStatusBadge.jsx';
 
 const createAttemptId = () => globalThis.crypto?.randomUUID?.()
   || `attempt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -17,6 +18,8 @@ export default function FeynmanPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [polishedText, setPolishedText] = useState('');
+  const [busyAction, setBusyAction] = useState('');
   const [evaluation, setEvaluation] = useState(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -29,6 +32,13 @@ export default function FeynmanPage() {
   const mountedRef = useRef(true);
   const attemptIdRef = useRef('');
   const chunksRef = useRef([]);
+  const busyRef = useRef(false);
+
+  const clearEvaluation = () => {
+    setEvaluation(null);
+    setSaved(false);
+    attemptIdRef.current = createAttemptId();
+  };
 
   useEffect(() => {
     cachedRequest('knowledge', '/knowledge')
@@ -71,9 +81,11 @@ export default function FeynmanPage() {
   }, []);
 
   const startRecording = async () => {
+    if (busyRef.current || isRecording) return;
     setError('');
     setEvaluation(null);
     setTranscript('');
+    setPolishedText('');
     setSaved(false);
     setAudioUrl('');
     attemptIdRef.current = createAttemptId();
@@ -83,7 +95,10 @@ export default function FeynmanPage() {
     }
 
     try {
+      busyRef.current = true;
+      setBusy(true);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
@@ -124,6 +139,9 @@ export default function FeynmanPage() {
       releaseStream();
       recorderRef.current = null;
       setError('没有获得麦克风权限，请允许浏览器使用麦克风后重试。');
+    } finally {
+      busyRef.current = false;
+      if (mountedRef.current) setBusy(false);
     }
   };
 
@@ -141,7 +159,9 @@ export default function FeynmanPage() {
   };
 
   const transcribe = async () => {
-    if (!audioUrl || !selectedId) return;
+    if (!audioUrl || !selectedId || busyRef.current) return;
+    busyRef.current = true;
+    setBusyAction('transcribe');
     setBusy(true);
     setError('');
     try {
@@ -152,46 +172,53 @@ export default function FeynmanPage() {
       formData.append('knowledgeId', selectedId);
       formData.append('audio', wavBlob, 'feynman-rehearsal.wav');
       const result = await apiRequest('/feynman/transcribe', { method: 'POST', body: formData });
+      if (!mountedRef.current) return;
       setTranscript(result.transcript);
+      setPolishedText('');
+      clearEvaluation();
     } catch (requestError) {
       setError(requestError.message);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
-  const evaluate = async () => {
-    if (!transcript || !selectedId) return;
+  const polish = async () => {
+    if (!transcript.trim() || busyRef.current || isRecording) return;
+    busyRef.current = true;
     setBusy(true);
+    setBusyAction('polish');
+    setError('');
+    try {
+      const result = await apiRequest('/feynman/polish', { method: 'POST', body: JSON.stringify({ knowledgeId: selectedId, transcript }) });
+      if (!mountedRef.current) return;
+      setPolishedText(result.polishedText);
+      clearEvaluation();
+    } catch (requestError) { if (mountedRef.current) setError(requestError.message); }
+    finally { busyRef.current = false; if (mountedRef.current) setBusy(false); }
+  };
+
+  const evaluate = async () => {
+    if (!transcript.trim() || !polishedText.trim() || !selectedId || busyRef.current || isRecording || saved) return;
+    busyRef.current = true;
+    setBusy(true);
+    setBusyAction('evaluate');
     setError('');
     try {
       const result = await apiRequest('/feynman/evaluate', {
         method: 'POST',
-        body: JSON.stringify({ knowledgeId: selectedId, transcript })
+        body: JSON.stringify({ knowledgeId: selectedId, transcript, polishedText, clientAttemptId: attemptIdRef.current })
       });
-      setEvaluation(result);
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const saveAttempt = async () => {
-    if (!evaluation || saved) return;
-    setBusy(true);
-    setError('');
-    try {
-      await apiRequest('/feynman/attempts', {
-        method: 'POST',
-        body: JSON.stringify({ knowledgeId: selectedId, transcript, clientAttemptId: attemptIdRef.current, ...evaluation })
-      });
-      setSaved(true);
       invalidateApiCache('knowledge', 'knowledge-graph', `knowledge-detail:${selectedId}`, `feynman-attempts:${selectedId}`);
-      setError('复述记录已保存，知识点掌握度已更新。');
+      if (!mountedRef.current) return;
+      setEvaluation(result);
+      setSaved(true);
+      if (result.item) setItems((current) => current.map((item) => item.id === result.item.id ? result.item : item));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -199,10 +226,11 @@ export default function FeynmanPage() {
   const reset = () => {
     setAudioUrl('');
     setTranscript('');
+    setPolishedText('');
     setEvaluation(null);
     setSaved(false);
     setError('');
-    attemptIdRef.current = '';
+    attemptIdRef.current = createAttemptId();
   };
 
   return (
@@ -211,18 +239,34 @@ export default function FeynmanPage() {
         <div><p className="eyebrow">Feynman loop / 02</p><h1>讲给自己听。</h1><p className="page-subtitle">不看笔记，试着把一个概念讲清楚。</p></div>
         <div className="feynman-mark"><Mic2 size={18} /><span>录音只在本次会话中处理</span></div>
       </header>
-      {error && <div className={`inline-message ${error.includes('已保存') ? 'success' : ''}`}>{error}</div>}
+      {error && <div className="inline-message" role="alert">{error}</div>}
       {loadingItems ? <PageLoading label="正在准备费曼复述…" /> : items.length === 0 ? <div className="list-empty"><Sparkles size={22} /><h2>先创建一个知识点</h2><p>选择一个你想重新讲清楚的概念。</p></div> : <div className="feynman-layout">
         <section className="feynman-card rehearsal-card">
           <div className="card-kicker"><span>01 / 选择对象</span><span>{items.length} 个知识点</span></div>
           <label className="select-label">今天要讲什么？<select value={selectedId} disabled={isRecording || busy} onChange={(event) => { if (isRecording || busy) return; setSelectedId(event.target.value); reset(); }}><option value="" disabled>选择知识点</option>{items.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
           <div className="rehearsal-stage"><div className={`record-orb ${isRecording ? 'recording' : ''}`}><Mic2 size={34} /></div><p className="stage-label">{isRecording ? `正在聆听… ${recordingSeconds}s / ${MAX_RECORDING_SECONDS}s` : audioUrl ? '录音完成' : '准备好之后开始'}</p><span>百度短语音识别单段最多 60 秒，尽量在一分钟内讲清核心概念并补充一个例子。</span></div>
-          <div className="record-actions">{isRecording ? <button className="record-button stop" type="button" onClick={stopRecording}><Square size={16} /> 停止录音</button> : <button className="record-button" type="button" onClick={startRecording} disabled={!selectedId}><Mic2 size={17} /> 开始录音</button>}{audioUrl && <><audio controls src={audioUrl} /><button className="icon-button" type="button" onClick={reset} aria-label="重新录音"><RotateCcw size={17} /></button></>}</div>
+          <div className="record-actions">{isRecording ? <button className="record-button stop" type="button" onClick={stopRecording}><Square size={16} /> 停止录音</button> : <button className="record-button" type="button" onClick={startRecording} disabled={!selectedId || busy}><Mic2 size={17} /> 开始录音</button>}{audioUrl && <><audio controls src={audioUrl} /><button className="icon-button" type="button" onClick={reset} disabled={busy} aria-label="重新录音"><RotateCcw size={17} /></button></>}</div>
           {audioUrl && !transcript && <button className="primary-button full-button" type="button" onClick={transcribe} disabled={busy}><Send size={16} />{busy ? '转录中…' : '上传并转成文字'}</button>}
         </section>
         <section className="feynman-card feedback-card">
           <div className="card-kicker"><span>02 / 复述与校准</span><span className="provider-note"><Sparkles size={14} /> {evaluation?.provider || 'Provider ready'}</span></div>
-          {!transcript ? <div className="feedback-empty"><Play size={19} /><p>完成录音后，这里会出现你的复述文本。</p></div> : <><label className="transcript-label">你的复述<textarea value={transcript} onChange={(event) => setTranscript(event.target.value)} rows={7} /></label>{!evaluation && <button className="primary-button full-button" type="button" onClick={evaluate} disabled={busy}>{busy ? '评价中…' : '开始 AI 评价'}<Sparkles size={16} /></button>}{evaluation && <div className="evaluation-result"><div className="score-line"><div><span>本次掌握度</span><strong>{evaluation.score}</strong><small>/ 100</small></div><CheckCircle2 size={24} /></div><p className="evaluation-copy">{evaluation.evaluation}</p><div className="feedback-columns"><div><span>做得好的地方</span>{evaluation.strengths.map((item) => <p key={item}>+ {item}</p>)}</div><div><span>下一次试试</span>{evaluation.weaknesses.map((item) => <p key={item}>→ {item}</p>)}</div></div><button className="outline-button full-button" type="button" onClick={saveAttempt} disabled={busy || saved}>{saved ? '已保存' : '保存这次复述'} <CheckCircle2 size={16} /></button></div>}</>}
+          {!transcript ? <div className="feedback-empty"><Play size={19} /><p>完成录音并提交后，这里会出现识别文字。</p></div> : <>
+            <label className="transcript-label">识别后的复述原文<textarea value={transcript} disabled={busy || isRecording} maxLength={30000} onChange={(event) => { setTranscript(event.target.value); setPolishedText(''); clearEvaluation(); }} rows={6} /></label>
+            <button className="outline-button full-button" type="button" onClick={polish} disabled={busy || isRecording || !transcript.trim()}><Sparkles size={16} />{busy && busyAction === 'polish' ? '润色中…' : polishedText ? '重新 AI 润色' : 'AI 专业润色'}</button>
+            <p className="feynman-hint">润色会整理口语表达，不补充你没有讲到的知识。修改原文后需重新润色。</p>
+            {polishedText && <>
+              <label className="transcript-label">润色后的复述<textarea value={polishedText} disabled={busy || isRecording} maxLength={30000} onChange={(event) => { setPolishedText(event.target.value); clearEvaluation(); }} rows={7} /></label>
+              <button className="primary-button full-button" type="button" onClick={evaluate} disabled={busy || isRecording || !polishedText.trim() || saved}>{busy && busyAction === 'evaluate' ? '评价并保存中…' : saved ? '本次评价已保存' : 'AI 评价润色后的复述'}<Sparkles size={16} /></button>
+              <p className="feynman-hint">评价成功后自动保存。60分及以上为已掌握，低于60分为未掌握，两者均标记为已学习。</p>
+            </>}
+            {evaluation && <div className="evaluation-result" role="status">
+              <div className="score-line"><div><span>本次掌握度</span><strong>{evaluation.score}</strong><small>/ 100</small></div><CheckCircle2 size={24} /></div>
+              <LearningStatusBadge knowledge={{ reviewScore: evaluation.score }} />
+              <p className="evaluation-copy">{evaluation.evaluation}</p>
+              <div className="feedback-columns"><div><span>做得好的地方</span>{evaluation.strengths.map((item) => <p key={item}>+ {item}</p>)}</div><div><span>下一次试试</span>{evaluation.weaknesses.map((item) => <p key={item}>→ {item}</p>)}</div></div>
+              <p>复述记录和知识点学习状态已保存。</p>
+            </div>}
+          </>}
         </section>
       </div>}
     </div>

@@ -49,20 +49,7 @@
           "updatedAt": { "type": "string", "format": "date-time", "readOnly": true }
         }
       },
-      "Knowledge": {
-        "type": "object",
-        "required": ["id", "title", "content", "tags"],
-        "properties": {
-          "id": { "type": "string", "readOnly": true, "example": "66d123456789012345678902" },
-          "title": { "type": "string", "maxLength": 120, "example": "向量数据库" },
-          "content": { "type": "string", "maxLength": 30000, "example": "向量数据库用于保存高维向量，并通过相似度搜索找到语义接近的内容。" },
-          "tags": { "type": "array", "maxItems": 8, "items": { "type": "string" }, "example": ["AI", "数据库"] },
-          "reviewScore": { "type": "integer", "minimum": 0, "maximum": 100, "nullable": true, "example": 82 },
-          "lastReviewedAt": { "type": "string", "format": "date-time", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time", "readOnly": true },
-          "updatedAt": { "type": "string", "format": "date-time", "readOnly": true }
-        }
-      },
+      "Knowledge": {"type":"object","required":["id","title","content","tags"],"properties":{"id":{"type":"string","readOnly":true,"example":"66d123456789012345678902"},"title":{"type":"string","maxLength":120,"example":"向量数据库"},"content":{"type":"string","maxLength":30000,"example":"向量数据库用于保存高维向量，并通过相似度搜索找到语义接近的内容。"},"tags":{"type":"array","maxItems":8,"items":{"type":"string"},"example":["AI","数据库"]},"reviewScore":{"type":"integer","minimum":0,"maximum":100,"nullable":true,"example":82},"lastReviewedAt":{"type":"string","format":"date-time","nullable":true},"createdAt":{"type":"string","format":"date-time","readOnly":true},"updatedAt":{"type":"string","format":"date-time","readOnly":true},"isLearned":{"type":"boolean"},"isMastered":{"type":"boolean","description":"有评分且评分>=60"},"learningStatus":{"type":"string","enum":["not-learned","learning","mastered"]}}},
       "KnowledgeInput": {
         "type": "object",
         "required": ["title", "content"],
@@ -270,36 +257,9 @@
         }
       }
     },
-    "/feynman/evaluate": {
-      "post": {
-        "tags": ["Feynman"],
-        "summary": "评价费曼复述",
-        "operationId": "evaluateFeynman",
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId", "transcript"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "transcript": { "type": "string", "minLength": 1, "maxLength": 30000, "example": "向量数据库把内容转成向量，然后通过相似度找到相关信息。" } } } } } },
-        "responses": {
-          "200": { "description": "评价成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeynmanEvaluation" } } } },
-          "400": { "description": "转录内容为空", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "502": { "description": "AI Provider 请求失败或返回格式不正确", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
-        }
-      }
-    },
-    "/feynman/attempts": {
-      "post": {
-        "tags": ["Feynman"],
-        "summary": "保存一次费曼复述（支持幂等）",
-        "description": "clientAttemptId 用于防止网络重试或重复点击产生重复复述记录；相同用户和相同 clientAttemptId 再次提交时返回已有记录。",
-        "operationId": "createFeynmanAttempt",
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["knowledgeId", "transcript", "polishedText", "score", "evaluation"], "properties": { "knowledgeId": { "type": "string", "example": "66d123456789012345678902" }, "clientAttemptId": { "type": "string", "maxLength": 100, "description": "客户端生成的本次复述唯一标识，建议使用 UUID" }, "transcript": { "type": "string", "maxLength": 30000 }, "polishedText": { "type": "string", "maxLength": 30000 }, "score": { "type": "integer", "minimum": 0, "maximum": 100 }, "evaluation": { "type": "string", "maxLength": 2000 }, "strengths": { "type": "array", "items": { "type": "string" } }, "weaknesses": { "type": "array", "items": { "type": "string" } } } } } } },
-        "responses": {
-          "200": { "description": "重复请求，返回已存在的复述记录", "content": { "application/json": { "schema": { "type": "object", "properties": { "attempt": { "$ref": "#/components/schemas/FeynmanAttempt" }, "duplicate": { "type": "boolean", "example": true } } } } } },
-          "201": { "description": "保存成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "attempt": { "$ref": "#/components/schemas/FeynmanAttempt" } } } } } },
-          "404": { "description": "知识点不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
-        }
-      }
-    },
+    "/feynman/evaluate": {"post":{"tags":["Feynman"],"summary":"评价润色文本，自动保存记录并更新学习状态","security":[{"bearerAuth":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["knowledgeId","transcript","polishedText","clientAttemptId"],"properties":{"knowledgeId":{"type":"string"},"transcript":{"type":"string","minLength":1,"maxLength":30000},"polishedText":{"type":"string","minLength":1,"maxLength":30000},"clientAttemptId":{"type":"string","minLength":1,"maxLength":100}}}}}},"responses":{"200":{"description":"成功","content":{"application/json":{"schema":{"type":"object","properties":{"score":{"type":"integer","minimum":0,"maximum":100},"evaluation":{"type":"string"},"polishedText":{"type":"string"},"strengths":{"type":"array","items":{"type":"string"}},"weaknesses":{"type":"array","items":{"type":"string"}},"saved":{"type":"boolean"},"provider":{"type":"string"},"item":{"$ref":"#/components/schemas/Knowledge"},"attempt":{"$ref":"#/components/schemas/FeynmanAttempt"}}}}}},"400":{"description":"参数不完整或超过限制","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"401":{"description":"未登录","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"404":{"description":"知识点不存在或不属于当前用户","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"409":{"description":"评价编号已用于不同的知识或文本","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"502":{"description":"AI Provider异常","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"503":{"description":"真实AI未配置","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}}}},
+    "/feynman/polish": {"post":{"tags":["Feynman"],"summary":"独立润色复述原文，不自动补充知识","security":[{"bearerAuth":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["knowledgeId","transcript"],"properties":{"knowledgeId":{"type":"string"},"transcript":{"type":"string","minLength":1,"maxLength":30000}}}}}},"responses":{"200":{"description":"成功","content":{"application/json":{"schema":{"type":"object","properties":{"polishedText":{"type":"string"},"provider":{"type":"string"}}}}}},"400":{"description":"参数不完整或超过限制","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"401":{"description":"未登录","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"404":{"description":"知识点不存在或不属于当前用户","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"502":{"description":"AI Provider异常","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"503":{"description":"真实AI未配置","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}}}},
+    "/feynman/attempts": {"post":{"tags":["Feynman"],"summary":"确认已存在的服务端评价记录（兼容接口）","description":"评价自动保存，不再接受客户端直接提交评分创建记录。","operationId":"createFeynmanAttempt","security":[{"bearerAuth":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["knowledgeId","clientAttemptId"],"properties":{"knowledgeId":{"type":"string"},"clientAttemptId":{"type":"string","minLength":1,"maxLength":100}}}}}},"responses":{"200":{"description":"重复请求，返回已存在的复述记录","content":{"application/json":{"schema":{"type":"object","properties":{"attempt":{"$ref":"#/components/schemas/FeynmanAttempt"},"duplicate":{"type":"boolean","example":true}}}}}},"400":{"description":"尚未完成服务端AI评价","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},"404":{"description":"知识点不存在","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}}}},
     "/feynman/attempts/{knowledgeId}": {
       "get": {
         "tags": ["Feynman"],

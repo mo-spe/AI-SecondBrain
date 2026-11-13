@@ -12,10 +12,13 @@ export const cachedRequest = (key, path, options = {}) => {
 
   const request = apiRequest(path, options)
     .then((result) => {
-      cache.set(keyWithScope, result);
+      // 已失效的在途请求不能重新写入缓存，否则编辑完成后仍可能显示旧内容。
+      if (pending.get(keyWithScope) === request) cache.set(keyWithScope, result);
       return result;
     })
-    .finally(() => pending.delete(keyWithScope));
+    .finally(() => {
+      if (pending.get(keyWithScope) === request) pending.delete(keyWithScope);
+    });
 
   pending.set(keyWithScope, request);
   return request;

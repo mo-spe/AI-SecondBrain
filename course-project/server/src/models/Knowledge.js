@@ -17,6 +17,10 @@ knowledgeSchema.index({ owner: 1, updatedAt: -1 });
 knowledgeSchema.set('toJSON', {
   transform: (_document, returned) => {
     returned.id = returned._id.toString();
+    // 从现有评分派生状态，兼容旧知识记录且避免持久化相互矛盾的状态字段。
+    returned.isLearned = typeof returned.reviewScore === 'number';
+    returned.isMastered = returned.isLearned && returned.reviewScore >= 60;
+    returned.learningStatus = !returned.isLearned ? 'not-learned' : returned.isMastered ? 'mastered' : 'learning';
     delete returned._id;
     delete returned.__v;
     delete returned.owner;

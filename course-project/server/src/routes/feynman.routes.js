@@ -3,7 +3,8 @@ import multer from 'multer';
 import { FeynmanAttempt } from '../models/FeynmanAttempt.js';
 import { Knowledge } from '../models/Knowledge.js';
 import { requireAuth } from '../middleware/auth.js';
-import { evaluateFeynmanWithAi, isAiConfigured } from '../services/ai.service.js';
+import { polishFeynmanWithAi, isAiConfigured, getAiStatus } from '../services/ai.service.js';
+import { evaluateAndSaveFeynman } from '../services/feynman.service.js';
 import { isBaiduAsrConfigured, transcribeWithBaidu } from '../services/speech.service.js';
 
 export const feynmanRouter = Router();
@@ -46,67 +47,50 @@ feynmanRouter.post('/transcribe', upload.single('audio'), async (request, respon
   }
 });
 
+const readText = (value) => typeof value === 'string' ? value.trim() : '';
+
+feynmanRouter.post('/polish', async (request, response, next) => {
+  try {
+    const knowledge = await findOwnedKnowledge(request, request.body.knowledgeId);
+    if (!knowledge) return response.status(404).json({ message: '知识点不存在' });
+    const transcript = readText(request.body.transcript);
+    if (!transcript || transcript.length > 30000) return response.status(400).json({ message: '复述原文不能为空，且不能超过30000字符' });
+    if (!isAiConfigured()) return response.status(503).json({ message: '请先配置真实 AI Provider，再使用润色功能' });
+    return response.json(await polishFeynmanWithAi(transcript));
+  } catch (error) { return next(error); }
+});
+
 feynmanRouter.post('/evaluate', async (request, response, next) => {
   try {
     const knowledge = await findOwnedKnowledge(request, request.body.knowledgeId);
-    const transcript = String(request.body.transcript || '').trim();
     if (!knowledge) return response.status(404).json({ message: '知识点不存在' });
-    if (!transcript) return response.status(400).json({ message: '转录内容不能为空' });
-
-    if (isAiConfigured()) return response.json(await evaluateFeynmanWithAi(knowledge, transcript));
-
-    const hasDefinition = transcript.length >= 30;
-    const hasExample = /例如|比如|场景|像/.test(transcript);
-    const score = Math.min(96, 48 + (hasDefinition ? 28 : 12) + (hasExample ? 14 : 0));
-    const strengths = hasDefinition ? ['解释已经包含核心含义'] : ['已经开始用自己的话组织解释'];
-    const weaknesses = hasExample ? ['可以再补充一个反例帮助区分边界'] : ['补充一个具体例子，能让理解更容易被验证'];
-    const evaluation = hasExample
-      ? '你的解释同时覆盖了概念和使用场景，下一次可以继续压缩表达，让核心判断更快被听懂。'
-      : '你已经说出了自己的理解，下一次尝试加入一个具体例子或反例，检查概念边界是否清晰。';
-
-    return response.json({ score, evaluation, polishedText: transcript, strengths, weaknesses, provider: 'mock' });
-  } catch (error) {
-    return next(error);
-  }
+    const transcript = readText(request.body.transcript);
+    const polishedText = readText(request.body.polishedText);
+    const clientAttemptId = readText(request.body.clientAttemptId);
+    if (!transcript || !polishedText || transcript.length > 30000 || polishedText.length > 30000 || !clientAttemptId || clientAttemptId.length > 100) {
+      return response.status(400).json({ message: '请提供复述原文、润色结果和有效的评价编号' });
+    }
+    if (!isAiConfigured()) return response.status(503).json({ message: '请先配置真实 AI Provider，再使用评价功能' });
+    const attempt = await evaluateAndSaveFeynman({ userId: request.user.id, knowledge, transcript, polishedText, clientAttemptId });
+    const item = await findOwnedKnowledge(request, knowledge.id);
+    return response.json({
+      score: attempt.score, evaluation: attempt.evaluation, polishedText: attempt.polishedText,
+      strengths: attempt.strengths, weaknesses: attempt.weaknesses,
+      provider: getAiStatus().provider, attempt, item, saved: true
+    });
+  } catch (error) { return next(error); }
 });
 
+// 兼容旧页面的保存按钮，但只确认服务端已评价的记录，不再接受客户端传入的评分。
 feynmanRouter.post('/attempts', async (request, response, next) => {
   try {
     const knowledge = await findOwnedKnowledge(request, request.body.knowledgeId);
     if (!knowledge) return response.status(404).json({ message: '知识点不存在' });
-
-    const clientAttemptId = String(request.body.clientAttemptId || '').trim();
-    if (clientAttemptId) {
-      const existingAttempt = await FeynmanAttempt.findOne({ user: request.user.id, clientAttemptId });
-      if (existingAttempt) return response.status(200).json({ attempt: existingAttempt, duplicate: true });
-    }
-
-    try {
-      const attempt = await FeynmanAttempt.create({
-        user: request.user.id,
-        knowledge: knowledge.id,
-        clientAttemptId: clientAttemptId || undefined,
-        transcript: request.body.transcript,
-        polishedText: request.body.polishedText,
-        score: request.body.score,
-        evaluation: request.body.evaluation,
-        strengths: request.body.strengths,
-        weaknesses: request.body.weaknesses
-      });
-      knowledge.reviewScore = request.body.score;
-      knowledge.lastReviewedAt = new Date();
-      await knowledge.save();
-      return response.status(201).json({ attempt });
-    } catch (error) {
-      if (error?.code === 11000 && clientAttemptId) {
-        const existingAttempt = await FeynmanAttempt.findOne({ user: request.user.id, clientAttemptId });
-        if (existingAttempt) return response.status(200).json({ attempt: existingAttempt, duplicate: true });
-      }
-      throw error;
-    }
-  } catch (error) {
-    return next(error);
-  }
+    const clientAttemptId = readText(request.body.clientAttemptId);
+    if (!clientAttemptId) return response.status(400).json({ message: '请先完成 AI 评价，记录会自动保存' });
+    const attempt = await FeynmanAttempt.findOne({ user: request.user.id, knowledge: knowledge.id, clientAttemptId });
+    return attempt ? response.json({ attempt, duplicate: true }) : response.status(400).json({ message: '请先完成 AI 评价，记录会自动保存' });
+  } catch (error) { return next(error); }
 });
 
 feynmanRouter.get('/attempts/:knowledgeId', async (request, response, next) => {
