@@ -1,24 +1,66 @@
 {
   "name": "feynman-course-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.1",
   "main": "main.cjs",
   "description": "费曼学习平台课程版桌面客户端",
   "author": "Feynman Course Project",
   "scripts": {
-    "dev": "electron .",
-    "build:web": "npm --prefix ../web run build",
-    "dist": "npm run build:web && electron-builder"
+    "dev": "npm run build:web && electron .",
+    "build:web": "node build-web.cjs",
+    "test": "node --test tests/local-server.test.cjs",
+    "dist": "npm run dist:win",
+    "dist:win": "npm run build:web && electron-builder --win nsis --x64",
+    "dist:mac": "npm run build:web && electron-builder --mac zip --x64 --arm64",
+    "dist:mac:dmg": "npm run build:web && electron-builder --mac dmg zip --x64 --arm64"
   },
   "devDependencies": {
-    "electron": "^32.1.2",
-    "electron-builder": "^25.1.8"
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
   },
   "build": {
     "appId": "com.secondbrain.feynman.course",
     "productName": "费曼学习平台",
-    "files": ["main.cjs", "preload.cjs", "package.json"],
-    "extraResources": [{ "from": "../web/dist", "to": "web-dist" }],
-    "win": { "target": "nsis", "signAndEditExecutable": false }
+    "asar": true,
+    "directories": {
+      "output": "release/${version}"
+    },
+    "artifactName": "Feynman-Course-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "local-server.cjs",
+      "assets/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist-desktop",
+        "to": "web-dist"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": [
+        "zip",
+        "dmg"
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.education",
+      "identity": null,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "用于录制费曼复述并提交语音转文字。"
+      }
+    }
   }
 }

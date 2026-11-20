@@ -17,7 +17,7 @@ course-project/
 - 已完成注册、登录、JWT 登录态保持。
 - 已完成知识点的列表、创建、编辑和删除 API 基础。
 - 已完成仪表盘基础数据展示。
-- 已完成费曼复述第一版：浏览器录音、音频上传、Mock 转录、结构化评价和复述记录保存。
+- 已完成费曼复述：浏览器录音、百度语音转文字、识别文本展示、AI润色、评价打分和历史保存，并同步知识点掌握状态。
 - 已完成课程版独立 RAG 第一版：知识内容分块、本地向量化、相似度检索、来源展示和无相关内容兜底。
 - 已完成智能测验：按知识点、难度和题型生成选择题或解答题。选择题自动判分；解答题由真实 AI 评分，提交后展示反馈、参考答案和评分要点，答题记录保存到 MongoDB Atlas，并同步知识点状态：60分及以上为已学习且已掌握，低于60分为已学习但未掌握。详见 [智能测验题型设计与验证](docs/quiz-question-types.md)。
 - 已接入可配置的真实 AI Provider：兼容 OpenAI Chat Completions 协议，可用于费曼评价、智能出题和有来源 RAG 回答；选择题保留未配置时的 Mock 演示模式，解答题必须配置真实 AI。
@@ -27,9 +27,9 @@ course-project/
 - 已完成 Three.js 3D 知识宇宙第一版：复用二维图谱数据，支持轨道旋转、滚轮缩放、节点点击和掌握度视觉编码。
 - 已接入 CesiumJS 数字地球页面：复用知识图谱节点和关系，提供无 Ion Token 的课程展示模式。
 - 已增加当前账号的演示数据初始化接口，按标题去重，不覆盖已有知识点。
-- 已补齐 Electron 本地连接适配，打包版通过 `http://localhost:4000/api` 访问课程 API。
-- 已生成 Windows x64 Electron NSIS 安装包；当前为未签名构建，适合课程演示和本地安装。
-- 真实 AI Provider 和云部署将在后续阶段接入。
+- Electron 使用隔离窗口和本机同源服务，默认连接本机课程API，可通过配置连接HTTPS云API。
+- 已生成Windows 0.2.1 x64安装包并启动打包后的EXE验收；PWA在Edge中通过安装条件及离线重启检查，单容器与Compose镜像均已运行验收。
+- 第15、16次课的跨平台构建、PWA安装、Docker部署和最终展示说明见[课程交付与验收](docs/stage-15-16-delivery.md)。实际构建和目标平台运行状态以该文档的验收记录为准。
 
 ## 启动
 
@@ -53,11 +53,12 @@ npm run dev
 
 默认 API 地址为 `http://localhost:4000/api`，前端开发地址为 `http://localhost:5173`。
 
-当前可演示的核心路径：登录 → 创建知识点 → 费曼复述 → 上传转录 → 结构化评价 → 保存记录 → 智能测验 → 知识问答。RAG 当前使用课程版独立的本地向量检索器，不读取主项目的 MySQL、Elasticsearch 或 RAG 索引；出题和评价当前使用可替换的 Mock Provider，后续可在保持接口不变的前提下替换为真实 Embedding、LLM 和题目 Provider。
+当前可演示的核心路径：登录 → 创建知识点 → 费曼复述 → 上传转录 → AI润色 → 评价并保存 → 智能测验 → 知识问答。RAG 使用课程版独立的本地检索器，不读取主项目的 MySQL、Elasticsearch 或 RAG 索引。AI润色、评价、出题和问答由配置的OpenAI-compatible Provider处理；解答题需要真实Provider。
 
 主要 API：
 
-- `POST /api/feynman/transcribe`：上传音频并获取转录文本（当前为 Mock Provider）。
+- `POST /api/feynman/transcribe`：上传音频并通过百度ASR获取转录文本。
+- `POST /api/feynman/polish`：对口语复述进行专业化润色。
 - `POST /api/feynman/evaluate`：对复述文本进行结构化评价。
 - `POST /api/feynman/attempts`：保存复述记录并更新知识点掌握度。
 - `POST /api/rag/ask`：检索课程版知识库并返回回答与来源。
@@ -72,7 +73,7 @@ Three.js 页面地址为 `http://localhost:5173/universe`。3D 场景仅使用�
 
 CesiumJS 页面地址为 `http://localhost:5173/earth`。页面使用椭球地球和本地实体，不要求 Cesium Ion Token；真实底图和地形服务可以在部署阶段按需要配置。
 
-Electron 开发/打包前需要先构建 Web：
+Electron 使用独立的 Web 构建目录，开发/打包命令会自动构建页面：
 
 ```bash
 cd desktop
@@ -81,9 +82,9 @@ npm run dev
 npm run dist
 ```
 
-打包后的桌面端默认请求本机的 `http://localhost:4000/api`，因此本地演示时需要同时启动 `server`；云部署完成后，可在 Web 构建时设置 `VITE_API_BASE_URL` 指向公网 API。
+打包后的桌面端通过 `http://127.0.0.1:17463/api` 代理到本机课程API，因此本地演示时需要同时启动 `server`。通过 `FEYNMAN_API_ORIGIN` 或 `desktop-config.json` 可切换HTTPS云API，无需重新打包。
 
-当前安装包：`desktop/dist/费曼学习平台 Setup 0.1.0.exe`。Windows 可能因为安装包未配置代码签名而显示安全提示，这是课程版当前的预期状态。
+新版包名为 `desktop/release/0.2.1/Feynman-Course-0.2.1-win-x64.exe`。用户已取消macOS包，本次只验收Windows。当前为课程演示用未签名构建，详见交付文档中的验收状态。
 
 课程版使用 MongoDB Atlas 云数据库。启动前需要在 Atlas 中创建 Database User，并在 Network Access 中允许当前开发环境访问；数据库名使用 `feynman_course`。连接串只保存在本地 `server/.env`，不要提交到 Git。
 
@@ -96,6 +97,8 @@ docker compose up --build -d
 ```
 
 Docker Compose 只启动课程版 Web 和 API，不启动本地 MongoDB 容器。
+默认 Web 地址为 `http://localhost:8088`，可通过 `COURSE_WEB_PORT` 调整。
+本次验收后已保留课程Compose服务。资源有限时可采用[先构建前端再制作镜像的方式](docs/stage-15-16-delivery.md#本次实际使用的构建路径)，本次实际成功记录和限制也保存在该文档中。
 
 课程版只连接自己的 MongoDB Atlas 数据库，不连接主项目 MySQL、Elasticsearch 或主项目 RAG 索引。
 

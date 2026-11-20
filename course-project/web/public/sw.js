@@ -1,5 +1,5 @@
-const CACHE_NAME = 'feynman-shell-v2';
-const SHELL_FILES = ['/', '/manifest.webmanifest'];
+const CACHE_NAME = 'feynman-shell-v3-__BUILD_VERSION__';
+const SHELL_FILES = ['/', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES)));
@@ -13,8 +13,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) return;
-  if (new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
+  if (url.origin !== self.location.origin) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     const fetchAndCache = async () => {

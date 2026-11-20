@@ -2,6 +2,11 @@
 
 :root { font-family: 'Manrope', system-ui, sans-serif; color: #18221f; background: #f4f4ef; font-synthesis: none; --ink: #18221f; --muted: #6f7974; --line: #dfe2da; --paper: #fbfbf7; --teal: #147d71; --teal-soft: #e1f0eb; --amber: #c77827; --amber-soft: #f7ead8; }
 * { box-sizing: border-box; }
+.pwa-offline { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; background: #f7ead8; color: #694015; font-size: 13px; line-height: 1.6; }
+.pwa-install { position: fixed; right: 20px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-wrap: wrap; max-width: min(330px, calc(100vw - 32px)); border: 1px solid #b7d9cb; border-radius: 16px; background: #e1f0eb; color: #164e43; box-shadow: 0 6px 24px #14211f18; }
+.pwa-install button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: 44px; padding: 10px 14px; background: transparent; color: inherit; border: 0; border-radius: 16px; font-size: 14px; font-weight: 700; }
+.pwa-install button:hover { background: #c5e2d7; }.pwa-install button:active { transform: scale(.98); }.pwa-install button:focus-visible { outline: 3px solid #147d71; outline-offset: 2px; }
+.pwa-install p { flex-basis: 100%; padding: 0 14px; font-size: 13px; line-height: 1.6; }
 body { margin: 0; min-width: 320px; background: #f4f4ef; }
 button, input, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }

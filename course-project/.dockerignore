@@ -1,6 +1,16 @@
 **/node_modules
 **/dist
+!web/dist
+!web/dist/**
 **/.env
+**/.env.*
+!**/.env.example
+**/dist-desktop
 .git
 .gitignore
 desktop
+docs
+artifacts
+pictures
+output
+design-system

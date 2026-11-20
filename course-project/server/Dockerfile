@@ -4,6 +4,8 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 COPY src ./src
 COPY .env.example ./.env.example
+ENV NODE_ENV=production
+USER node
 EXPOSE 4000
 CMD ["npm", "start"]
 
